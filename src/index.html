@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/styles.css">
+    <title>Manga Viewer</title>
+    <style>
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <button class="home-button" id="homeBtn">Главная</button>
+        <div class="tabs-container" id="tabsContainer"></div>
+        <button class="add-tab" id="addTabBtn">+</button>
+        <button class="add-tab" id="addImageTabBtn" title="Создать вкладку с изображениями">🖼️</button>
+    </div>
+
+    <div class="content">
+        <div id="imageGallery"></div>
+        <div id="homePage" class="home-page" style="display: none;"></div>
+    </div>
+
+    <!-- Форма для дяобавления MHTML вкладки -->
+    <div class="tab-form" id="tabForm">
+        <div class="form-container">
+            <h3 class="form-title">Добавить новую вкладку</h3>
+            <div class="form-group">
+                <label for="tabName">Название вкладки</label>
+                <input type="text" id="tabName" placeholder="Введите название">
+            </div>
+            <div class="form-group">
+                <label for="tabUrl">MHTML файл</label>
+                <input type="file" id="tabUrl" accept=".mhtml,.mht">
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" id="cancelBtn">Отмена</button>
+                <button class="btn btn-primary" id="saveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Форма для создания вкладки с изображениями -->
+    <div class="tab-form" id="imageTabForm">
+        <div class="form-container">
+            <h3 class="form-title">Создать вкладку с изображениями</h3>
+            <div class="form-group">
+                <label for="imageTabName">Название вкладки</label>
+                <input type="text" id="imageTabName" placeholder="Введите название">
+            </div>
+            <div class="form-group">
+                <label>Изображения</label>
+                <div class="image-upload-container" id="imageDropZone">
+                    Перетащите изображения сюда или кликните для выбора
+                    <input type="file" id="imageUploadInput" accept="image/*" multiple style="display: none;">
+                    <div class="preview-images-container">
+                        <div class="preview-images" id="previewImages"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" id="cancelImageBtn">Отмена</button>
+                <button class="btn btn-primary" id="createImageTabBtn">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок управления галереей -->
+    <div class="gallery-controls">
+        <div class="control-group">
+            <span class="control-label">Анимация сакуры</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="sakuraToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">Анимация перелистывания</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="animationToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">Расстояние между изображениями</span>
+            <input type="range" min="0" max="25" value="0" class="range-slider" id="spacingSlider">
+            <div class="range-value" id="spacingValue">0px</div>
+        </div>
+    </div>
+
+    <!-- Подключаем только необходимые библиотеки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="js/script.js" defer></script>
+</body>
+</html>
