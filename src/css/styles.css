@@ -230,7 +230,7 @@ body {
 .content {
     flex-grow: 1;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 /* ==================== */
@@ -562,12 +562,14 @@ body {
 
 .gallery-image {
     max-width: 100%;
+    height: auto;
     max-height: calc(100vh - 40px);
     object-fit: contain;
     border-radius: 5px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: transform 0.3s;
+    transform: translateZ(0);
 }
 
 /* ==================== */

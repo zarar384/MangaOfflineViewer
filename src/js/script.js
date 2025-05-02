@@ -477,29 +477,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Функция для создания превью (упрощенная версия)
-    async function createSimpleThumbnail(imageData) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = function () {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                // Устанавливаем размер превью (фиксированный)
-                const width = 200;
-                const height = 300;
-                canvas.width = width;
-                canvas.height = height;
-
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg'));
-            };
-            img.onerror = () => resolve(null);
-            img.src = imageData;
-        });
-    }
-
-
     // Парсинг MHTML файла
     async function parseMHTMLFile(tabId, fileData) {
         try {
@@ -595,29 +572,95 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Отображение галереи изображений
-    function renderGallery(images) {
-        imageGallery.innerHTML = '';
-
-        images.forEach((src, index) => {
-            const container = document.createElement('div');
-            container.className = 'gallery-image-container';
-            container.style.padding = imageSpacing + 'px 0';
-
-            const img = document.createElement('img');
-            img.className = 'gallery-image';
-            img.src = src;
-            img.alt = `Изображение ${index + 1}`;
-            img.onerror = () => {
-                img.style.border = '2px solid red';
-            };
-
-            container.appendChild(img);
-            imageGallery.appendChild(container);
+// Отображение галереи изображений с виртуализацией
+function renderGallery(images) {
+    imageGallery.innerHTML = '';
+    
+    // Сохраняем ссылки на все изображения
+    window.galleryImages = images;
+    
+    // Создаем контейнеры для всех изображений
+    images.forEach((src, index) => {
+        const container = document.createElement('div');
+        container.className = 'gallery-image-container';
+        container.style.padding = imageSpacing + 'px 0';
+        container.dataset.index = index;
+        container.id = `img-container-${index}`;
+        imageGallery.appendChild(container);
+    });
+    
+    // Инициализируем Intersection Observer
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const container = entry.target;
+                const index = parseInt(container.dataset.index);
+                loadImage(container, index);
+            }
         });
-
-        updateGalleryStyles();
+    }, { 
+        rootMargin: '300px 0px 300px 0px', // Загружаем заранее
+        threshold: 0.01 
+    });
+    
+    // Наблюдаем за всеми контейнерами
+    document.querySelectorAll('.gallery-image-container').forEach(container => {
+        observer.observe(container);
+    });
+    
+    // Загружаем первые 5 изображений сразу
+    for (let i = 0; i < Math.min(5, images.length); i++) {
+        const container = document.getElementById(`img-container-${i}`);
+        if (container) loadImage(container, i);
     }
+    
+    updateGalleryStyles();
+}
+
+function loadImage(container, index) {
+    // Если изображение уже загружено - пропускаем
+    if (container.querySelector('img') || !window.galleryImages[index]) return;
+    
+    const img = document.createElement('img');
+    img.className = 'gallery-image';
+    img.loading = 'lazy';
+    img.src = window.galleryImages[index];
+    img.alt = `Изображение ${index + 1}`;
+    
+    img.onerror = () => {
+        img.style.border = '2px solid red';
+    };
+    
+    container.appendChild(img);
+}
+
+// Обработчик скролла для подстраховки
+let lastScrollPos = 0;
+let scrollCheckTimeout;
+
+imageGallery.addEventListener('scroll', () => {
+    clearTimeout(scrollCheckTimeout);
+    scrollCheckTimeout = setTimeout(() => {
+        const currentScrollPos = imageGallery.scrollTop;
+        if (Math.abs(currentScrollPos - lastScrollPos) > 50) {
+            checkVisibleImages();
+        }
+        lastScrollPos = currentScrollPos;
+    }, 100);
+});
+
+function checkVisibleImages() {
+    const container = imageGallery.getBoundingClientRect();
+    document.querySelectorAll('.gallery-image-container').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top >= container.top - 500 && rect.bottom <= container.bottom + 500) {
+            const index = parseInt(el.dataset.index);
+            if (!el.querySelector('img')) {
+                loadImage(el, index);
+            }
+        }
+    });
+}
 
     // Отображение главной страницы
     async function showHomePage() {
