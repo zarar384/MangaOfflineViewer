@@ -613,7 +613,6 @@ function renderGallery(images) {
         const container = document.getElementById(`img-container-${i}`);
         if (container) loadImage(container, i);
     }
-    --test
     updateGalleryStyles();
 }
 
