@@ -36,13 +36,18 @@
                 <label for="tabUrl">MHTML файл</label>
                 <input type="file" id="tabUrl" accept=".mhtml,.mht">
             </div>
+            <div class="form-group">
+                <div id="progress" style="width: 100%; background-color: #e0e0e0; ">
+                    <div id="progressBar" style="width: 0%; height: 20px; background-color: green;"></div>
+                </div>
+            </div>
             <div class="form-actions">
                 <button class="btn btn-secondary" id="cancelBtn">Отмена</button>
                 <button class="btn btn-primary" id="saveBtn">Сохранить</button>
             </div>
         </div>
     </div>
-
+    
     <!-- Форма для создания вкладки с изображениями -->
     <div class="tab-form" id="imageTabForm">
         <div class="form-container">

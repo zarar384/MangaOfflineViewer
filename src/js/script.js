@@ -249,62 +249,92 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
-        try {
-            const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : fileData.buffer;
-            let mhtmlText = new TextDecoder('utf-8').decode(arrayBuffer);
-            mhtmlText = decodeQuotedPrintable(mhtmlText);
+        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
+        let currentChunk = 0;
 
-            const doc = new DOMParser().parseFromString(mhtmlText, 'text/html');
-            const images = [];
-            const pageDivs = doc.querySelectorAll('div[id^="page-"]');
+        const arrayBuffer = fileData instanceof ArrayBuffer
+            ? fileData
+            : await fileData.arrayBuffer();
 
-            pageDivs.forEach(div => {
-                const imgs = div.querySelectorAll('img[src]');
-                imgs.forEach(img => {
-                    if (img.src) images.push(img.src);
-                });
-            });
+        const totalChunks = Math.ceil(arrayBuffer.byteLength / CHUNK_SIZE);
 
-            // Превью из первого изображения
-            let preview = null;
-            const firstImage = images.find(img => img.startsWith('data:image/'));
-            if (firstImage) {
-                try {
-                    preview = await createThumbnail(firstImage);
-                } catch (e) {
-                    console.warn('Не удалось создать превью:', e);
-                }
-            }
+        let fullText = '';
 
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['files'], 'readwrite');
-                const store = transaction.objectStore('files');
+        // читаем чанки
+        while (currentChunk < totalChunks) {
+            const start = currentChunk * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, arrayBuffer.byteLength);
 
-                const request = store.put({
-                    id: id,
-                    data: fileData,
-                    preview: preview,
-                    images: images
-                });
+            const chunkData = arrayBuffer.slice(start, end);
+            let chunkText = new TextDecoder('utf-8').decode(chunkData);
+            fullText += chunkText;
 
-                request.onerror = (event) => reject(event.target.error);
-                request.onsuccess = () => {
-                    resolve();
-                };
-            });
-        } catch (error) {
-            console.error('Ошибка при сохранении файла в IndexedDB:', error);
-            throw error;
+            currentChunk++;
+            updateProgress((currentChunk / totalChunks) * 50); // 50% на чтение
+            await new Promise(r => setTimeout(r, 0)); // ччть подождать для UI
         }
+
+        fullText = decodeQuotedPrintable(fullText);
+
+        const images = await parseHTMLInChunks(fullText, updateProgress);
+
+        // превью из первого изображения
+        let preview = null;
+        const firstImage = images.find(img => img.startsWith('data:image/'));
+        if (firstImage) {
+            try {
+                preview = await createThumbnail(firstImage);
+            } catch (e) {
+                console.warn('Не удалось создать превью:', e);
+            }
+        }
+
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            const request = store.put({
+                id: id,
+                preview: preview,
+                images: images
+            });
+
+            request.onerror = (event) => reject(event.target.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
+    async function parseHTMLInChunks(fullText, updateProgress) {
+        const doc = new DOMParser().parseFromString(fullText, 'text/html');
+        const pageDivs = doc.querySelectorAll('div[id^="page-"]');
+        const images = [];
+
+        for (let i = 0; i < pageDivs.length; i++) {
+            const div = pageDivs[i];
+            const imgs = div.querySelectorAll('img[src]');
+
+            imgs.forEach(img => {
+                if (img.src) images.push(img.src);
+            });
+
+            updateProgress(50 + (i / pageDivs.length) * 50); // 50% на изображения
+
+            // "передохнуть" каждые 5 страниц, сафари на айфоне вырубается
+            if (i % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
+        return images;
     }
 
     // Получение файла из IndexedDB
     async function getImagesByTabId(tabId) {
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readonly'); 
+            const transaction = db.transaction(['files'], 'readonly');
             const store = transaction.objectStore('files');
-            const request = store.get(tabId); 
-    
+            const request = store.get(tabId);
+
             request.onerror = (event) => reject(event.target.error);
             request.onsuccess = (event) => {
                 resolve(event.target.result);
@@ -318,9 +348,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['files'], 'readwrite');
             const store = transaction.objectStore('files');
-            
+
             const request = store.delete(tabId);
-    
+
             request.onerror = (event) => reject(event.target.error);
             request.onsuccess = () => resolve();
         });
@@ -360,6 +390,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function updateProgress(progress) {
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${Math.floor(progress)}%`;
+        }
+    };
     // Отображение содержимого вкладки
     async function displayTabContent(tabId, fromHomePage = false) {
         const tab = tabs.find(t => t.id === tabId);
@@ -392,11 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const fileData = await getImagesByTabId(tab.id);
-                if (!fileData || !fileData.data) {
-                    throw new Error("Файл повреждён или не найден");
-                }
-
-                if (!fileData.images || fileData.images.length === 0) {
+                if (!fileData || !fileData.images || fileData.images.length === 0) {
                     throw new Error("Не удалось извлечь изображения");
                 }
 
@@ -1078,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.onload = async function (e) {
             try {
                 await addTab(name, '', true, e.target.result);
+                updateProgress(0);
                 hideTabForm();
             } catch (error) {
                 console.error('Ошибка добавления вкладки:', error);
