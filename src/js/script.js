@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    window.DELAY_FOR_SAFARI = isIOS ? 50 : 0;
+
     // Основные элементы DOM
     const tabsContainer = document.getElementById('tabsContainer');
     const addTabBtn = document.getElementById('addTabBtn');
@@ -294,8 +297,8 @@ document.addEventListener('DOMContentLoaded', function () {
             fullText += chunkText;
 
             currentChunk++;
-            updateProgress((currentChunk / totalChunks) * 50); // 50% на чтение
-            await new Promise(r => setTimeout(r, 0)); // ччть подождать для UI
+            updateProgress((currentChunk / totalChunks) * 25); // 50% на чтение
+            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // ччть подождать для UI
         }
 
         fullText = decodeQuotedPrintable(fullText);
@@ -332,11 +335,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (existingData) {
                     allImages = existingData.images || [];
                 }
-    
+                
+                const totalChunks = Math.ceil(images.length / CHUNK_SIZE);
+                let processedCount = 0;
                 for (let i = 0; i < images.length; i += CHUNK_SIZE) {
                     const chunk = images.slice(i, i + CHUNK_SIZE);
                     allImages.push(...chunk);
-    
+                    
+                    processedCount++;
+
                     await new Promise((chunkResolve, chunkReject) => {
                         const transaction = db.transaction(['files'], 'readwrite');
                         const store = transaction.objectStore('files');
@@ -352,9 +359,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         request.onsuccess = () => chunkResolve();
                     });
     
-                    await new Promise(r => setTimeout(r, 50)); // пауза для Safari
+                    const currentProgress = 55 + (processedCount / totalChunks) * 45;
+                    updateProgress(currentProgress); 
+
+                    await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // пауза для Safari
                 }
-    
+
+                updateProgress(100);
+                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
+
                 resolve();
         });
     }
@@ -382,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
                 processedCount++;
                 
-                const currentProgress = 50 + (processedCount / totalPages) * 50;
+                const currentProgress = 25 + (processedCount / totalPages) * 30;
                 updateProgress(currentProgress); 
                 await new Promise(r => setTimeout(r, 0));
     
@@ -398,10 +411,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 }
             }
-    
-            updateProgress(100);
-            await new Promise(r => setTimeout(r, 50));
-            
+               
             return images;
     
         } catch (error) {
