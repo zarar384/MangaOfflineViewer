@@ -278,27 +278,46 @@ document.addEventListener('DOMContentLoaded', function () {
     async function decodeQuotedPrintable(str) {
         const CHUNK_SIZE = 500000; // ~500KB чанки для iOS
         let result = '';
+        let buffer = ''; // буфер для неполных последовательностей
 
         for (let i = 0; i < str.length; i += CHUNK_SIZE) {
-            const chunk = str.substr(i, CHUNK_SIZE);
+            const chunk = buffer + str.substr(i, CHUNK_SIZE);
+            buffer = '';
 
-            let decodedChunk = chunk
+            // обрабоать chunk, но сохранить возможную неполную последовательность в конце
+            let processed = chunk
                 .replace(/=\r?\n/g, '')
                 .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-                    String.fromCharCode(parseInt(hex, 16)))
-                .replace(/\s+/g, ' ');
+                    String.fromCharCode(parseInt(hex, 16)));
 
-            result += decodedChunk;
+            // проверить, не осталась ли неполная последовательность в конце
+            const lastEqPos = processed.lastIndexOf('=');
+            if (lastEqPos >= 0 && lastEqPos > processed.length - 3) {
+                // сохранить неполную последовательность для следующего чанка
+                buffer = processed.substr(lastEqPos);
+                processed = processed.substr(0, lastEqPos);
+            }
+
+            result += processed;
             updateProgress(25 + (i / str.length) * 10);
 
-            //  "передышка" каждые 2 чанков
+            // "передышка" каждые 2 чанков
             if (i % (CHUNK_SIZE * 2) === 0) {
                 await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
             }
         }
 
+        result += buffer;
         return result;
     }
+    //     function decodeQuotedPrintable(str) {
+    //     return str
+    //         .replace(/=\r?\n/g, '')
+    //         .replace(/=([0-9A-F]{2})/g, (_, hex) =>
+    //             String.fromCharCode(parseInt(hex, 16)))
+    //         .replace(/\s+/g, ' ');
+    // }
+
 
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
