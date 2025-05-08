@@ -26,6 +26,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let imageSpacing = 0;
 
     // Получаем элементы управления галереей
+    // кнопка скрытия
+    const toggleBtn = document.getElementById('toggleMenuBtn');
+    const hideText = toggleBtn.querySelector('.hide-text');
+    const showText = toggleBtn.querySelector('.show-text');
+    const galleryControls = document.querySelector('.gallery-controls');
+
+    // элементы управления
     const animationToggle = document.getElementById('animationToggle');
     const spacingSlider = document.getElementById('spacingSlider');
     const spacingValue = document.getElementById('spacingValue');
@@ -75,6 +82,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Обработчики событий элементов управления галереей
+    toggleBtn.addEventListener('click', function() {
+        const elementsToToggle = [
+            ...document.querySelectorAll('.control-group:not(:first-child)'),
+            ...document.querySelectorAll('.clear-btn'),
+            ...document.querySelectorAll('.export-btn')
+        ].filter(el => el.parentNode === galleryControls);
+        
+        const isHidden = elementsToToggle[0]?.style.display === 'none';
+        
+        elementsToToggle.forEach(element => {
+            element.style.display = isHidden ? 'flex' : 'none';
+        });
+        
+        hideText.style.display = isHidden ? 'inline' : 'none';
+        showText.style.display = isHidden ? 'none' : 'inline';
+    });
+
     animationToggle.addEventListener('change', function () {
         scrollAnimationEnabled = this.checked;
         updateGalleryStyles();
@@ -254,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const arrayBuffer = fileData instanceof ArrayBuffer
             ? fileData
-            : await fileData.arrayBuffer();
+            : await fileData.buffer;
 
         const totalChunks = Math.ceil(arrayBuffer.byteLength / CHUNK_SIZE);
 
@@ -456,7 +480,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Обновленная функция для добавления кнопок экспорта
     function addExportButton(tab) {
-        const galleryControls = document.querySelector('.gallery-controls');
         const existingButton = galleryControls.querySelector('.export-btn');
         if (existingButton) {
             existingButton.remove();
@@ -468,6 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const saveMhtmlBtn = document.createElement('button');
         saveMhtmlBtn.className = 'export-btn mhtml';
         saveMhtmlBtn.innerHTML = '💾 Сохранить как MHTML';
+        saveMhtmlBtn.style.display = isConrolPanelHidden() ? 'none' : 'flex';
         saveMhtmlBtn.addEventListener('click', () => saveAsMHTML(tab));
 
         // Добавляем кнопку в блок управления галереей
@@ -809,10 +833,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function isConrolPanelHidden(){
+        const controlGroup = galleryControls.querySelectorAll('.control-group');
+        return controlGroup && controlGroup[1]?.style?.display === 'none';
+    }
+    
     // Функция для создания кнопок очистки IndexedDB и imageCache
     function createClearButtons(isNotHomePage) {
-        const galleryControls = document.querySelector('.gallery-controls');
-
         const existingButtons = galleryControls.querySelectorAll('.clear-btn');
         existingButtons.forEach(button => button.remove());
 
@@ -828,6 +855,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const clearLocalDbBtn = document.createElement('button');
         clearLocalDbBtn.className = 'clear-btn';
         clearLocalDbBtn.innerHTML = 'Очистить IndexedDB';
+        clearLocalDbBtn.style.display = isConrolPanelHidden() ? 'none' : 'flex';
         clearLocalDbBtn.addEventListener('click', async () => {
             try {
                 await clearImagesDB();
@@ -844,6 +872,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const clearImageCacheBtn = document.createElement('button');
         clearImageCacheBtn.className = 'clear-btn';
         clearImageCacheBtn.innerHTML = 'Очистить ImageCache';
+        clearImageCacheBtn.style.display = isConrolPanelHidden() ? 'none' : 'flex';
         clearImageCacheBtn.addEventListener('click', () => {
             imageCache.cache.clear();
             alert('imageCache очищен');
@@ -853,8 +882,6 @@ document.addEventListener('DOMContentLoaded', function () {
         galleryControls.appendChild(clearLocalDbBtn);
         galleryControls.appendChild(clearImageCacheBtn);
     }
-
-
 
     function showGalleryPage() {
         homePage.style.display = 'none';
