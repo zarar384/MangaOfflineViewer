@@ -60,27 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // Инициализация базы данных
-    async function initDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('MHTMLViewerDB', 2);
-
-            request.onerror = (event) => reject(event.target.error);
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('files')) {
-                    db.createObjectStore('files', { keyPath: 'id' });
-                }
-            };
-
-            request.onsuccess = (event) => {
-                db = event.target.result;
-                resolve(db);
-            };
-        });
-    }
-
     // Загрузка вкладок из localStorage
     async function loadTabs() {
         await initDB();
@@ -223,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Удаляем связанные данные из IndexedDB
         if (tabs[tabIndex].isFile) {
-            await deleteFileFromDB(tabId);
+            await deleteImagesByTabId(tabId);
         }
 
         tabs.splice(tabIndex, 1);
@@ -232,8 +211,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tabId === activeTabId && tabs.length > 0) {
             const newActiveTabIndex = Math.min(tabIndex, tabs.length - 1);
             displayTabContent(tabs[newActiveTabIndex].id);
-        } 
-        else if(tabs.length == 0){
+        }
+        else if (tabs.length == 0) {
             loadTabs();
         }
         else {
@@ -241,42 +220,107 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Сохранение файла в IndexedDB
-    async function saveFileToDB(id, fileData) {
+    // Инициализация базы данных
+    async function initDB() {
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readwrite');
-            const store = transaction.objectStore('files');
-
-            const request = store.put({
-                id: id,
-                data: fileData,
-                preview: null // Превью будет добавлено позже
-            });
+            const request = indexedDB.open('MHTMLViewerDB', 3);
 
             request.onerror = (event) => reject(event.target.error);
-            request.onsuccess = () => resolve();
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+
+                if (!db.objectStoreNames.contains('files')) {
+                    db.createObjectStore('files', { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains('images')) {
+                    const imageStore = db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+                    imageStore.createIndex('tabId', 'tabId', { unique: false });
+                }
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                resolve(db);
+            };
         });
+    }
+
+    // Сохранение файла в IndexedDB
+    async function saveFileToDB(id, fileData) {
+        try {
+            const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : fileData.buffer;
+            let mhtmlText = new TextDecoder('utf-8').decode(arrayBuffer);
+            mhtmlText = decodeQuotedPrintable(mhtmlText);
+
+            const doc = new DOMParser().parseFromString(mhtmlText, 'text/html');
+            const images = [];
+            const pageDivs = doc.querySelectorAll('div[id^="page-"]');
+
+            pageDivs.forEach(div => {
+                const imgs = div.querySelectorAll('img[src]');
+                imgs.forEach(img => {
+                    if (img.src) images.push(img.src);
+                });
+            });
+
+            // Превью из первого изображения
+            let preview = null;
+            const firstImage = images.find(img => img.startsWith('data:image/'));
+            if (firstImage) {
+                try {
+                    preview = await createThumbnail(firstImage);
+                } catch (e) {
+                    console.warn('Не удалось создать превью:', e);
+                }
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+
+                const request = store.put({
+                    id: id,
+                    data: fileData,
+                    preview: preview,
+                    images: images
+                });
+
+                request.onerror = (event) => reject(event.target.error);
+                request.onsuccess = () => {
+                    resolve();
+                };
+            });
+        } catch (error) {
+            console.error('Ошибка при сохранении файла в IndexedDB:', error);
+            throw error;
+        }
     }
 
     // Получение файла из IndexedDB
-    async function getFileFromDB(id) {
+    async function getImagesByTabId(tabId) {
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readonly');
+            const transaction = db.transaction(['files'], 'readonly'); 
             const store = transaction.objectStore('files');
-            const request = store.get(id);
-
+            const request = store.get(tabId); 
+    
             request.onerror = (event) => reject(event.target.error);
-            request.onsuccess = (event) => resolve(event.target.result);
+            request.onsuccess = (event) => {
+                resolve(event.target.result);
+            };
         });
     }
 
+
     // Удаление файла из IndexedDB
-    async function deleteFileFromDB(id) {
+    async function deleteImagesByTabId(tabId) {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['files'], 'readwrite');
             const store = transaction.objectStore('files');
-            const request = store.delete(id);
-
+            
+            const request = store.delete(tabId);
+    
             request.onerror = (event) => reject(event.target.error);
             request.onsuccess = () => resolve();
         });
@@ -302,6 +346,17 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             getRequest.onerror = reject;
+        });
+    }
+
+    async function clearImagesDB() {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+            const clearRequest = store.clear();
+
+            clearRequest.onerror = (event) => reject(event.target.error);
+            clearRequest.onsuccess = () => resolve();
         });
     }
 
@@ -336,13 +391,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const fileData = await getFileFromDB(tab.id);
+                const fileData = await getImagesByTabId(tab.id);
                 if (!fileData || !fileData.data) {
                     throw new Error("Файл повреждён или не найден");
                 }
 
-                const images = await parseMHTMLFile(tabId, fileData.data);
-                imageCache.add(tabId, images);
+                if (!fileData.images || fileData.images.length === 0) {
+                    throw new Error("Не удалось извлечь изображения");
+                }
+
+                imageCache.add(tab.id, fileData.images);
+                renderGallery(fileData.images)
             } else {
                 // Обработка обычных URL
                 imageGallery.innerHTML = `<iframe src="${tab.url}" style="width:100%;height:100%;border:none;"></iframe>`;
@@ -572,94 +631,94 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-// Отображение галереи изображений с виртуализацией
-function renderGallery(images) {
-    imageGallery.innerHTML = '';
-    
-    // Сохраняем ссылки на все изображения
-    window.galleryImages = images;
-    
-    // Создаем контейнеры для всех изображений
-    images.forEach((src, index) => {
-        const container = document.createElement('div');
-        container.className = 'gallery-image-container';
-        container.style.padding = imageSpacing + 'px 0';
-        container.dataset.index = index;
-        container.id = `img-container-${index}`;
-        imageGallery.appendChild(container);
+    // Отображение галереи изображений с виртуализацией
+    function renderGallery(images) {
+        imageGallery.innerHTML = '';
+
+        // Сохраняем ссылки на все изображения
+        window.galleryImages = images;
+
+        // Создаем контейнеры для всех изображений
+        images.forEach((src, index) => {
+            const container = document.createElement('div');
+            container.className = 'gallery-image-container';
+            container.style.padding = imageSpacing + 'px 0';
+            container.dataset.index = index;
+            container.id = `img-container-${index}`;
+            imageGallery.appendChild(container);
+        });
+
+        // Инициализируем Intersection Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const container = entry.target;
+                    const index = parseInt(container.dataset.index);
+                    loadImage(container, index);
+                }
+            });
+        }, {
+            rootMargin: '300px 0px 300px 0px', // Загружаем заранее
+            threshold: 0.01
+        });
+
+        // Наблюдаем за всеми контейнерами
+        document.querySelectorAll('.gallery-image-container').forEach(container => {
+            observer.observe(container);
+        });
+
+        // Загружаем первые 5 изображений сразу
+        for (let i = 0; i < Math.min(5, images.length); i++) {
+            const container = document.getElementById(`img-container-${i}`);
+            if (container) loadImage(container, i);
+        }
+        updateGalleryStyles();
+    }
+
+    function loadImage(container, index) {
+        // Если изображение уже загружено - пропускаем
+        if (container.querySelector('img') || !window.galleryImages[index]) return;
+
+        const img = document.createElement('img');
+        img.className = 'gallery-image';
+        img.loading = 'lazy';
+        img.src = window.galleryImages[index];
+        img.alt = `Изображение ${index + 1}`;
+
+        img.onerror = () => {
+            img.style.border = '2px solid red';
+        };
+
+        container.appendChild(img);
+    }
+
+    // Обработчик скролла для подстраховки
+    let lastScrollPos = 0;
+    let scrollCheckTimeout;
+
+    imageGallery.addEventListener('scroll', () => {
+        clearTimeout(scrollCheckTimeout);
+        scrollCheckTimeout = setTimeout(() => {
+            const currentScrollPos = imageGallery.scrollTop;
+            if (Math.abs(currentScrollPos - lastScrollPos) > 50) {
+                checkVisibleImages();
+            }
+            lastScrollPos = currentScrollPos;
+        }, 100);
     });
-    
-    // Инициализируем Intersection Observer
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const container = entry.target;
-                const index = parseInt(container.dataset.index);
-                loadImage(container, index);
+
+    function checkVisibleImages() {
+        const container = imageGallery.getBoundingClientRect();
+        document.querySelectorAll('.gallery-image-container').forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.top >= container.top - 500 && rect.bottom <= container.bottom + 500) {
+                const index = parseInt(el.dataset.index);
+                if (!el.querySelector('img')) {
+                    loadImage(el, index);
+                }
             }
         });
-    }, { 
-        rootMargin: '300px 0px 300px 0px', // Загружаем заранее
-        threshold: 0.01 
-    });
-    
-    // Наблюдаем за всеми контейнерами
-    document.querySelectorAll('.gallery-image-container').forEach(container => {
-        observer.observe(container);
-    });
-    
-    // Загружаем первые 5 изображений сразу
-    for (let i = 0; i < Math.min(5, images.length); i++) {
-        const container = document.getElementById(`img-container-${i}`);
-        if (container) loadImage(container, i);
     }
-    updateGalleryStyles();
-}
-
-function loadImage(container, index) {
-    // Если изображение уже загружено - пропускаем
-    if (container.querySelector('img') || !window.galleryImages[index]) return;
-    
-    const img = document.createElement('img');
-    img.className = 'gallery-image';
-    img.loading = 'lazy';
-    img.src = window.galleryImages[index];
-    img.alt = `Изображение ${index + 1}`;
-    
-    img.onerror = () => {
-        img.style.border = '2px solid red';
-    };
-    
-    container.appendChild(img);
-}
-
-// Обработчик скролла для подстраховки
-let lastScrollPos = 0;
-let scrollCheckTimeout;
-
-imageGallery.addEventListener('scroll', () => {
-    clearTimeout(scrollCheckTimeout);
-    scrollCheckTimeout = setTimeout(() => {
-        const currentScrollPos = imageGallery.scrollTop;
-        if (Math.abs(currentScrollPos - lastScrollPos) > 50) {
-            checkVisibleImages();
-        }
-        lastScrollPos = currentScrollPos;
-    }, 100);
-});
-
-function checkVisibleImages() {
-    const container = imageGallery.getBoundingClientRect();
-    document.querySelectorAll('.gallery-image-container').forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.top >= container.top - 500 && rect.bottom <= container.bottom + 500) {
-            const index = parseInt(el.dataset.index);
-            if (!el.querySelector('img')) {
-                loadImage(el, index);
-            }
-        }
-    });
-}
 
     // Отображение главной страницы
     async function showHomePage() {
@@ -679,7 +738,7 @@ function checkVisibleImages() {
             let previewImg = '';
             if (tab.isFile) {
                 try {
-                    const fileData = await getFileFromDB(tab.id);
+                    const fileData = await getImagesByTabId(tab.id);
                     if (fileData?.preview) {
                         previewImg = `<img src="${fileData.preview}" class="tab-preview-image">`;
                     } else {
@@ -738,7 +797,7 @@ function checkVisibleImages() {
         clearLocalDbBtn.innerHTML = 'Очистить IndexedDB';
         clearLocalDbBtn.addEventListener('click', async () => {
             try {
-                await clearIndexedDB();
+                await clearImagesDB();
                 tabs = []
                 localStorage.setItem('mhtmlViewerTabs', JSON.stringify(tabs));
                 alert('LocalDb очищен');
@@ -762,23 +821,7 @@ function checkVisibleImages() {
         galleryControls.appendChild(clearImageCacheBtn);
     }
 
-    async function clearIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('MHTMLViewerDB', 2);
 
-            request.onerror = (event) => reject(event.target.error);
-
-            request.onsuccess = (event) => {
-                const db = event.target.result;
-                const transaction = db.transaction(['files'], 'readwrite');
-                const store = transaction.objectStore('files');
-                const clearRequest = store.clear();
-
-                clearRequest.onerror = (event) => reject(event.target.error);
-                clearRequest.onsuccess = () => resolve();
-            };
-        });
-    }
 
     function showGalleryPage() {
         homePage.style.display = 'none';
