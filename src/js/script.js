@@ -349,6 +349,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        updateProgress(100)
+        await new Promise(r => setTimeout(r, 0)); // ччть подождать для UI
+
         return images;
     }
 
@@ -417,6 +420,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateProgress(progress) {
         const progressBar = document.getElementById('progressBar');
         if (progressBar) {
+            if(progress == 100){
+                progressBar.style.boxShadow = '0 2px 5px rgba(255, 107, 158, 0.5)';
+                progressBar.style.background = 'var(--secondary-color)';
+                progressBar.style.color = 'white';
+            }
             progressBar.style.width = `${progress}%`;
             progressBar.textContent = `${Math.floor(progress)}%`;
         }
