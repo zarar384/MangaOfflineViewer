@@ -329,30 +329,66 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function parseHTMLInChunks(fullText, updateProgress) {
-        const doc = new DOMParser().parseFromString(fullText, 'text/html');
-        const pageDivs = doc.querySelectorAll('div[id^="page-"]');
-        const images = [];
-
-        for (let i = 0; i < pageDivs.length; i++) {
-            const div = pageDivs[i];
-            const imgs = div.querySelectorAll('img[src]');
-
-            imgs.forEach(img => {
-                if (img.src) images.push(img.src);
-            });
-
-            updateProgress(50 + (i / pageDivs.length) * 50); // 50% на изображения
-
-            // "передохнуть" каждые 5 страниц, сафари на айфоне вырубается
-            if (i % 5 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 0));
+        try {
+            const doc = new DOMParser().parseFromString(fullText, 'text/html');
+            const pageDivs = doc.querySelectorAll('div[id^="page-"]');
+            const images = [];
+            let processedCount = 0;
+            const totalPages = pageDivs.length;
+    
+            // лимит времени выполнения для iOS
+            const startTime = performance.now();
+            const TIME_LIMIT = 1000; 
+    
+            for (let i = 0; i < totalPages; i++) {
+                const div = pageDivs[i];
+                const imgs = div.querySelectorAll('img[src]');
+    
+                for (let j = 0; j < imgs.length; j++) {
+                    if (imgs[j].src) {
+                        images.push(imgs[j].src);
+                    }
+                }
+    
+                processedCount++;
+                
+                const currentProgress = 50 + (processedCount / totalPages) * 50;
+                updateProgress(currentProgress); 
+                await new Promise(r => setTimeout(r, 0));
+    
+                // для сафари на ипхоне нужно дать паузу 
+                if (performance.now() - startTime > TIME_LIMIT) {
+                    await new Promise(resolve => {
+                        setTimeout(() => {
+                            resolve();
+                            if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                                return new Promise(r => setTimeout(r, 100));
+                            }
+                        }, 0);
+                    });
+                }
             }
+    
+            updateProgress(100);
+            await new Promise(r => setTimeout(r, 50));
+            
+            return images;
+    
+        } catch (error) {
+            console.error('Error in parseHTMLInChunks:', error);
+            if (!navigator.userAgent.match(/iPhone|iPad|iPod|Android/i)) {
+                const errorWindow = window.open('', '_blank');
+                errorWindow.document.write(`
+                    <h1>Error Details</h1>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                    <p><strong>Stack:</strong></p>
+                    <pre>${error.stack}</pre>
+                    <p><strong>HTML Size:</strong> ${fullText?.length || 'unknown'} bytes</p>
+                `);
+            }
+            
+            throw error; 
         }
-
-        updateProgress(100)
-        await new Promise(r => setTimeout(r, 0)); // ччть подождать для UI
-
-        return images;
     }
 
     // Получение файла из IndexedDB
@@ -420,11 +456,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateProgress(progress) {
         const progressBar = document.getElementById('progressBar');
         if (progressBar) {
-            if(progress == 100){
-                progressBar.style.boxShadow = '0 2px 5px rgba(255, 107, 158, 0.5)';
-                progressBar.style.background = 'var(--secondary-color)';
-                progressBar.style.color = 'white';
-            }
+            progressBar.style.boxShadow = progress == 100 ? '0 2px 5px rgba(255, 107, 158, 0.5)': "";
+            progressBar.style.background = progress == 100 ?'var(--secondary-color)': "green";
             progressBar.style.width = `${progress}%`;
             progressBar.textContent = `${Math.floor(progress)}%`;
         }
