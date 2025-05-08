@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Декодирование quoted-printable
     async function decodeQuotedPrintable(str) {
-        const CHUNK_SIZE = 500000; // ~500KB чанки для iOS
+        const CHUNK_SIZE = 200000; // ~200KB чанки для iOS
         let result = '';
         let buffer = ''; // буфер для неполных последовательностей
 
