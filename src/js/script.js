@@ -313,21 +313,51 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readwrite');
-            const store = transaction.objectStore('files');
-
-            const request = store.put({
-                id: id,
-                preview: preview,
-                images: images
-            });
-
-            request.onerror = (event) => reject(event.target.error);
-            request.onsuccess = () => resolve();
-        });
+        return await saveToIndexedDB(id, preview, images)
     }
 
+    async function saveToIndexedDB(id, preview, images) {
+        return new Promise(async (resolve, reject) => {
+                const CHUNK_SIZE = 5; // 5 изображений за раз
+                let allImages = [];
+                
+                const existingData = await new Promise((res) => {
+                    const transaction = db.transaction(['files'], 'readonly');
+                    const store = transaction.objectStore('files');
+                    const request = store.get(id);
+                    request.onsuccess = () => res(request.result);
+                    request.onerror = () => res(null);
+                });
+    
+                if (existingData) {
+                    allImages = existingData.images || [];
+                }
+    
+                for (let i = 0; i < images.length; i += CHUNK_SIZE) {
+                    const chunk = images.slice(i, i + CHUNK_SIZE);
+                    allImages.push(...chunk);
+    
+                    await new Promise((chunkResolve, chunkReject) => {
+                        const transaction = db.transaction(['files'], 'readwrite');
+                        const store = transaction.objectStore('files');
+    
+                        const data = { 
+                            id, 
+                            preview: preview, 
+                            images: allImages 
+                        };
+    
+                        const request = store.put(data);
+                        request.onerror = (e) => chunkReject(e.target.error);
+                        request.onsuccess = () => chunkResolve();
+                    });
+    
+                    await new Promise(r => setTimeout(r, 0)); // пауза для Safari
+                }
+    
+                resolve();
+        });
+    }
     async function parseHTMLInChunks(fullText, updateProgress) {
         try {
             const doc = new DOMParser().parseFromString(fullText, 'text/html');
