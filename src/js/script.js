@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         request.onsuccess = () => chunkResolve();
                     });
     
-                    await new Promise(r => setTimeout(r, 0)); // пауза для Safari
+                    await new Promise(r => setTimeout(r, 50)); // пауза для Safari
                 }
     
                 resolve();
