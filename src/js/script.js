@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    window.DELAY_FOR_SAFARI = isIOS ? 50 : 0;
+    window.DELAY_FOR_SAFARI = isIOS ? 100 : 0;
 
     // Основные элементы DOM
     const tabsContainer = document.getElementById('tabsContainer');
@@ -301,10 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
             result += processed;
             updateProgress(25 + (i / str.length) * 10);
 
-            // "передышка" каждые 2 чанков
-            if (i % (CHUNK_SIZE * 2) === 0) {
-                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
-            }
+            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
         }
 
         result += buffer;
