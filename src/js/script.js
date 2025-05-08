@@ -85,19 +85,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Обработчики событий элементов управления галереей
-    toggleBtn.addEventListener('click', function() {
+    toggleBtn.addEventListener('click', function () {
         const elementsToToggle = [
             ...document.querySelectorAll('.control-group:not(:first-child)'),
             ...document.querySelectorAll('.clear-btn'),
             ...document.querySelectorAll('.export-btn')
         ].filter(el => el.parentNode === galleryControls);
-        
+
         const isHidden = elementsToToggle[0]?.style.display === 'none';
-        
+
         elementsToToggle.forEach(element => {
             element.style.display = isHidden ? 'flex' : 'none';
         });
-        
+
         hideText.style.display = isHidden ? 'inline' : 'none';
         showText.style.display = isHidden ? 'none' : 'inline';
     });
@@ -274,6 +274,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Декодирование quoted-printable
+    async function decodeQuotedPrintable(str) {
+        const CHUNK_SIZE = 500000; // ~500KB чанки для iOS
+        let result = '';
+
+        for (let i = 0; i < str.length; i += CHUNK_SIZE) {
+            const chunk = str.substr(i, CHUNK_SIZE);
+
+            let decodedChunk = chunk
+                .replace(/=\r?\n/g, '')
+                .replace(/=([0-9A-F]{2})/g, (_, hex) =>
+                    String.fromCharCode(parseInt(hex, 16)))
+                .replace(/\s+/g, ' ');
+
+            result += decodedChunk;
+            updateProgress(25 + (i / str.length) * 10);
+
+            //  "передышка" каждые 2 чанков
+            if (i % (CHUNK_SIZE * 2) === 0) {
+                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
+            }
+        }
+
+        return result;
+    }
+
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
         const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
@@ -301,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
             await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // ччть подождать для UI
         }
 
-        fullText = decodeQuotedPrintable(fullText);
+        fullText = await decodeQuotedPrintable(fullText);
 
         const images = await parseHTMLInChunks(fullText, updateProgress);
 
@@ -321,54 +347,54 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function saveToIndexedDB(id, preview, images) {
         return new Promise(async (resolve, reject) => {
-                const CHUNK_SIZE = 5; // 5 изображений за раз
-                let allImages = [];
-                
-                const existingData = await new Promise((res) => {
-                    const transaction = db.transaction(['files'], 'readonly');
+            const CHUNK_SIZE = 5; // 5 изображений за раз
+            let allImages = [];
+
+            const existingData = await new Promise((res) => {
+                const transaction = db.transaction(['files'], 'readonly');
+                const store = transaction.objectStore('files');
+                const request = store.get(id);
+                request.onsuccess = () => res(request.result);
+                request.onerror = () => res(null);
+            });
+
+            if (existingData) {
+                allImages = existingData.images || [];
+            }
+
+            const totalChunks = Math.ceil(images.length / CHUNK_SIZE);
+            let processedCount = 0;
+            for (let i = 0; i < images.length; i += CHUNK_SIZE) {
+                const chunk = images.slice(i, i + CHUNK_SIZE);
+                allImages.push(...chunk);
+
+                processedCount++;
+
+                await new Promise((chunkResolve, chunkReject) => {
+                    const transaction = db.transaction(['files'], 'readwrite');
                     const store = transaction.objectStore('files');
-                    const request = store.get(id);
-                    request.onsuccess = () => res(request.result);
-                    request.onerror = () => res(null);
+
+                    const data = {
+                        id,
+                        preview: preview,
+                        images: allImages
+                    };
+
+                    const request = store.put(data);
+                    request.onerror = (e) => chunkReject(e.target.error);
+                    request.onsuccess = () => chunkResolve();
                 });
-    
-                if (existingData) {
-                    allImages = existingData.images || [];
-                }
-                
-                const totalChunks = Math.ceil(images.length / CHUNK_SIZE);
-                let processedCount = 0;
-                for (let i = 0; i < images.length; i += CHUNK_SIZE) {
-                    const chunk = images.slice(i, i + CHUNK_SIZE);
-                    allImages.push(...chunk);
-                    
-                    processedCount++;
 
-                    await new Promise((chunkResolve, chunkReject) => {
-                        const transaction = db.transaction(['files'], 'readwrite');
-                        const store = transaction.objectStore('files');
-    
-                        const data = { 
-                            id, 
-                            preview: preview, 
-                            images: allImages 
-                        };
-    
-                        const request = store.put(data);
-                        request.onerror = (e) => chunkReject(e.target.error);
-                        request.onsuccess = () => chunkResolve();
-                    });
-    
-                    const currentProgress = 55 + (processedCount / totalChunks) * 45;
-                    updateProgress(currentProgress); 
+                const currentProgress = 65 + (processedCount / totalChunks) * 35;
+                updateProgress(currentProgress);
 
-                    await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // пауза для Safari
-                }
+                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // пауза для Safari
+            }
 
-                updateProgress(100);
-                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
+            updateProgress(100);
+            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
 
-                resolve();
+            resolve();
         });
     }
     async function parseHTMLInChunks(fullText, updateProgress) {
@@ -378,42 +404,42 @@ document.addEventListener('DOMContentLoaded', function () {
             const images = [];
             let processedCount = 0;
             const totalPages = pageDivs.length;
-    
+
             // лимит времени выполнения для iOS
             const startTime = performance.now();
-            const TIME_LIMIT = 1000; 
-    
+            const TIME_LIMIT = 1000;
+
             for (let i = 0; i < totalPages; i++) {
                 const div = pageDivs[i];
                 const imgs = div.querySelectorAll('img[src]');
-    
+
                 for (let j = 0; j < imgs.length; j++) {
                     if (imgs[j].src) {
                         images.push(imgs[j].src);
                     }
                 }
-    
+
                 processedCount++;
-                
-                const currentProgress = 25 + (processedCount / totalPages) * 30;
-                updateProgress(currentProgress); 
+
+                const currentProgress = 35 + (processedCount / totalPages) * 30;
+                updateProgress(currentProgress);
                 await new Promise(r => setTimeout(r, 0));
-    
+
                 // для сафари на ипхоне нужно дать паузу 
                 if (performance.now() - startTime > TIME_LIMIT) {
                     await new Promise(resolve => {
                         setTimeout(() => {
                             resolve();
                             if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
-                                return new Promise(r => setTimeout(r, 100));
+                                return new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI * 2));
                             }
                         }, 0);
                     });
                 }
             }
-               
+
             return images;
-    
+
         } catch (error) {
             console.error('Error in parseHTMLInChunks:', error);
             if (!navigator.userAgent.match(/iPhone|iPad|iPod|Android/i)) {
@@ -426,8 +452,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <p><strong>HTML Size:</strong> ${fullText?.length || 'unknown'} bytes</p>
                 `);
             }
-            
-            throw error; 
+
+            throw error;
         }
     }
 
@@ -496,8 +522,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateProgress(progress) {
         const progressBar = document.getElementById('progressBar');
         if (progressBar) {
-            progressBar.style.boxShadow = progress == 100 ? '0 2px 5px rgba(255, 107, 158, 0.5)': "";
-            progressBar.style.background = progress == 100 ?'var(--secondary-color)': "green";
+            progressBar.style.boxShadow = progress == 100 ? '0 2px 5px rgba(255, 107, 158, 0.5)' : "";
+            progressBar.style.background = progress == 100 ? 'var(--secondary-color)' : "green";
             progressBar.style.width = `${progress}%`;
             progressBar.textContent = `${Math.floor(progress)}%`;
         }
@@ -672,59 +698,6 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Ошибка при сохранении MHTML: ' + error.message);
             return null;
         }
-    }
-
-    // Парсинг MHTML файла
-    async function parseMHTMLFile(tabId, fileData) {
-        try {
-            // Преобразуем arrayBuffer в текст mhtmlText
-            const arrayBuffer = fileData instanceof ArrayBuffer ?
-                fileData :
-                fileData.buffer;
-
-            let mhtmlText = new TextDecoder('utf-8').decode(arrayBuffer);
-            mhtmlText = decodeQuotedPrintable(mhtmlText);
-
-            // Парсинг HTML и извлечение изображений
-            const doc = new DOMParser().parseFromString(mhtmlText, 'text/html');
-            const images = [];
-            const pageDivs = doc.querySelectorAll('div[id^="page-"]');
-
-            pageDivs.forEach(div => {
-                const imgs = div.querySelectorAll('img[src]');
-                imgs.forEach(img => {
-                    if (img.src) images.push(img.src);
-                });
-            });
-
-            // Создаем превью, если его нет
-            if (images.length > 0) {
-                try {
-                    const firstImage = images.find(img => img.startsWith('data:image/'));
-                    if (firstImage) {
-                        const preview = await createThumbnail(firstImage);
-                        await updatePreviewInDB(tabId, preview);
-                    }
-                } catch (e) {
-                    console.warn('Не удалось создать превью:', e);
-                }
-            }
-
-            renderGallery(images);
-            return images;
-        } catch (error) {
-            console.error('Ошибка парсинга MHTML:', error);
-            throw error;
-        }
-    }
-
-    // Декодирование quoted-printable
-    function decodeQuotedPrintable(str) {
-        return str
-            .replace(/=\r?\n/g, '')
-            .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-                String.fromCharCode(parseInt(hex, 16)))
-            .replace(/\s+/g, ' ');
     }
 
     // Создание миниатюры изображения
@@ -914,11 +887,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function isConrolPanelHidden(){
+    function isConrolPanelHidden() {
         const controlGroup = galleryControls.querySelectorAll('.control-group');
         return controlGroup && controlGroup[1]?.style?.display === 'none';
     }
-    
+
     // Функция для создания кнопок очистки IndexedDB и imageCache
     function createClearButtons(isNotHomePage) {
         const existingButtons = galleryControls.querySelectorAll('.clear-btn');
