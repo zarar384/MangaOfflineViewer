@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    window.DELAY_FOR_SAFARI = isIOS ? 100 : 0;
+    window.DELAY_FOR_SAFARI = isIOS ? 120 : 0;
 
     // Основные элементы DOM
     const tabsContainer = document.getElementById('tabsContainer');
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Декодирование quoted-printable
     async function decodeQuotedPrintable(str) {
-        const CHUNK_SIZE = 200000; // ~200KB чанки для iOS
+        const CHUNK_SIZE = isIOS ? 200000: 50000000000000; // ~200KB чанки для iOS
         let result = '';
         let buffer = ''; // буфер для неполных последовательностей
 
@@ -307,14 +307,6 @@ document.addEventListener('DOMContentLoaded', function () {
         result += buffer;
         return result;
     }
-    //     function decodeQuotedPrintable(str) {
-    //     return str
-    //         .replace(/=\r?\n/g, '')
-    //         .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-    //             String.fromCharCode(parseInt(hex, 16)))
-    //         .replace(/\s+/g, ' ');
-    // }
-
 
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
