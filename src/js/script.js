@@ -1,6 +1,23 @@
 document.addEventListener('DOMContentLoaded', function () {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const silentMode = true;
     window.DELAY_FOR_SAFARI = isIOS ? 120 : 0;
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('src/js/service-worker.js')
+            .then((reg) => console.log('Service Worker registered:', reg.scope))
+            .catch((err) => {
+                if (!silentMode) {
+                    console.error('Service Worker registration failed:', err);
+                }
+            });
+    }
+
+    if (isIOS) {
+        // упращение обработки touch-событий
+        document.documentElement.style.touchAction = 'manipulation';
+    }
+    let worker;
 
     // Основные элементы DOM
     const tabsContainer = document.getElementById('tabsContainer');
@@ -250,6 +267,24 @@ document.addEventListener('DOMContentLoaded', function () {
     // Инициализация базы данных
     async function initDB() {
         return new Promise((resolve, reject) => {
+            try {
+                worker = new Worker('js/worker.js');
+
+                worker.onmessage = (e) => {
+                    const message = e.data;
+
+                };
+
+                worker.onerror = (error) => {
+                    console.error('Worker error:', error);
+                    // продолжение без Worker
+                    initializeDBWithoutWorker(resolve, reject);
+                };
+            } catch (e) {
+                console.warn('Worker initialization failed, falling back', e);
+                initializeDBWithoutWorker(resolve, reject);
+            }
+
             const request = indexedDB.open('MHTMLViewerDB', 3);
 
             request.onerror = (event) => reject(event.target.error);
@@ -274,210 +309,387 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Декодирование quoted-printable
-    async function decodeQuotedPrintable(str) {
-        const CHUNK_SIZE = isIOS ? 200000: 50000000000000; // ~200KB чанки для iOS
-        let result = '';
-        let buffer = ''; // буфер для неполных последовательностей
+    function updateProgress(progress) {
+        const progressBar = document.getElementById('progressBar');
+        if (!progressBar) return;
 
-        for (let i = 0; i < str.length; i += CHUNK_SIZE) {
-            const chunk = buffer + str.substr(i, CHUNK_SIZE);
-            buffer = '';
+        const rounded = Math.floor(progress);
 
-            // обрабоать chunk, но сохранить возможную неполную последовательность в конце
-            let processed = chunk
-                .replace(/=\r?\n/g, '')
-                .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-                    String.fromCharCode(parseInt(hex, 16)));
+        progressBar.style.width = `${rounded}%`;
+        progressBar.textContent = `${rounded}%`;
 
-            // проверить, не осталась ли неполная последовательность в конце
-            const lastEqPos = processed.lastIndexOf('=');
-            if (lastEqPos >= 0 && lastEqPos > processed.length - 3) {
-                // сохранить неполную последовательность для следующего чанка
-                buffer = processed.substr(lastEqPos);
-                processed = processed.substr(0, lastEqPos);
-            }
-
-            result += processed;
-            updateProgress(25 + (i / str.length) * 10);
-
-            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
+        // Стилизация под завершение
+        if (rounded === 100) {
+            progressBar.style.background = 'var(--secondary-color)';
+            progressBar.style.boxShadow = '0 2px 5px rgba(255, 107, 158, 0.5)';
+        } else {
+            progressBar.style.background = 'green';
+            progressBar.style.boxShadow = '';
         }
-
-        result += buffer;
-        return result;
     }
+
 
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
-        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
-        let currentChunk = 0;
-
         const arrayBuffer = fileData instanceof ArrayBuffer
             ? fileData
             : await fileData.buffer;
 
-        const totalChunks = Math.ceil(arrayBuffer.byteLength / CHUNK_SIZE);
+        if (worker) {
+            return new Promise((resolve, reject) => {
+                worker.onmessage = async (e) => {
+                    const message = e.data;
 
-        let fullText = '';
+                    if (message.type === 'progress') {
+                        updateProgress(message.progress);
+                    }
 
-        // читаем чанки
-        while (currentChunk < totalChunks) {
-            const start = currentChunk * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, arrayBuffer.byteLength);
+                    if (message.type === 'decodedHTML') {
+                        try {
+                            const decoded = message.decoded;
+                            const images = parseHTMLForImages(decoded);
 
-            const chunkData = arrayBuffer.slice(start, end);
-            let chunkText = new TextDecoder('utf-8').decode(chunkData);
-            fullText += chunkText;
+                            let preview = null;
 
-            currentChunk++;
-            updateProgress((currentChunk / totalChunks) * 25); // 50% на чтение
-            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // ччть подождать для UI
-        }
+                            updateProgress(90);
 
-        fullText = await decodeQuotedPrintable(fullText);
+                            const processAndSave = async () => {
+                                if (images.length > 0) {
+                                    if (isIOS) {
+                                        // iOS: разрыв event loop
+                                        setTimeout(async () => {
+                                            try {
+                                                preview = await createPreview(images[0]);
+                                                updateProgress(91);
+                                                await saveToIndexedDB(id, preview, images);
+                                                updateProgress(100);
+                                                resolve();
+                                            } catch (err) {
+                                                reject(err);
+                                            }
+                                        }, 0);
+                                    } else {
+                                        preview = await createPreview(images[0]);
+                                        updateProgress(91);
+                                        await saveToIndexedDB(id, preview, images);
+                                        updateProgress(100);
+                                        resolve();
+                                    }
+                                } else {
+                                    // нет изображений -> сохранять пустое превью
+                                    // await saveToIndexedDB(id, null, []);
+                                    updateProgress(100);
+                                    resolve();
+                                }
+                            };
 
-        const images = await parseHTMLInChunks(fullText, updateProgress);
+                            await processAndSave();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    } else if (message.type === 'error') {
+                        reject(new Error(message.error));
+                    }
+                };
 
-        // превью из первого изображения
-        let preview = null;
-        const firstImage = images.find(img => img.startsWith('data:image/'));
-        if (firstImage) {
-            try {
-                preview = await createThumbnail(firstImage);
-            } catch (e) {
-                console.warn('Не удалось создать превью:', e);
-            }
-        }
-
-        return await saveToIndexedDB(id, preview, images)
-    }
-
-    async function saveToIndexedDB(id, preview, images) {
-        return new Promise(async (resolve, reject) => {
-            const CHUNK_SIZE = 5; // 5 изображений за раз
-            let allImages = [];
-
-            const existingData = await new Promise((res) => {
-                const transaction = db.transaction(['files'], 'readonly');
-                const store = transaction.objectStore('files');
-                const request = store.get(id);
-                request.onsuccess = () => res(request.result);
-                request.onerror = () => res(null);
+                worker.postMessage({
+                    id,
+                    fileData: arrayBuffer,
+                    type: 'processFile'
+                }, [arrayBuffer]);
             });
-
-            if (existingData) {
-                allImages = existingData.images || [];
-            }
-
-            const totalChunks = Math.ceil(images.length / CHUNK_SIZE);
-            let processedCount = 0;
-            for (let i = 0; i < images.length; i += CHUNK_SIZE) {
-                const chunk = images.slice(i, i + CHUNK_SIZE);
-                allImages.push(...chunk);
-
-                processedCount++;
-
-                await new Promise((chunkResolve, chunkReject) => {
-                    const transaction = db.transaction(['files'], 'readwrite');
-                    const store = transaction.objectStore('files');
-
-                    const data = {
-                        id,
-                        preview: preview,
-                        images: allImages
-                    };
-
-                    const request = store.put(data);
-                    request.onerror = (e) => chunkReject(e.target.error);
-                    request.onsuccess = () => chunkResolve();
-                });
-
-                const currentProgress = 65 + (processedCount / totalChunks) * 35;
-                updateProgress(currentProgress);
-
-                await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI)); // пауза для Safari
-            }
-
-            updateProgress(100);
-            await new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI));
-
-            resolve();
-        });
+        } else {
+            // Fallback без Worker
+            const fullText = await readFileInChunks(arrayBuffer);
+            const decoded = decodeQuotedPrintable(fullText);
+            const images = parseHTMLForImages(decoded);
+            const preview = images.length > 0 ? await createPreview(images[0]) : null;
+            return saveToIndexedDB(id, preview, images);
+        }
     }
-    async function parseHTMLInChunks(fullText, updateProgress) {
-        try {
-            const doc = new DOMParser().parseFromString(fullText, 'text/html');
-            const pageDivs = doc.querySelectorAll('div[id^="page-"]');
-            const images = [];
-            let processedCount = 0;
-            const totalPages = pageDivs.length;
 
-            // лимит времени выполнения для iOS
-            const startTime = performance.now();
-            const TIME_LIMIT = 1000;
+    async function initializeDBWithoutWorker(resolve, reject) {
+        const request = indexedDB.open('MHTMLViewerDB', 3);
 
-            for (let i = 0; i < totalPages; i++) {
-                const div = pageDivs[i];
-                const imgs = div.querySelectorAll('img[src]');
+        request.onerror = (event) => reject(event.target.error);
 
-                for (let j = 0; j < imgs.length; j++) {
-                    if (imgs[j].src) {
-                        images.push(imgs[j].src);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+
+            if (!db.objectStoreNames.contains('files')) {
+                db.createObjectStore('files', { keyPath: 'id' });
+            }
+
+            if (!db.objectStoreNames.contains('images')) {
+                const imageStore = db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+                imageStore.createIndex('tabId', 'tabId', { unique: false });
+            }
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db);
+        };
+    }
+
+    async function createPreview(imageUrl) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous'; // кросс-доменные изображения
+
+            img.onload = function () {
+                const maxSize = 300;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxSize) {
+                        height = height * (maxSize / width);
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width = width * (maxSize / height);
+                        height = maxSize;
                     }
                 }
 
-                processedCount++;
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
 
-                const currentProgress = 35 + (processedCount / totalPages) * 30;
-                updateProgress(currentProgress);
-                await new Promise(r => setTimeout(r, 0));
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
 
-                // для сафари на ипхоне нужно дать паузу 
-                if (performance.now() - startTime > TIME_LIMIT) {
-                    await new Promise(resolve => {
-                        setTimeout(() => {
-                            resolve();
-                            if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
-                                return new Promise(r => setTimeout(r, window.DELAY_FOR_SAFARI * 2));
-                            }
-                        }, 0);
-                    });
-                }
-            }
+                // 0.9 — качество JPEG, можно менять от 0 до 1
+                resolve(canvas.toDataURL('image/jpeg', 0.9));
+            };
 
-            return images;
+            img.onerror = () => resolve(null);
+            img.src = imageUrl;
+        });
+    }
 
-        } catch (error) {
-            console.error('Error in parseHTMLInChunks:', error);
-            if (!navigator.userAgent.match(/iPhone|iPad|iPod|Android/i)) {
-                const errorWindow = window.open('', '_blank');
-                errorWindow.document.write(`
-                    <h1>Error Details</h1>
-                    <p><strong>Message:</strong> ${error.message}</p>
-                    <p><strong>Stack:</strong></p>
-                    <pre>${error.stack}</pre>
-                    <p><strong>HTML Size:</strong> ${fullText?.length || 'unknown'} bytes</p>
-                `);
-            }
+    async function saveToIndexedDB(id, preview, images) {
+        const MAX_IMAGES = isIOS ? images.length : images.length;
+        const total = Math.min(images.length, MAX_IMAGES);
 
-            throw error;
+        // iOS:  запись по одному с паузами и Blob'ами
+        // десктоп: пакетная запись массивом, без задержек
+
+        if (isIOS) {
+            return saveForIOS(id, preview, images, total);
+        } else {
+            return saveForDesktop(id, preview, images, total);
         }
     }
 
-    // Получение файла из IndexedDB
-    async function getImagesByTabId(tabId) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readonly');
-            const store = transaction.objectStore('files');
-            const request = store.get(tabId);
+    async function readFromIndexedDB(id) {
+        if (isIOS) {
+            return readFromIndexedDB_iOS(id);
+        } else {
+            // десктопный способ
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(['files'], 'readonly');
+                const store = tx.objectStore('files');
+                const req = store.get(id);
 
-            request.onerror = (event) => reject(event.target.error);
-            request.onsuccess = (event) => {
-                resolve(event.target.result);
-            };
+                req.onsuccess = () => {
+                    if (req.result) {
+                        resolve(req.result);
+                    } else {
+                        reject(new Error('Данные не найдены в IndexedDB'));
+                    }
+                };
+                req.onerror = () => reject(req.error);
+            });
+        }
+    }
+
+
+    async function readFromIndexedDB_iOS(id) {
+        const tx = db.transaction(['files'], 'readonly');
+        const store = tx.objectStore('files');
+
+        const preview = await new Promise((res, rej) => {
+            const req = store.get(`${id}::preview`);
+            req.onsuccess = () => res(req.result?.data || null);
+            req.onerror = () => rej(req.error);
+        });
+
+        let images = [];
+        let i = 0;
+        while (true) {
+            try {
+                const img = await new Promise((res, rej) => {
+                    const req = store.get(`${id}::img::${i}`);
+                    req.onsuccess = () => {
+                        if (req.result && req.result.data) {
+                            // console.log(`Loaded image #${i}`, req.result.data);
+                            res(req.result.data);
+                        } else {
+                            // console.log(`No image at index ${i}`);
+                            res(null);
+                        }
+                    };
+                    req.onerror = () => rej(req.error);
+                });
+                if (!img) break;
+                images.push(img);
+                i++;
+            } catch (e) {
+                console.error('Error reading image', i, e);
+                break;
+            }
+        }
+
+        return { id, preview, images };
+    }
+
+
+
+    // iOS: поэтапная запись, по одному изображению, через Blob, с задержками
+    async function saveForIOS(id, preview, images, total) {
+        try {
+            await putData({ id: `${id}::preview`, data: preview });
+
+            for (let i = 0; i < total; i++) {
+                await putData({ id: `${id}::img::${i}`, data: images[i] });
+                updateProgress(92 + ((i + 1) / total) * 8);
+                await delay(200);
+            }
+
+            updateProgress(100);
+
+            if (images.length > total) {
+                const start = total;
+                scheduleBackgroundSave(id, images.slice(start), 1, 300);
+            }
+        } catch (e) {
+            console.error('Error saving on iOS:', e);
+            throw e;
+        }
+    }
+
+    // десктоп: пакетная запись с минимальными задержками
+    async function saveForDesktop(id, preview, images, total) {
+        try {
+            const baseData = { id, preview, images: images.slice(0, total) };
+            await putData(baseData);
+            updateProgress(100);
+
+            // остальное пишется в фоне
+            if (images.length > total) {
+                const start = total;
+                scheduleBackgroundSave(id, images.slice(start), 5, 100);
+            }
+        } catch (e) {
+            console.error('Error saving on Desktop:', e);
+            throw e;
+        }
+    }
+
+    // фоновая пакетная запись 
+    function scheduleBackgroundSave(id, images, chunkSize, delayMs) {
+        let index = 0;
+
+        function processChunk(deadline) {
+            while ((deadline && deadline.timeRemaining() > 0) || !deadline) {
+                if (index >= images.length) return;
+                const chunk = images.slice(index, index + chunkSize);
+                index += chunkSize;
+
+                // iOS: запись по одному в blob, для десктопа — как массив
+                if (isIOS) {
+                    chunk.forEach(async (image, i) => {
+                        try {
+                            const blob = new Blob([JSON.stringify(image)], { type: 'application/json' });
+                            await putData({ id: `${id}::img::${index + i}`, blob });
+                        } catch (e) {
+                            console.warn('Background save error:', e);
+                        }
+                    });
+                } else {
+                    // десктоп: группировка пачки в массив и дописать в одну запись (читай по id)
+                    appendImagesToRecord(id, chunk).catch(e => console.warn('Background append error:', e));
+                }
+            }
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(processChunk);
+            } else {
+                setTimeout(processChunk, delayMs);
+            }
+        }
+
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(processChunk);
+        } else {
+            setTimeout(processChunk, delayMs);
+        }
+    }
+
+    // Хелпер для задержки
+    function delay(ms) {
+        return new Promise(r => setTimeout(r, ms));
+    }
+
+    // Универсальная функция записи данных в IndexedDB
+    function putData(data) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(['files'], 'readwrite');
+            const store = tx.objectStore('files');
+            const req = store.put(data);
+
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
         });
     }
+
+    // десктоп: считать запись -> дописать изображения -> записать обратно
+    async function appendImagesToRecord(id, newImages) {
+        const tx = db.transaction(['files'], 'readwrite');
+        const store = tx.objectStore('files');
+        const record = await new Promise((res, rej) => {
+            const req = store.get(id);
+            req.onsuccess = () => res(req.result || { id, preview: null, images: [] });
+            req.onerror = () => rej(req.error);
+        });
+
+        record.images = record.images.concat(newImages);
+
+        await new Promise((res, rej) => {
+            const req = store.put(record);
+            req.onsuccess = () => res();
+            req.onerror = () => rej(req.error);
+        });
+    }
+
+    // Получение превью из IndexedDB
+    async function getPreviewByTabId(tabId) {
+        const store = db.transaction(['files'], 'readonly').objectStore('files');
+
+        const iosKey = `${tabId}::preview`;
+        const desktopKey = tabId;
+
+        const get = key => new Promise((res, rej) => {
+            const req = store.get(key);
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+        });
+
+        const data = await get(iosKey) || await get(desktopKey);
+        if (!data) return null;
+
+        if (data.data) return data.data;
+
+        if (data.blob) {
+            const text = await data.blob.text();
+            return JSON.parse(text);
+        }
+
+        return data.preview || null;
+    }
+
 
 
     // Удаление файла из IndexedDB
@@ -493,29 +705,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Обновление превью в IndexedDB
-    async function updatePreviewInDB(tabId, preview) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['files'], 'readwrite');
-            const store = transaction.objectStore('files');
-
-            const getRequest = store.get(tabId);
-
-            getRequest.onsuccess = function () {
-                const data = getRequest.result;
-                if (!data) return reject('Запись не найдена');
-
-                data.preview = preview;
-                const putRequest = store.put(data);
-
-                putRequest.onsuccess = resolve;
-                putRequest.onerror = reject;
-            };
-
-            getRequest.onerror = reject;
-        });
-    }
-
     async function clearImagesDB() {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['images'], 'readwrite');
@@ -527,15 +716,66 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    async function readFileInChunks(arrayBuffer) {
+        const CHUNK_SIZE = isIOS ? 128 * 1024 : 1 * 1024 * 1024; // 128KB для iOS, 1MB для остальных
+        let fullText = '';
+        const totalChunks = Math.ceil(arrayBuffer.byteLength / CHUNK_SIZE);
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, arrayBuffer.byteLength);
+            const chunk = arrayBuffer.slice(start, end);
+            fullText += new TextDecoder('utf-8').decode(chunk);
+
+            updateProgress(Math.floor((i / totalChunks) * 25));
+
+            // Пауза для iOS
+            if (isIOS && i % 3 === 0) {
+                await new Promise(r => setTimeout(r, 20));
+            }
+        }
+
+        return fullText;
+    }
+
+    function parseHTMLForImages(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const images = [];
+
+        const pageDivs = doc.querySelectorAll('div[id^="page-"]');
+        pageDivs.forEach(div => {
+            const imgs = div.querySelectorAll('img[src]');
+            imgs.forEach(img => images.push(img.src));
+        });
+
+        return images;
+    }
+
+    function decodeQuotedPrintable(str) {
+        return str.replace(/=\r?\n/g, '')
+            .replace(/=([0-9A-F]{2})/gi, (_, hex) =>
+                String.fromCharCode(parseInt(hex, 16)));
+    }
+
     function updateProgress(progress) {
         const progressBar = document.getElementById('progressBar');
-        if (progressBar) {
-            progressBar.style.boxShadow = progress == 100 ? '0 2px 5px rgba(255, 107, 158, 0.5)' : "";
-            progressBar.style.background = progress == 100 ? 'var(--secondary-color)' : "green";
-            progressBar.style.width = `${progress}%`;
-            progressBar.textContent = `${Math.floor(progress)}%`;
+        if (!progressBar) return;
+
+        const rounded = Math.floor(progress);
+        progressBar.style.width = `${rounded}%`;
+        progressBar.textContent = `${rounded}%`;
+
+        if (rounded === 100) {
+            progressBar.style.background = 'var(--secondary-color)';
+            progressBar.style.boxShadow = '0 2px 5px rgba(255, 107, 158, 0.5)';
+        } else {
+            progressBar.style.background = 'green';
+            progressBar.style.boxShadow = '';
         }
-    };
+    }
+
+
     // Отображение содержимого вкладки
     async function displayTabContent(tabId, fromHomePage = false) {
         const tab = tabs.find(t => t.id === tabId);
@@ -555,44 +795,45 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             addExportButton(tab);
             createClearButtons(true);
+
             if (tab.isImageTab) {
-                // Обработка вкладки с изображениями
                 const images = tab.images.map(img => img.data);
                 renderGallery(images);
             } else if (tab.isFile) {
-                // Обработка MHTML файла
                 const cachedImages = imageCache.get(tabId);
                 if (cachedImages) {
                     renderGallery(cachedImages);
                     return;
                 }
 
-                const fileData = await getImagesByTabId(tab.id);
-                if (!fileData || !fileData.images || fileData.images.length === 0) {
+                const fileData = await readFromIndexedDB(tab.id);
+                if (!fileData) {
+                    throw new Error("Данные не найдены в IndexedDB");
+                }
+
+                if (!fileData.images || fileData.images.length === 0) {
                     throw new Error("Не удалось извлечь изображения");
                 }
 
                 imageCache.add(tab.id, fileData.images);
-                renderGallery(fileData.images)
+                renderGallery(fileData.images);
             } else {
-                // Обработка обычных URL
                 imageGallery.innerHTML = `<iframe src="${tab.url}" style="width:100%;height:100%;border:none;"></iframe>`;
             }
         } catch (error) {
             console.error('Ошибка отображения:', error);
             imageGallery.innerHTML = `
-                <div class="error">
-                    <h3>Ошибка</h3>
-                    <p>${error.message}</p>
-                </div>
-            `;
+            <div class="error">
+                <h3>Ошибка</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
         } finally {
             if (tabElement && fromHomePage) {
                 tabElement.classList.remove('loading');
             }
         }
     }
-
     // Обновленная функция для добавления кнопок экспорта
     function addExportButton(tab) {
         const existingButton = galleryControls.querySelector('.export-btn');
@@ -609,7 +850,7 @@ document.addEventListener('DOMContentLoaded', function () {
         saveMhtmlBtn.style.display = isConrolPanelHidden() ? 'none' : 'flex';
         saveMhtmlBtn.addEventListener('click', () => saveAsMHTML(tab));
 
-        // Добавляем кнопку в блок управления галереей
+        // добавление кнопки в блок управления галереей
         galleryControls.appendChild(saveMhtmlBtn);
     }
 
@@ -627,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const mimeType = 'image/png'; // По умолчанию, если MIME не указан, используем 'image/png'
 
-                    // Конвертируем blob в data:image
+                    // blob в data:image
                     imgData = await new Promise((resolve) => {
                         const reader = new FileReader();
                         reader.onload = () => resolve(`data:${mimeType};base64,${reader.result.split(',')[1]}`);
@@ -635,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 }
 
-                // Добавляем изображения в HTML контент
+                // добавление изображения в HTML контент
                 htmlContent += `<div id="page-${i + 1}">\n`;
                 htmlContent += `<img src="${imgData}" alt="Image ${i + 1}">\n`;
                 htmlContent += `</div>\n\n`;
@@ -643,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             htmlContent += `</body>\n</html>`;
 
-            // Кодируем HTML в quoted-printable
+            // кодирование HTML в quoted-printable
             const encodedContent = encodeQuotedPrintable(htmlContent);
 
             // Формируем MHTML
@@ -672,14 +913,6 @@ document.addEventListener('DOMContentLoaded', function () {
     async function saveAsMHTML(tab) {
         try {
             let previewData = null;
-            // const firstDataImage = tab.images.find(img => img.data.startsWith('data:image/'));
-            // if (firstDataImage) {
-            //     try {
-            //         previewData = await createSimpleThumbnail(firstDataImage.data);
-            //     } catch (e) {
-            //         console.warn('Не удалось создать превью:', e);
-            //     }
-            // }
 
             const { mhtml, name } = await createMHTMLForParser(tab);
             const arrayBuffer = new TextEncoder().encode(mhtml);
@@ -708,56 +941,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Создание миниатюры изображения
-    async function createThumbnail(imageSrc) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'Anonymous';
-
-            img.onload = function () {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                // Устанавливаем размер превью
-                const maxSize = 300;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > maxSize) {
-                        height *= maxSize / width;
-                        width = maxSize;
-                    }
-                } else {
-                    if (height > maxSize) {
-                        width *= maxSize / height;
-                        height = maxSize;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.9));
-            };
-
-            img.onerror = function () {
-                resolve(null);
-            };
-
-            img.src = imageSrc;
-        });
-    }
-
     // Отображение галереи изображений с виртуализацией
     function renderGallery(images) {
+        // очистка предыдущих изображений
+        while (imageGallery.firstChild) {
+            imageGallery.removeChild(imageGallery.firstChild);
+        }
+
         imageGallery.innerHTML = '';
 
-        // Сохраняем ссылки на все изображения
+        const initialLoadCount = isIOS ? 2 : 5;
+
+        // сохранение ссылки на все изображения
         window.galleryImages = images;
 
-        // Создаем контейнеры для всех изображений
+        // создание контейнеров для всех изображений
         images.forEach((src, index) => {
             const container = document.createElement('div');
             container.className = 'gallery-image-container';
@@ -767,7 +965,8 @@ document.addEventListener('DOMContentLoaded', function () {
             imageGallery.appendChild(container);
         });
 
-        // Инициализируем Intersection Observer
+        loadImagesInBatches(0, Math.min(initialLoadCount, images.length));
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -777,21 +976,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         }, {
-            rootMargin: '300px 0px 300px 0px', // Загружаем заранее
-            threshold: 0.01
+            rootMargin: isIOS ? '50px 0px' : '300px 0px',
+            threshold: isIOS ? 0.2 : 0.01
         });
 
-        // Наблюдаем за всеми контейнерами
+        // observe за всеми контейнерами
         document.querySelectorAll('.gallery-image-container').forEach(container => {
             observer.observe(container);
         });
 
-        // Загружаем первые 5 изображений сразу
+        // загрузка первые 5 изображений сразу
         for (let i = 0; i < Math.min(5, images.length); i++) {
             const container = document.getElementById(`img-container-${i}`);
             if (container) loadImage(container, i);
         }
         updateGalleryStyles();
+    }
+
+    function loadImagesInBatches(startIndex, endIndex) {
+        for (let i = startIndex; i < endIndex; i++) {
+            const container = document.getElementById(`img-container-${i}`);
+            if (container && !container.querySelector('img')) {
+                loadImage(container, i);
+            }
+        }
     }
 
     function loadImage(container, index) {
@@ -803,6 +1011,11 @@ document.addEventListener('DOMContentLoaded', function () {
         img.loading = 'lazy';
         img.src = window.galleryImages[index];
         img.alt = `Изображение ${index + 1}`;
+
+        if (isIOS) {
+            img.style.transform = 'translateZ(0)'; // Аппаратное ускорение
+            img.decode().catch(() => { });
+        }
 
         img.onerror = () => {
             img.style.border = '2px solid red';
@@ -857,9 +1070,9 @@ document.addEventListener('DOMContentLoaded', function () {
             let previewImg = '';
             if (tab.isFile) {
                 try {
-                    const fileData = await getImagesByTabId(tab.id);
-                    if (fileData?.preview) {
-                        previewImg = `<img src="${fileData.preview}" class="tab-preview-image">`;
+                    const preview = await getPreviewByTabId(tab.id);
+                    if (preview) {
+                        previewImg = `<img src="${preview}" class="tab-preview-image">`;
                     } else {
                         previewImg = `<div class="tab-preview-image" style="background:#eee;display:flex;align-items:center;justify-content:center;">Нет превью</div>`;
                     }
@@ -1161,6 +1374,26 @@ document.addEventListener('DOMContentLoaded', function () {
     function hideImageTabForm() {
         imageTabForm.classList.remove('active');
     }
+
+    function cleanupBeforeUnload() {
+        if (isIOS) {
+            // освобождение ресурсов перед выгрузкой страницы
+            window.galleryImages = null;
+            if (window.worker) {
+                window.worker.terminate();
+            }
+
+            // очистка blob URLs
+            document.querySelectorAll('img').forEach(img => {
+                if (img.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(img.src);
+                }
+            });
+        }
+    }
+
+    window.addEventListener('beforeunload', cleanupBeforeUnload);
+    window.addEventListener('pagehide', cleanupBeforeUnload);
 
     // Обработчики событий
     addTabBtn.addEventListener('click', showTabForm);

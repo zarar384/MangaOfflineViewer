@@ -107,3 +107,7 @@ Simple web application for viewing MHTML files
   - IndexedDB
   - File API
   - Drag and Drop API
+
+
+ npm install -g http-server   
+ http-server -p 8080            
