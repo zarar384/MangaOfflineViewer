@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Сохранение вкладок в localStorage
     function saveTabs() {
-        const tabsToSave = tabs.filter(tab => tab.isReadOnly == false).map(tab => ({
+        const tabsToSave = allTabs.filter(tab => tab.isReadOnly == false).map(tab => ({
             id: tab.id,
             name: tab.name,
             isFile: tab.isFile || false,
@@ -325,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }));
         localStorage.setItem('mhtmlViewerTabs', JSON.stringify(tabsToSave));
     }
-
 
     // Отрисовка вкладок в шапке
     function renderTabs() {
@@ -1588,16 +1587,17 @@ document.addEventListener('DOMContentLoaded', function () {
             isReadOnly: true
         };
 
-        const existingTabIndex = tabs.findIndex(tab => tab.name === newTab.name);
+        const existingTabIndex = allTabs.findIndex(tab => tab.name === newTab.name);
 
         if (existingTabIndex !== -1) {
             // Если вкладка существует, обновляем её
-            newTab = tabs[existingTabIndex];
+            newTab = allTabs[existingTabIndex];
             newTab.isReadOnly = isReadOnly;
             newTab.images = uploadedImages;
             newTab.isImageTab = isReadOnly;
             newTab.isFile = !isReadOnly;
         } else {
+            allTabs.push(newTab);
             tabs.push(newTab);
         }
 
