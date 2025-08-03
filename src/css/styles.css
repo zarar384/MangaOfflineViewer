@@ -1031,3 +1031,246 @@ input:checked+.slider:before {
         margin-top: 8px;
     }
 }
+
+/* ==================== */
+/* Стили пагинации */
+/* ==================== */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 25px 0;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px;
+    background: rgba(26, 26, 46, 0.7);
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 107, 158, 0.3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.pagination-button {
+    padding: 8px 16px;
+    margin: 0;
+    border: 1px solid rgba(255, 107, 158, 0.3);
+    background: linear-gradient(145deg, #2a2a4a 0%, #1a1a2e 100%);
+    color: var(--light-color);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    min-width: 40px;
+    text-align: center;
+    font-family: 'Anime Font', 'Segoe UI', sans-serif;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background: linear-gradient(145deg, #3a3a5a 0%, #2a2a4a 100%);
+    border-color: var(--main-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 158, 0.3);
+}
+
+.pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(26, 26, 46, 0.5);
+}
+
+.pagination-button.active {
+    background: var(--main-color);
+    color: white;
+    border-color: var(--main-color);
+    font-weight: bold;
+    box-shadow: 0 0 10px var(--main-color);
+    transform: translateY(-2px);
+}
+
+.pagination-button.active:hover {
+    background: #ff4d8b;
+}
+
+.pagination-ellipsis {
+    padding: 8px 5px;
+    margin: 0;
+    color: var(--light-color);
+    font-size: 1.1rem;
+}
+
+.pagination-perpage {
+    margin-left: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-label {
+    font-size: 0.9em;
+    color: var(--accent-color);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.pagination-select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 107, 158, 0.3);
+    background: rgba(26, 26, 46, 0.8);
+    color: var(--light-color);
+    font-family: 'Anime Font', 'Segoe UI', sans-serif;
+    transition: all 0.3s;
+    backdrop-filter: blur(5px);
+}
+
+.pagination-select:focus {
+    outline: none;
+    border-color: var(--main-color);
+    box-shadow: 0 0 0 2px rgba(255, 107, 158, 0.3);
+}
+
+/* ==================== */
+/* Иконки для кнопок пагинации */
+/* ==================== */
+.icon-arrow-left:before {
+    content: "←";
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.icon-arrow-right:before {
+    content: "→";
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.pagination-button:hover .icon-arrow-left:before {
+    transform: translateX(-3px);
+}
+
+.pagination-button:hover .icon-arrow-right:before {
+    transform: translateX(3px);
+}
+
+/* loading индикатор */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--light-color);
+    font-family: 'Anime Font', 'Segoe UI', sans-serif;
+    font-size: 1.2rem;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.loading:before {
+    content: "";
+    display: block;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 20px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 107, 158, 0.2);
+    border-top-color: var(--main-color);
+    border-bottom-color: var(--main-color);
+    animation: animeSpin 1s linear infinite;
+    box-shadow: 0 0 10px rgba(255, 107, 158, 0.5);
+}
+
+.loading:after {
+    content: "...";
+    display: inline-block;
+    width: 20px;
+    text-align: left;
+    animation: animeDots 1.5s infinite steps(4);
+}
+
+@keyframes animeSpin {
+    0% {
+        transform: rotate(0deg) scale(1);
+        border-top-color: var(--main-color);
+        border-bottom-color: var(--accent-color);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.1);
+        border-top-color: var(--accent-color);
+        border-bottom-color: var(--main-color);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+        border-top-color: var(--main-color);
+        border-bottom-color: var(--accent-color);
+    }
+}
+
+@keyframes animeDots {
+    0%, 100% {
+        content: ".";
+    }
+    33% {
+        content: "..";
+    }
+    66% {
+        content: "...";
+    }
+}
+
+.loading-container {
+    background: rgba(26, 26, 46, 0.7);
+    border-radius: 15px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 107, 158, 0.3);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
+                inset 0 0 15px rgba(255, 107, 158, 0.1);
+    text-align: center;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+/* ==================== */
+/* Анимации и переходы */
+/* ==================== */
+.home-page {
+    transition: opacity 0.3s ease;
+}
+
+.tab-preview {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tab-preview:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(255, 107, 158, 0.3);
+}
+
+/* ==================== */
+/* Сообщение об ошибке */
+/* ==================== */
+.error-message {
+    padding: 20px;
+    background: rgba(255, 50, 50, 0.2);
+    border: 1px solid rgba(255, 107, 158, 0.5);
+    border-radius: 10px;
+    color: var(--light-color);
+    text-align: center;
+    font-family: 'Anime Font', sans-serif;
+    max-width: 80%;
+    margin: 50px auto;
+    backdrop-filter: blur(5px);
+    animation: animeErrorPulse 2s infinite;
+}
+
+@keyframes animeErrorPulse {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 50, 50, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 50, 50, 0.8);
+    }
+}

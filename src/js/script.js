@@ -60,8 +60,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Состояние приложения
     let tabs = [];
-    let activeTabId = null;
-    let currentFile = null;
+    let allTabs = [];
+    let activeTabId = localStorage.getItem('activeTabId') || null;
+    let isInitialLoad = true; // флаг для отслеживания первой загрузки
+    let isLoading = false;
     let db = null;
     let uploadedImages = [];
 
@@ -87,18 +89,175 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // Загрузка вкладок из localStorage
-    async function loadTabs() {
-        await initDB();
-        const savedTabs = localStorage.getItem('mhtmlViewerTabs');
-        if (savedTabs) {
-            tabs = JSON.parse(savedTabs);
-            renderTabs();
-            showHomePage();
-        } else {
-            // Добавляем демо-вкладку при первом запуске
-            addTab('Пример', 'about:blank');
+    // проверка наличия настройки пагинации
+    const savedSettings = localStorage.getItem('paginationSettings');
+
+    // Загрузка вкладок из localStorage с пагинацией
+    async function loadTabs(page = 1, perPage = 10) {
+        if (isLoading) return;
+        isLoading = true;
+
+        try {
+            await initDB();
+            const savedTabs = localStorage.getItem('mhtmlViewerTabs');
+
+            if (savedTabs) {
+                allTabs = JSON.parse(savedTabs);
+
+                // пагинацию только для отображения
+                const startIndex = (page - 1) * perPage;
+                const endIndex = startIndex + perPage;
+                tabs = allTabs.slice(startIndex, endIndex);
+
+                localStorage.setItem('paginationSettings', JSON.stringify({ page, perPage }));
+
+                if (activeTabId && isInitialLoad && allTabs.some(tab => tab.id === activeTabId)) {
+                    await displayTabContent(activeTabId);
+                    isInitialLoad = false;
+                } else {
+                    await Promise.all([
+                        renderTabs(),
+                        showHomePage()
+                    ]);
+                    isInitialLoad = false;
+                }
+
+                renderPaginationControls(allTabs.length, page, perPage);
+            } else {
+                addTab('Пример', 'about:blank');
+            }
+        } finally {
+            isLoading = false;
         }
+    }
+
+    // функция для отображения элементов управления пагинацией
+    function renderPaginationControls(totalTabs, currentPage, perPage) {
+        // удаление старых элементов пагинации
+        const oldPagination = document.querySelector('.pagination-controls');
+        if (oldPagination) {
+            oldPagination.remove();
+        }
+
+        // получение элемент homePage (!если он еще не был инициализирован)
+        const homePageElement = document.getElementById('homePage');
+
+        // пагинация только на главной
+        if (!homePageElement || homePageElement.style.display !== 'grid') {
+            return;
+        }
+
+        const totalPages = Math.ceil(totalTabs / perPage);
+
+        // контейнер для элементов пагинации
+        const pagination = document.createElement('div');
+        pagination.className = 'pagination-controls';
+
+        // кнопка Назад
+        const prevButton = document.createElement('button');
+        prevButton.className = 'pagination-button prev';
+        prevButton.innerHTML = '<i class="icon-arrow-left"></i>';
+        prevButton.disabled = currentPage === 1;
+        prevButton.addEventListener('click', () => {
+            if (currentPage > 1) {
+                loadTabs(currentPage - 1, perPage);
+            }
+        });
+        pagination.appendChild(prevButton);
+
+        // номера страниц
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        // коррекция диапазон, если он слишком мал
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        // первая страница и многоточие
+        if (startPage > 1) {
+            const firstPageButton = document.createElement('button');
+            firstPageButton.className = 'pagination-button';
+            firstPageButton.textContent = '1';
+            firstPageButton.addEventListener('click', () => loadTabs(1, perPage));
+            pagination.appendChild(firstPageButton);
+
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'pagination-ellipsis';
+                ellipsis.textContent = '...';
+                pagination.appendChild(ellipsis);
+            }
+        }
+
+        // основные страницы
+        for (let i = startPage; i <= endPage; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.className = `pagination-button ${i === currentPage ? 'active' : ''}`;
+            pageButton.textContent = i;
+            pageButton.addEventListener('click', () => loadTabs(i, perPage));
+            pagination.appendChild(pageButton);
+        }
+
+        // последняя страница и многоточие
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'pagination-ellipsis';
+                ellipsis.textContent = '...';
+                pagination.appendChild(ellipsis);
+            }
+
+            const lastPageButton = document.createElement('button');
+            lastPageButton.className = 'pagination-button';
+            lastPageButton.textContent = totalPages;
+            lastPageButton.addEventListener('click', () => loadTabs(totalPages, perPage));
+            pagination.appendChild(lastPageButton);
+        }
+
+        // кнопка Вперед
+        const nextButton = document.createElement('button');
+        nextButton.className = 'pagination-button next';
+        nextButton.innerHTML = '<i class="icon-arrow-right"></i>';
+        nextButton.disabled = currentPage === totalPages;
+        nextButton.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                loadTabs(currentPage + 1, perPage);
+            }
+        });
+        pagination.appendChild(nextButton);
+
+        // селектор количества элементов на странице
+        const perPageContainer = document.createElement('div');
+        perPageContainer.className = 'pagination-perpage';
+
+        const perPageLabel = document.createElement('span');
+        perPageLabel.className = 'pagination-label';
+        perPageContainer.appendChild(perPageLabel);
+
+        const perPageSelect = document.createElement('select');
+        perPageSelect.className = 'pagination-select';
+        [10, 20, 30, 50].forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            option.selected = value === perPage;
+            perPageSelect.appendChild(option);
+        });
+
+        perPageSelect.addEventListener('change', (e) => {
+            const newPerPage = parseInt(e.target.value);
+            // переходим на первую страницу при изменении количества элементов
+            // TODO: в будущем изменить, оставаться на выьбранной странице
+            loadTabs(1, newPerPage);
+        });
+
+        perPageContainer.appendChild(perPageSelect);
+        pagination.appendChild(perPageContainer);
+
+        // добавление пагинации на страницу - главное
+        homePageElement.parentNode.insertBefore(pagination, homePageElement.nextSibling);
     }
 
     // Обработчики событий элементов управления галереей
@@ -225,43 +384,38 @@ document.addEventListener('DOMContentLoaded', function () {
             isReadOnly: false
         };
 
-        tabs.push(newTab);
+        // в общий список
+        allTabs.push(newTab);
+        localStorage.setItem('mhtmlViewerTabs', JSON.stringify(allTabs));
 
         if (isFile && fileData) {
             await saveFileToDB(newTab.id, fileData);
         }
 
-        saveTabs();
-        renderTabs();
+        // перезагрузка с текущими настройками пагинации
+        const settings = JSON.parse(localStorage.getItem('paginationSettings') || '{"page":1,"perPage":10}');
+        loadTabs(settings.page, settings.perPage);
+
         await displayTabContent(newTab.id);
     }
 
     // Закрытие вкладки
     async function closeTab(tabId) {
-        if (tabs.length <= 0) return;
+        if (allTabs.length <= 0) return;
         imageCache.remove(tabId);
 
-        const tabIndex = tabs.findIndex(t => t.id === tabId);
+        const tabIndex = allTabs.findIndex(t => t.id === tabId);
         if (tabIndex === -1) return;
 
-        // Удаляем связанные данные из IndexedDB
-        if (tabs[tabIndex].isFile) {
+        if (allTabs[tabIndex].isFile) {
             await deleteImagesByTabId(tabId);
         }
 
-        tabs.splice(tabIndex, 1);
-        saveTabs();
+        allTabs.splice(tabIndex, 1);
+        localStorage.setItem('mhtmlViewerTabs', JSON.stringify(allTabs));
 
-        if (tabId === activeTabId && tabs.length > 0) {
-            const newActiveTabIndex = Math.min(tabIndex, tabs.length - 1);
-            displayTabContent(tabs[newActiveTabIndex].id);
-        }
-        else if (tabs.length == 0) {
-            loadTabs();
-        }
-        else {
-            renderTabs();
-        }
+        const settings = JSON.parse(localStorage.getItem('paginationSettings') || '{"page":1,"perPage":10}');
+        loadTabs(settings.page, settings.perPage);
     }
 
     // Инициализация базы данных
@@ -329,6 +483,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
+    // попытка создать превью. Одно из 5 должно пройти
+    async function findFirstValidPreview(images, maxImagesToCheck = 5) {
+        const imagesToTry = images.slice(0, maxImagesToCheck);
+
+        for (const img of imagesToTry) {
+            try {
+                const preview = await createPreview(img);
+                if (preview) {
+                    return preview; // первое успешное превью
+                }
+            } catch (e) {
+                console.warn(`Не удалось создать превью для изображения ${img}`, e);
+            }
+        }
+
+        return null;
+    }
+
     // Сохранение файла в IndexedDB
     async function saveFileToDB(id, fileData) {
         const arrayBuffer = fileData instanceof ArrayBuffer
@@ -359,7 +531,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         // iOS: разрыв event loop
                                         setTimeout(async () => {
                                             try {
-                                                preview = await createPreview(images[0]);
+                                                preview = await findFirstValidPreview(images);
                                                 updateProgress(91);
                                                 await saveToIndexedDB(id, preview, images);
                                                 updateProgress(100);
@@ -369,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                             }
                                         }, 0);
                                     } else {
-                                        preview = await createPreview(images[0]);
+                                        preview = await findFirstValidPreview(images);
                                         updateProgress(91);
                                         await saveToIndexedDB(id, preview, images);
                                         updateProgress(100);
@@ -403,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const fullText = await readFileInChunks(arrayBuffer);
             const decoded = decodeQuotedPrintable(fullText);
             const images = parseHTMLForImages(decoded);
-            const preview = images.length > 0 ? await createPreview(images[0]) : null;
+            const preview = images.length > 0 ? await findFirstValidPreview(images) : null;
             return saveToIndexedDB(id, preview, images);
         }
     }
@@ -781,7 +953,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const tab = tabs.find(t => t.id === tabId);
         if (!tab) return;
 
+        // очищение галереи перед загрузкой нового содержимого
+        imageGallery.innerHTML = '<div class="loading">Загрузка...</div>';
+
+        // удаление пагинации при переходе на вкладку с изображениями
+        const oldPagination = document.querySelector('.pagination-controls');
+        if (oldPagination) {
+            oldPagination.remove();
+        }
+
         activeTabId = tabId;
+        localStorage.setItem('activeTabId', tabId);
         renderTabs();
 
         const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
@@ -789,7 +971,6 @@ document.addEventListener('DOMContentLoaded', function () {
             tabElement.classList.add('loading');
         }
 
-        imageGallery.innerHTML = '<div class="loading">Загрузка...</div>';
         showGalleryPage();
 
         try {
@@ -834,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+
     // Обновленная функция для добавления кнопок экспорта
     function addExportButton(tab) {
         const existingButton = galleryControls.querySelector('.export-btn');
@@ -943,17 +1125,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Отображение галереи изображений с виртуализацией
     function renderGallery(images) {
-        // очистка предыдущих изображений
-        while (imageGallery.firstChild) {
-            imageGallery.removeChild(imageGallery.firstChild);
-        }
-
+        // очищение галереи перед рендерингом новых изображений
         imageGallery.innerHTML = '';
 
         const initialLoadCount = isIOS ? 2 : 5;
 
         // сохранение ссылки на все изображения
-        window.galleryImages = images;
+        galleryState.images = images;
 
         // создание контейнеров для всех изображений
         images.forEach((src, index) => {
@@ -965,7 +1143,9 @@ document.addEventListener('DOMContentLoaded', function () {
             imageGallery.appendChild(container);
         });
 
+        // загрузка первых изображений
         loadImagesInBatches(0, Math.min(initialLoadCount, images.length));
+
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -985,13 +1165,13 @@ document.addEventListener('DOMContentLoaded', function () {
             observer.observe(container);
         });
 
-        // загрузка первые 5 изображений сразу
-        for (let i = 0; i < Math.min(5, images.length); i++) {
-            const container = document.getElementById(`img-container-${i}`);
-            if (container) loadImage(container, i);
-        }
         updateGalleryStyles();
     }
+
+    // объект состояния галереи
+    const galleryState = {
+        images: []
+    };
 
     function loadImagesInBatches(startIndex, endIndex) {
         for (let i = startIndex; i < endIndex; i++) {
@@ -1004,16 +1184,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function loadImage(container, index) {
         // Если изображение уже загружено - пропускаем
-        if (container.querySelector('img') || !window.galleryImages[index]) return;
+        if (container.querySelector('img') || !galleryState.images[index]) return;
 
         const img = document.createElement('img');
         img.className = 'gallery-image';
         img.loading = 'lazy';
-        img.src = window.galleryImages[index];
+        img.src = galleryState.images[index];
         img.alt = `Изображение ${index + 1}`;
 
         if (isIOS) {
-            img.style.transform = 'translateZ(0)'; // Аппаратное ускорение
+            img.style.transform = 'translateZ(0)';
             img.decode().catch(() => { });
         }
 
@@ -1053,60 +1233,137 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Отображение главной страницы
+    // Модифицированная функция showHomePage для сохранения состояния пагинации
     async function showHomePage() {
+        // Показываем аниме-загрузку перед началом работы
+        homePage.innerHTML = `
+        <div class="loading-container">
+            <div class="loading">Загрузка галереи</div>
+        </div>
+    `;
+
+        // Скрываем галерею изображений
         imageGallery.style.display = 'none';
         homePage.style.display = 'grid';
-        homePage.innerHTML = '';
 
-        // Добавляем кнопки для очистки IndexedDb и imageCache
-        createClearButtons(false);
+        try {
+            // восстановление настроек пагинации
+            const paginationSettings = JSON.parse(localStorage.getItem('paginationSettings') || '{"page":1,"perPage":10}');
+            const { page, perPage } = paginationSettings;
 
-        for (const tab of tabs) {
-            if (tab.isReadOnly) continue;
-            const tabPreview = document.createElement('div');
-            tabPreview.className = 'tab-preview';
-            tabPreview.dataset.tabId = tab.id;
+            // добавление кнопки для очистки IndexedDb и imageCache
+            createClearButtons(false);
 
-            let previewImg = '';
-            if (tab.isFile) {
-                try {
-                    const preview = await getPreviewByTabId(tab.id);
-                    if (preview) {
-                        previewImg = `<img src="${preview}" class="tab-preview-image">`;
-                    } else {
-                        previewImg = `<div class="tab-preview-image" style="background:#eee;display:flex;align-items:center;justify-content:center;">Нет превью</div>`;
+            // временный контейнер для предварительного рендеринга
+            const tempContainer = document.createElement('div');
+            tempContainer.style.display = 'none';
+            document.body.appendChild(tempContainer);
+
+            // рендер всех превью во временный контейнер
+            for (const tab of tabs) {
+                if (tab.isReadOnly) continue;
+
+                const tabPreview = document.createElement('div');
+                tabPreview.className = 'tab-preview';
+                tabPreview.dataset.tabId = tab.id;
+
+                let previewImg = '';
+                if (tab.isFile) {
+                    try {
+                        const preview = await getPreviewByTabId(tab.id);
+                        previewImg = preview
+                            ? `<img src="${preview}" class="tab-preview-image" loading="lazy">`
+                            : `<div class="tab-preview-image no-preview">Нет превью</div>`;
+                    } catch (e) {
+                        console.warn('Не удалось загрузить превью:', e);
+                        previewImg = '<div class="tab-preview-image no-preview">Ошибка загрузки</div>';
                     }
-                } catch (e) {
-                    console.warn('Не удалось загрузить превью:', e);
+                } else if (tab.isImageTab && tab.images?.length > 0) {
+                    previewImg = `<img src="${tab.images[0].data}" class="tab-preview-image" loading="lazy">`;
+                } else {
+                    previewImg = '<div class="tab-preview-image no-preview">Нет превью</div>';
                 }
-            } else if (tab.isImageTab && tab.images?.length > 0) {
-                previewImg = `<img src="${tab.images[0].data}" class="tab-preview-image">`;
-            } else {
-                previewImg = `<div class="tab-preview-image" style="background:#eee;display:flex;align-items:center;justify-content:center;">Нет превью</div>`;
-            }
 
-            tabPreview.innerHTML = `
+                tabPreview.innerHTML = `
                 ${previewImg}
                 <div class="tab-preview-title">${tab.name}</div>
                 <div class="tab-preview-close">&times;</div>
             `;
 
-            tabPreview.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('tab-preview-close')) {
-                    displayTabContent(tab.id, true);
-                }
-            });
+                tabPreview.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('tab-preview-close')) {
+                        localStorage.setItem('currentPageBeforeNavigation', JSON.stringify({ page, perPage }));
+                        displayTabContent(tab.id, true);
+                    }
+                });
 
-            const closeBtn = tabPreview.querySelector('.tab-preview-close');
-            closeBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await closeTab(tab.id);
-                tabPreview.remove();
-            });
+                const closeBtn = tabPreview.querySelector('.tab-preview-close');
+                closeBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await closeTab(tab.id);
+                    const savedTabs = localStorage.getItem('mhtmlViewerTabs');
+                    if (savedTabs) {
+                        const allTabs = JSON.parse(savedTabs);
+                        loadTabs(page, perPage);
+                    }
+                });
 
-            homePage.appendChild(tabPreview);
+                tempContainer.appendChild(tabPreview);
+            }
+
+            // плавное появление контента
+            homePage.style.opacity = '0';
+            homePage.innerHTML = '';
+
+            // перемещение элементов из временного контейнера
+            while (tempContainer.firstChild) {
+                homePage.appendChild(tempContainer.firstChild);
+            }
+            tempContainer.remove();
+
+            // анимация появления
+            setTimeout(() => {
+                homePage.style.transition = 'opacity 0.5s ease';
+                homePage.style.opacity = '1';
+            }, 50);
+
+            // восстановление пагинации
+            const savedTabs = localStorage.getItem('mhtmlViewerTabs');
+            if (savedTabs) {
+                const allTabs = JSON.parse(savedTabs);
+                renderPaginationControls(allTabs.length, page, perPage);
+            }
+
+        } catch (error) {
+            console.error('Ошибка при загрузке домашней страницы:', error);
+            homePage.innerHTML = `
+            <div class="error-message">
+                Произошла ошибка при загрузке. Пожалуйста, попробуйте снова.
+            </div>
+        `;
         }
     }
+
+    // Модифицированный обработчик кнопки "Главная"
+    homeBtn.addEventListener('click', function () {
+        // Сбрасываем активную вкладку при переходе на главную
+        activeTabId = null;
+        localStorage.removeItem('activeTabId');
+
+        // Восстанавливаем предыдущую страницу или используем сохраненные настройки
+        const savedPage = localStorage.getItem('currentPageBeforeNavigation');
+        const savedSettings = localStorage.getItem('paginationSettings');
+
+        if (savedPage) {
+            const { page, perPage } = JSON.parse(savedPage);
+            loadTabs(page, perPage);
+        } else if (savedSettings) {
+            const { page, perPage } = JSON.parse(savedSettings);
+            loadTabs(page, perPage);
+        } else {
+            loadTabs(); // По умолчанию
+        }
+    });
 
     function isConrolPanelHidden() {
         const controlGroup = galleryControls.querySelectorAll('.control-group');
@@ -1398,7 +1655,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Обработчики событий
     addTabBtn.addEventListener('click', showTabForm);
     addImageTabBtn.addEventListener('click', showImageTabForm);
-    homeBtn.addEventListener('click', showHomePage);
+    homeBtn.addEventListener('click', function () {
+        // восстановление предыдущей страницы или значение по умолчанию
+        const savedPage = localStorage.getItem('currentPageBeforeNavigation');
+        if (savedPage) {
+            const { page, perPage } = JSON.parse(savedPage);
+            loadTabs(page, perPage);
+        } else {
+            showHomePage();
+        }
+    });
     cancelBtn.addEventListener('click', hideTabForm);
     cancelImageBtn.addEventListener('click', hideImageTabForm);
     createImageTabBtn.addEventListener('click', () => createImageTab(true));
@@ -1476,8 +1742,24 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target === imageTabForm) hideImageTabForm();
     });
 
+
     // Инициализация приложения
-    loadTabs();
+    // загрузка вкладки с учётом сохранённых настроек пагинации
+    const initialSettings = savedSettings
+        ? JSON.parse(savedSettings)
+        : { page: 1, perPage: 10 };
+
+    loadTabs(initialSettings.page, initialSettings.perPage).then(() => {
+        if (activeTabId) {
+            const tabExists = tabs.some(tab => tab.id === activeTabId);
+            if (tabExists) {
+                displayTabContent(activeTabId);
+            } else {
+                activeTabId = null;
+                localStorage.removeItem('activeTabId');
+            }
+        }
+    });
 });
 
 // Дополнительная логика для сакуры
