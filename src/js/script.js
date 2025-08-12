@@ -425,13 +425,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 worker.onmessage = (e) => {
                     const message = e.data;
-
+                    // TODO messages from worker
                 };
 
                 worker.onerror = (error) => {
                     console.error('Worker error:', error);
                     // продолжение без Worker
                     initializeDBWithoutWorker(resolve, reject);
+                    worker = null;
                 };
             } catch (e) {
                 console.warn('Worker initialization failed, falling back', e);
@@ -1421,33 +1422,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Работа с изображениями
     async function handleImageFiles(files) {
-        const imageFiles = [];
-        const zipFiles = [];
-
         // Сначала разделяем файлы на изображения и ZIP-архивы
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (isImageFile(file.name)) {
-                imageFiles.push(file);
-            } else if (file.name.toLowerCase().endsWith('.zip')) {
-                zipFiles.push(file);
-            }
-        }
+        const images = Array.from(files).filter(f => isImageFile(f.name));
+        const zips = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.zip'));
 
         // Сортируем изображения по числовому значению в имени файла
-        imageFiles.sort((a, b) => {
-            const numA = extractNumber(a.name);
-            const numB = extractNumber(b.name);
-            return numA - numB;
-        });
+        images.sort((a, b) => extractNumber(a.name) - extractNumber(b.name));
 
         // Загружаем отсортированные изображения
-        for (const file of imageFiles) {
-            await loadImageFile(file);
+        for (const file of images) {
+            loadImageFile(file);
         }
 
         // Обрабатываем ZIP-архивы по очереди
-        for (const file of zipFiles) {
+        for (const file of zips) {
             await loadZipFile(file);
         }
     }
@@ -1465,20 +1453,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Загрузка отдельного изображения
     function loadImageFile(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const imageData = {
-                    name: file.name,
-                    data: e.target.result,
-                    isGif: file.type === 'image/gif'
-                };
-                uploadedImages.push(imageData);
-                renderPreviewImage(imageData, uploadedImages.length - 1);
-                resolve();
-            };
-            reader.readAsDataURL(file);
-        });
+        const imgUrl = URL.createObjectURL(file);
+        const imageData = {
+            name: file.name,
+            data: imgUrl,
+            isGif: file.type === 'image/gif'
+        };
+        uploadedImages.push(imageData);
+        renderPreviewImage(imageData, uploadedImages.length - 1);
     }
 
     // Загрузка изображений из ZIP архива
