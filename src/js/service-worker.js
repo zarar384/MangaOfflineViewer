@@ -3,10 +3,20 @@ const CACHE_NAME = 'manga-viewer-v0.008';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
-  '/script.js',
-  '/worker.js',
-  '/styles.css',
-  '/logo.png',
+  '/css/styles.css',
+  '/images/logo.png',
+  '/js/db.js',
+  '/js/domElements.js',
+  '/js/exportMHTML.js',
+  '/js/gallery.js',
+  '/js/imageUpload.js',
+  '/js/main.js',
+  '/js/pagination.js',
+  '/js/sakura.js',
+  '/js/state.js',
+  '/js/tabs.js',
+  '/js/utils.js',
+  '/js/worker.js',
 ];
 
 // service worker и кэширование статик файлов

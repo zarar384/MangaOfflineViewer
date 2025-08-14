@@ -19,18 +19,11 @@
 }
 
 /* ==================== */
-/* Шрифты */
-/* ==================== */
-@font-face {
-    font-family: 'Anime Font';
-    src: url('https://fonts.cdnfonts.com/css/anime-ace') format('woff2');
-}
-
-/* ==================== */
 /* Основные стили body */
 /* ==================== */
 body {
-    font-family: 'Anime Font', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Amatic SC', sans-serif;
+    font-size: 1.4rem;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -167,7 +160,7 @@ body {
     opacity: 0.7;
     background: rgba(0, 0, 0, 0.2);
     color: white;
-    font-size: 10px;
+    font-size: 50px;
 }
 
 .tab-close:hover {
@@ -190,7 +183,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 25px;
     flex-shrink: 0;
     height: 36px;
     box-shadow: 0 2px 5px rgba(255, 107, 158, 0.5);
@@ -320,7 +313,6 @@ body {
     display: block;
     margin-bottom: 8px;
     color: var(--accent-color);
-    font-size: 0.9rem;
 }
 
 .form-group input {
@@ -825,7 +817,6 @@ body {
 
 .control-label {
     color: white;
-    font-size: 0.9rem;
     margin-bottom: 5px;
 }
 
@@ -901,7 +892,6 @@ input:checked+.slider:before {
 
 .range-value {
     color: white;
-    font-size: 0.8rem;
     text-align: center;
     margin-top: 5px;
 }
@@ -979,6 +969,8 @@ input:checked+.slider:before {
     border-radius: 7px;
     cursor: pointer;
     transition: all 0.3s;
+    font-family: 'Amatic SC',  sans-serif;
+    font-size: 1.4rem;
     font-weight: bold;
     box-shadow: 0 3px 8px rgba(107, 71, 255, 0.5);
     position: relative;
@@ -1061,8 +1053,8 @@ input:checked+.slider:before {
     transition: all 0.3s ease;
     min-width: 40px;
     text-align: center;
-    font-family: 'Anime Font', 'Segoe UI', sans-serif;
-    font-size: 0.9rem;
+    font-family: 'Amatic SC',  sans-serif;
+    font-size: 1.2rem;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     position: relative;
     overflow: hidden;
@@ -1120,7 +1112,8 @@ input:checked+.slider:before {
     border: 1px solid rgba(255, 107, 158, 0.3);
     background: rgba(26, 26, 46, 0.8);
     color: var(--light-color);
-    font-family: 'Anime Font', 'Segoe UI', sans-serif;
+    font-family: 'Amatic SC',  sans-serif;
+    font-size: 1.2rem;
     transition: all 0.3s;
     backdrop-filter: blur(5px);
 }
@@ -1162,7 +1155,7 @@ input:checked+.slider:before {
     justify-content: center;
     height: 200px;
     color: var(--light-color);
-    font-family: 'Anime Font', 'Segoe UI', sans-serif;
+    font-family: 'Amatic SC',  sans-serif;
     font-size: 1.2rem;
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     position: relative;
@@ -1259,7 +1252,8 @@ input:checked+.slider:before {
     border-radius: 10px;
     color: var(--light-color);
     text-align: center;
-    font-family: 'Anime Font', sans-serif;
+    font-family: 'Amatic SC', sans-serif;
+    font-size: 1rem;
     max-width: 80%;
     margin: 50px auto;
     backdrop-filter: blur(5px);
