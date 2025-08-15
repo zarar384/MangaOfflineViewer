@@ -12,8 +12,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     window.DELAY_FOR_SAFARI = state.isIOS ? 120 : 0;
 
     // Service Worker
+    // по изменению FILES_TO_CACHE - поменяй версию CACHE_NAME для очистки старого кэша
+    const CACHE_NAME = 'manga-viewer-v0.019';
+
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('js/service-worker.js')
+        navigator.serviceWorker.register(`js/service-worker.js?cacheName=${CACHE_NAME}`)
             .then((reg) => console.log('Service Worker registered:', reg.scope))
             .catch((err) => {
                 if (!state.silentMode) {

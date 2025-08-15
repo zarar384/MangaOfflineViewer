@@ -6,8 +6,9 @@ import { updateProgress, delay, parseHTMLForImages, decodeQuotedPrintable } from
 export async function initDB() {
     return new Promise((resolve, reject) => {
         try {
-            state.worker = new Worker('js/worker.js');
-            state.worker.onmessage = (e) => {
+            if (!state.worker) {
+                state.worker = new Worker('./js/worker.js', { type: 'module' });
+            } state.worker.onmessage = (e) => {
                 const message = e.data;
                 // TODO: messages from worker
             };
@@ -83,9 +84,7 @@ export async function saveFileToDB(id, fileData) {
 
                 if (message.type === 'decodedHTML') {
                     try {
-                        const decoded = message.decoded;
-                        const images = parseHTMLForImages(decoded);
-
+                        const images = message.images;
                         let preview = null;
 
                         updateProgress(90);

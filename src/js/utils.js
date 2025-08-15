@@ -23,14 +23,22 @@ export function delay(ms) {
 }
 
 export function parseHTMLForImages(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
     const images = [];
-    const pageDivs = doc.querySelectorAll('div[id^="page-"]');
-    pageDivs.forEach(div => {
-        const imgs = div.querySelectorAll('img[src]');
-        imgs.forEach(img => images.push(img.src));
-    });
+
+    // найти все div с id, начинающимся на "page-"
+    const divRegex = /<div\s+[^>]*id="page-[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+    let divMatch;
+    while ((divMatch = divRegex.exec(html)) !== null) {
+        const divContent = divMatch[1];
+
+        // найти все img с src внутри этого div
+        const imgRegex = /<img\s+[^>]*src="([^">]+)"/gi;
+        let imgMatch;
+        while ((imgMatch = imgRegex.exec(divContent)) !== null) {
+            images.push(imgMatch[1]);
+        }
+    }
+
     return images;
 }
 

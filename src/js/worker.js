@@ -1,8 +1,4 @@
-function decodeQuotedPrintable(str) {
-    return str.replace(/=\r?\n/g, '')
-              .replace(/=([0-9A-F]{2})/gi, (_, hex) =>
-                  String.fromCharCode(parseInt(hex, 16)));
-}
+import {  parseHTMLForImages, decodeQuotedPrintable } from './utils.js';
 
 self.onmessage = async function(e) {
     const { id, fileData, type } = e.data;
@@ -14,14 +10,17 @@ self.onmessage = async function(e) {
             self.postMessage({ type: 'progress', progress: 25 });
 
             // декодирование Quoted Printable
-            const decoded = decodeQuotedPrintable(text);
+            const decodedHTML  = decodeQuotedPrintable(text);
             self.postMessage({ type: 'progress', progress: 75 });
+
+            // извлечение изображений
+            const images = parseHTMLForImages(decodedHTML);
 
             // отправка обратно декодированный HTML
             self.postMessage({
                 type: 'decodedHTML',
                 id,
-                decoded
+                images
             });
         }
     } catch (error) {

@@ -1,5 +1,6 @@
 // по изменению FILES_TO_CACHE - поменяй версию CACHE_NAME для очистки старого кэша
-const CACHE_NAME = 'manga-viewer-v0.008';
+const urlParams = new URLSearchParams(location.search);
+const CACHE_NAME = urlParams.get('cacheName') || 'default-cache';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
