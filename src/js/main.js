@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Service Worker
     // по изменению FILES_TO_CACHE - поменяй версию CACHE_NAME для очистки старого кэша
-    const CACHE_NAME = 'manga-viewer-v0.025';
+    const CACHE_NAME = 'manga-viewer-v0.026';
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register(`/service-worker.js?cacheName=${CACHE_NAME}`)

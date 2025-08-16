@@ -1,4 +1,4 @@
-let HOST, PORT;
+let HOST, PORT, BASE_URL;
 
 self.onmessage = async function (e) {
     const { id, file, type } = e.data;
@@ -6,6 +6,7 @@ self.onmessage = async function (e) {
     if (type === 'init') {
         HOST = e.data.host;
         PORT = e.data.port;
+        BASE_URL = `http://${HOST}:${PORT}`;
     }
 
     if (type === 'processFile') {
@@ -20,7 +21,7 @@ self.onmessage = async function (e) {
             const chunk = uint8.slice(start, end);
 
             try {
-                await fetch(`https://${HOST}:${PORT}/upload-chunk`, {
+                await fetch(`${BASE_URL}/upload-chunk`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/octet-stream',
@@ -39,7 +40,7 @@ self.onmessage = async function (e) {
         }
 
         // собрать файл после всех чанков
-        const mergeResp = await fetch(`https://${HOST}:${PORT}/merge-chunks`, {
+        const mergeResp = await fetch(`${BASE_URL}/merge-chunks`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileId: id })

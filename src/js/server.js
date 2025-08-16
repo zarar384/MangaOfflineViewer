@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
-import https from 'https';
+import http from 'http';
 import { join } from 'path';
 import { MHTMLProcessor } from './mhtmlParser.js';
 
@@ -17,16 +17,6 @@ app.use(express.json());
 
 const tempDir = join(process.cwd(), 'temp');
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-// сертификаты
-const certPath = join(process.cwd(), 'cert');
-const privateKey = fs.readFileSync(join(certPath, 'localhost-key.pem'), 'utf8');
-const certificate = fs.readFileSync(join(certPath, 'localhost.pem'), 'utf8');
-
-const httpsOptions = {
-    key: privateKey,
-    cert: certificate,
-};
 
 app.post('/upload-chunk', async (req, res) => {
     const fileId = req.headers['x-file-id'];
@@ -71,6 +61,29 @@ app.post('/merge-chunks', async (req, res) => {
     files.forEach(f => fs.unlinkSync(join(folder, f)));
 });
  
-https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
-    console.log(`HTTPS Server running on port ${PORT}`);
+// // HTTPS
+// const https = require('https');
+
+// // сертификаты
+// const certPath = join(process.cwd(), 'cert');
+// let httpsOptions = {};
+// try {
+//     const privateKey = fs.readFileSync(join(certPath, 'localhost-key.pem'), 'utf8');
+//     const certificate = fs.readFileSync(join(certPath, 'localhost.pem'), 'utf8');
+//     httpsOptions = { key: privateKey, cert: certificate };
+// } catch (err) {
+//     console.warn('HTTPS сертификаты не найдены. HTTPS сервер не будет запущен.');
+// }
+
+// if (httpsOptions.key && httpsOptions.cert) {
+//     https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+//         console.log(`HTTPS Server running on port ${PORT}`);
+//     });
+// }
+
+
+// HTTP
+http.createServer(app).listen(PORT, '0.0.0.0', () => {
+  console.log(`HTTP Server running on port ${PORT}`);
 });
+
