@@ -1,4 +1,5 @@
 // Разные хелперы и утилиты
+import { parse } from 'node-html-parser';
 
 export function updateProgress(progress) {
     const progressBar = document.getElementById('progressBar');
@@ -23,29 +24,28 @@ export function delay(ms) {
 }
 
 export function parseHTMLForImages(html) {
+    const root = parse(html);
     const images = [];
-
     // найти все div с id, начинающимся на "page-"
-    const divRegex = /<div\s+[^>]*id="page-[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-    let divMatch;
-    while ((divMatch = divRegex.exec(html)) !== null) {
-        const divContent = divMatch[1];
+    const pageDivs = root.querySelectorAll('div[id^="page-"]');
 
-        // найти все img с src внутри этого div
-        const imgRegex = /<img\s+[^>]*src="([^">]+)"/gi;
-        let imgMatch;
-        while ((imgMatch = imgRegex.exec(divContent)) !== null) {
-            images.push(imgMatch[1]);
-        }
-    }
+    pageDivs.forEach(div => {
+        const imgs = div.querySelectorAll('img');
+        imgs.forEach(img => {
+            const src = img.getAttribute('src') 
+                     || img.getAttribute('data-original-src') 
+                     || img.getAttribute('data-src');
+            if (src) images.push(src);
+        });
+    });
 
     return images;
 }
 
 export function decodeQuotedPrintable(str) {
-    return str.replace(/=\r?\n/g, '')
-        .replace(/=([0-9A-F]{2})/gi, (_, hex) =>
-            String.fromCharCode(parseInt(hex, 16)));
+ return str.replace(/=\r?\n/g, '')
+              .replace(/=([0-9A-F]{2})/gi, (_, hex) =>
+                  String.fromCharCode(parseInt(hex, 16)));
 }
 
 // проверка, является ли файл изображением
