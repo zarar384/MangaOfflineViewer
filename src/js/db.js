@@ -7,7 +7,7 @@ export async function initDB() {
     return new Promise((resolve, reject) => {
         try {
             if (!state.worker) {
-                state.worker = new Worker('./js/worker.js', { type: 'module' });
+                state.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
             } state.worker.onmessage = (e) => {
                 const message = e.data;
                 // TODO: messages from worker
@@ -82,7 +82,7 @@ export async function saveFileToDB(id, fileData) {
                     updateProgress(message.progress);
                 }
 
-                if (message.type === 'decodedHTML') {
+                if (message.type === 'result') {
                     try {
                         const images = message.images;
                         let preview = null;
@@ -127,7 +127,7 @@ export async function saveFileToDB(id, fileData) {
 
             state.worker.postMessage({
                 id,
-                fileData: arrayBuffer,
+                file: arrayBuffer,
                 type: 'processFile'
             }, [arrayBuffer]);
         });

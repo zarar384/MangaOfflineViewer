@@ -1,5 +1,3 @@
-// live-server
-
 import { getDom } from './domElements.js';
 import { state } from './state.js';
 import { loadTabs, renderTabs, showTabForm, bindTabFileChooser } from './tabs.js';
@@ -13,10 +11,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Service Worker
     // по изменению FILES_TO_CACHE - поменяй версию CACHE_NAME для очистки старого кэша
-    const CACHE_NAME = 'manga-viewer-v0.019';
+    const CACHE_NAME = 'manga-viewer-v0.025';
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register(`js/service-worker.js?cacheName=${CACHE_NAME}`)
+        navigator.serviceWorker.register(`/service-worker.js?cacheName=${CACHE_NAME}`)
             .then((reg) => console.log('Service Worker registered:', reg.scope))
             .catch((err) => {
                 if (!state.silentMode) {
@@ -25,6 +23,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             });
     }
 
+    // worker init
+    if (!state.worker) {
+         state.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+    }
+    const HOST = import.meta.env.VITE_HOST;
+    const PORT = import.meta.env.VITE_PORT;
+    state.worker.postMessage({ type: 'init', host: HOST, port: PORT });
+    
     if (state.isIOS) {
         // упрощение обработки touch-событий
         document.documentElement.style.touchAction = 'manipulation';

@@ -3,21 +3,11 @@ const urlParams = new URLSearchParams(location.search);
 const CACHE_NAME = urlParams.get('cacheName') || 'default-cache';
 const FILES_TO_CACHE = [
   '/',
-  '/index.html',
-  '/css/styles.css',
-  '/images/logo.png',
-  '/js/db.js',
-  '/js/domElements.js',
-  '/js/exportMHTML.js',
-  '/js/gallery.js',
-  '/js/imageUpload.js',
-  '/js/main.js',
-  '/js/pagination.js',
-  '/js/sakura.js',
-  '/js/state.js',
-  '/js/tabs.js',
-  '/js/utils.js',
-  '/js/worker.js',
+  '/index.html', 
+  '/service-worker.js',
+  '/assets/*.css',
+  '/assets/*.png',
+  '/assets/*.js',
 ];
 
 // service worker и кэширование статик файлов

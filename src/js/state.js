@@ -1,9 +1,8 @@
 // Глобальное состояние приложения и кэш изображений
-
 export const state = {
     tabs: [],
     allTabs: [],
-    activeTabId: localStorage.getItem('activeTabId') || null,
+    activeTabId: typeof localStorage !== 'undefined' ? localStorage.getItem('activeTabId') : null,
     isInitialLoad: true,
     isLoading: false,
     db: null,
@@ -16,7 +15,7 @@ export const state = {
 
     // Платформа
     isIOS: /iPhone|iPad|iPod/i.test(navigator.userAgent),
-    silentMode: true,
+    silentMode: false,
 
     // Сохранённые настройки
     get savedSettings() {

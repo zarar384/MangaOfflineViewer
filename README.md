@@ -106,8 +106,4 @@ Simple web application for viewing MHTML files
 - Современный браузер с поддержкой:
   - IndexedDB
   - File API
-  - Drag and Drop API
-
-
- npm install -g http-server   
- http-server -p 8080            
+  - Drag and Drop API          

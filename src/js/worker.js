@@ -1,32 +1,54 @@
-import {  parseHTMLForImages, decodeQuotedPrintable } from './utils.js';
+let HOST, PORT;
 
-self.onmessage = async function(e) {
-    const { id, fileData, type } = e.data;
+self.onmessage = async function (e) {
+    const { id, file, type } = e.data;
 
-    try {
-        if (type === 'processFile') {
-            // декодирование бинарные данные в строку
-            const text = new TextDecoder().decode(fileData);
-            self.postMessage({ type: 'progress', progress: 25 });
+    if (type === 'init') {
+        HOST = e.data.host;
+        PORT = e.data.port;
+    }
 
-            // декодирование Quoted Printable
-            const decodedHTML  = decodeQuotedPrintable(text);
-            self.postMessage({ type: 'progress', progress: 75 });
+    if (type === 'processFile') {
+        const uint8 = new Uint8Array(file);
 
-            // извлечение изображений
-            const images = parseHTMLForImages(decodedHTML);
+        const chunkSize = 5 * 1024 * 1024; // 5MB
+        const totalChunks = Math.ceil(uint8.length / chunkSize);
 
-            // отправка обратно декодированный HTML
-            self.postMessage({
-                type: 'decodedHTML',
-                id,
-                images
-            });
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize, uint8.length);
+            const chunk = uint8.slice(start, end);
+
+            try {
+                await fetch(`https://${HOST}:${PORT}/upload-chunk`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Chunk-Index': i,
+                        'X-Total-Chunks': totalChunks,
+                        'X-File-Id': id
+                    },
+                    body: chunk
+                });
+            } catch (err) {
+                self.postMessage({ type: 'error', id, error: err.message });
+                return;
+            }
+
+            self.postMessage({ type: 'progress', id, progress: ((i + 1) / totalChunks) * 100 });
         }
-    } catch (error) {
-        self.postMessage({
-            type: 'error',
-            error: error.message
+
+        // собрать файл после всех чанков
+        const mergeResp = await fetch(`https://${HOST}:${PORT}/merge-chunks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileId: id })
         });
+
+        if (!mergeResp.ok) throw new Error(`Server returned ${mergeResp.status}`);
+
+        const result = await mergeResp.json();
+
+        self.postMessage({ type: 'result', id, images: result.images });
     }
 };
