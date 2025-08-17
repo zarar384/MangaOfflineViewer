@@ -218,6 +218,22 @@ body {
 }
 
 /* ==================== */
+/* Контейнер для header кнопок */
+/* ==================== */
+.header-buttons-container {
+    display: contents;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.header-buttons-container .add-tab {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+/* ==================== */
 /* Основное содержимое */
 /* ==================== */
 .content {
@@ -969,7 +985,7 @@ input:checked+.slider:before {
     border-radius: 7px;
     cursor: pointer;
     transition: all 0.3s;
-    font-family: 'Amatic SC',  sans-serif;
+    font-family: 'Amatic SC', sans-serif;
     font-size: 1.4rem;
     font-weight: bold;
     box-shadow: 0 3px 8px rgba(107, 71, 255, 0.5);
@@ -996,31 +1012,136 @@ input:checked+.slider:before {
 /* ==================== */
 /* Адаптивные стили */
 /* ==================== */
-@media (max-width: 768px) {
-    .home-page {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-        padding: 15px;
-    }
-
-    .tab-preview {
-        width: 100%;
-        min-height: 280px;
-    }
-
-    .tab-preview-image {
-        height: 200px;
-    }
-
-    .header {
-        flex-wrap: wrap;
-        padding: 8px;
+/* ==================== */
+/* Адаптивность для планшетов */
+/* ==================== */
+@media (max-width: 1024px) {
+    body {
+        overflow: auto;
+        /* разрешаем скролл */
     }
 
     .tabs-container {
-        order: 1;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .tab {
+        min-width: 70px;
+        font-size: 1rem;
+        padding: 6px 24px 6px 12px;
+    }
+}
+
+/* ==================== */
+/* Адаптивность для телефонов - горизонтально */
+/* ==================== */
+@media (max-width: 896px) and (orientation: landscape) {
+    .header {
+        flex-direction: row;
+        align-items: center;
+        padding: 5px 10px;
+    }
+
+    .header-buttons-container {
+        display: contents;
+    }
+
+    .home-button,
+    .header-buttons-container .add-tab {
+        width: auto;
+        font-size: 1rem;
+    }
+
+    .tabs-container {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin-top: 0;
+    }
+
+    .tab {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+}
+
+/* ==================== */
+/* Адаптивность для телефонов - вертикально */
+/* ==================== */
+@media (max-width: 600px) {
+    .header-buttons-container .add-tab {
+        max-width: none;
+        font-size: 1.4rem;
+        flex: 1 1 100px;
+    }
+
+    .header-buttons-container {
+        display: flex;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 5px;
+    }
+
+    .tabs-container {
         width: 100%;
-        margin-top: 8px;
+        order: 2;
+        margin-top: 6px;
+        padding-bottom: 4px;
+    }
+
+    .add-tab {
+        width: 100%;
+        font-size: 20px;
+        height: 32px;
+    }
+
+    .home-button {
+        width: 100%;
+        font-size: 1.2rem;
+        text-align: center;
+    }
+
+    .tab {
+        font-size: 1rem;
+        padding: 6px 20px 6px 10px;
+        max-width: 120px;
+    }
+
+    .tab-close {
+        font-size: 20px;
+    }
+}
+
+/* ==================== */
+/* Очень маленькие экраны (до 400px) */
+/* ==================== */
+@media (max-width: 400px) {
+    .tab {
+        font-size: 0.9rem;
+        padding: 5px 16px 5px 8px;
+        max-width: 100px;
+    }
+
+    .tab-preview {
+        min-height: 240px;
+    }
+
+    .tab-preview-image {
+        height: 160px;
+    }
+
+    .tab-preview-title {
+        font-size: 0.85rem;
+        padding: 4px 6px;
+    }
+
+    .home-button,
+    .add-tab {
+        font-size: 0.9rem;
+        padding: 4px 8px;
     }
 }
 
@@ -1053,7 +1174,7 @@ input:checked+.slider:before {
     transition: all 0.3s ease;
     min-width: 40px;
     text-align: center;
-    font-family: 'Amatic SC',  sans-serif;
+    font-family: 'Amatic SC', sans-serif;
     font-size: 1.2rem;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     position: relative;
@@ -1112,7 +1233,7 @@ input:checked+.slider:before {
     border: 1px solid rgba(255, 107, 158, 0.3);
     background: rgba(26, 26, 46, 0.8);
     color: var(--light-color);
-    font-family: 'Amatic SC',  sans-serif;
+    font-family: 'Amatic SC', sans-serif;
     font-size: 1.2rem;
     transition: all 0.3s;
     backdrop-filter: blur(5px);
@@ -1155,7 +1276,7 @@ input:checked+.slider:before {
     justify-content: center;
     height: 200px;
     color: var(--light-color);
-    font-family: 'Amatic SC',  sans-serif;
+    font-family: 'Amatic SC', sans-serif;
     font-size: 1.2rem;
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     position: relative;
@@ -1189,11 +1310,13 @@ input:checked+.slider:before {
         border-top-color: var(--main-color);
         border-bottom-color: var(--accent-color);
     }
+
     50% {
         transform: rotate(180deg) scale(1.1);
         border-top-color: var(--accent-color);
         border-bottom-color: var(--main-color);
     }
+
     100% {
         transform: rotate(360deg) scale(1);
         border-top-color: var(--main-color);
@@ -1202,12 +1325,16 @@ input:checked+.slider:before {
 }
 
 @keyframes animeDots {
-    0%, 100% {
+
+    0%,
+    100% {
         content: ".";
     }
+
     33% {
         content: "..";
     }
+
     66% {
         content: "...";
     }
@@ -1220,7 +1347,7 @@ input:checked+.slider:before {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 107, 158, 0.3);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
-                inset 0 0 15px rgba(255, 107, 158, 0.1);
+        inset 0 0 15px rgba(255, 107, 158, 0.1);
     text-align: center;
     max-width: 300px;
     margin: 0 auto;
@@ -1261,9 +1388,12 @@ input:checked+.slider:before {
 }
 
 @keyframes animeErrorPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 5px rgba(255, 50, 50, 0.5);
     }
+
     50% {
         box-shadow: 0 0 20px rgba(255, 50, 50, 0.8);
     }

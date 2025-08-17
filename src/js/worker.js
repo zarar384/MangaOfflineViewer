@@ -36,7 +36,7 @@ self.onmessage = async function (e) {
                 return;
             }
 
-            self.postMessage({ type: 'progress', id, progress: ((i + 1) / totalChunks) * 100 });
+            self.postMessage({ type: 'progress', id, progress: ((i + 1) / totalChunks) * 80 });
         }
 
         // собрать файл после всех чанков
@@ -47,9 +47,46 @@ self.onmessage = async function (e) {
         });
 
         if (!mergeResp.ok) throw new Error(`Server returned ${mergeResp.status}`);
+        self.postMessage({ type: 'progress', id, progress: 81 });
 
-        const result = await mergeResp.json();
+        const reader = mergeResp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let images = [];
+        let chunkIndex = 0;
 
-        self.postMessage({ type: 'result', id, images: result.images });
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            chunkIndex++;
+
+            // Base64 строки изображений в буфере
+            const matches = buffer.match(/"data:image\/png;base64,[^"]+"/g);
+            if (matches) {
+                images.push(...matches.map(s => s.slice(1, -1))); // убрать кавычки
+
+                // по 5
+                while (images.length >= 5) {
+                    const batch = images.splice(0, 5);
+                    self.postMessage({ type: 'images', id, images: batch });
+                    self.postMessage({ type: 'progress', id, progress: 81 + Math.min(9, chunkIndex * 0.2) });
+                }
+
+                // обрезать буфер до последнего найденного совпадения
+                const lastMatch = matches[matches.length - 1];
+                const lastIndex = buffer.lastIndexOf(lastMatch) + lastMatch.length;
+                buffer = buffer.slice(lastIndex);
+            }
+        }
+
+        // отправить остаток
+        if (images.length > 0) {
+            self.postMessage({ type: 'images', id, images });
+        }
+
+        self.postMessage({ type: 'result', id });
     }
 };

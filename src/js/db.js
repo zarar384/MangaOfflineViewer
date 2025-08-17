@@ -71,10 +71,12 @@ async function initializeDBWithoutWorker(resolve, reject) {
 }
 
 export async function saveFileToDB(id, fileData) {
-    const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : await fileData.buffer;
+    const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : await fileData.arrayBuffer();
 
     if (state.worker) {
         return new Promise((resolve, reject) => {
+            let allImages= [];
+
             state.worker.onmessage = async (e) => {
                 const message = e.data;
 
@@ -82,45 +84,31 @@ export async function saveFileToDB(id, fileData) {
                     updateProgress(message.progress);
                 }
 
+                // заполняем отдельными пакетами
+                if (message.type === 'images') {
+                    allImages.push(...message.images);
+                    if (state.isIOS) {
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+
                 if (message.type === 'result') {
                     try {
-                        const images = message.images;
-                        let preview = null;
-
                         updateProgress(90);
 
-                        const processAndSave = async () => {
-                            if (images.length > 0) {
-                                if (state.isIOS) {
-                                    setTimeout(async () => {
-                                        try {
-                                            preview = await findFirstValidPreview(images);
-                                            updateProgress(91);
-                                            await saveToIndexedDB(id, preview, images);
-                                            updateProgress(100);
-                                            resolve();
-                                        } catch (err) {
-                                            reject(err);
-                                        }
-                                    }, 0);
-                                } else {
-                                    preview = await findFirstValidPreview(images);
-                                    updateProgress(91);
-                                    await saveToIndexedDB(id, preview, images);
-                                    updateProgress(100);
-                                    resolve();
-                                }
-                            } else {
-                                updateProgress(100);
-                                resolve();
-                            }
-                        };
+                        const preview = allImages.length > 0
+                            ? await findFirstValidPreview(allImages)
+                            : null;
 
-                        await processAndSave();
+                        await saveToIndexedDB(id, preview, allImages);
+                        updateProgress(100);
+                        resolve();
                     } catch (err) {
                         reject(err);
                     }
-                } else if (message.type === 'error') {
+                }
+
+                if (message.type === 'error') {
                     reject(new Error(message.error));
                 }
             };
@@ -132,12 +120,33 @@ export async function saveFileToDB(id, fileData) {
             }, [arrayBuffer]);
         });
     } else {
-        // Fallback без Worker
-        const fullText = await readFileInChunks(arrayBuffer);
-        const decoded = decodeQuotedPrintable(fullText);
-        const images = parseHTMLForImages(decoded);
-        const preview = images.length > 0 ? await findFirstValidPreview(images) : null;
-        return saveToIndexedDB(id, preview, images);
+        // fallback без Worker
+        const reader = new FileReader();
+        let allImages = [];
+
+        return new Promise((resolve, reject) => {
+            reader.onload = async (event) => {
+                try {
+                    const text = event.target?.result;
+                    const decoded = decodeQuotedPrintable(text);
+
+                    allImages = parseHTMLForImages(decoded);
+
+                    const preview = allImages.length > 0
+                        ? await findFirstValidPreview(allImages)
+                        : null;
+
+                    await saveToIndexedDB(id, preview, allImages);
+                    updateProgress(100);
+                    resolve();
+                } catch (err) {
+                    reject(err);
+                }
+            };
+
+            reader.onerror = () => reject(reader.error);
+            reader.readAsText(new Blob([arrayBuffer]));
+        });
     }
 }
 
