@@ -56,7 +56,7 @@ self.onmessage = async function (e) {
         let chunkIndex = 0;
 
         while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await reader.read(); // браузер сам задает размер чанка (value.length)
 
             if (done) break;
 

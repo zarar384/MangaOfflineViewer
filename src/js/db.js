@@ -71,7 +71,7 @@ async function initializeDBWithoutWorker(resolve, reject) {
 }
 
 export async function saveFileToDB(id, fileData) {
-    const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : await fileData.arrayBuffer();
+    const arrayBuffer = fileData instanceof ArrayBuffer ? fileData : await fileData.buffer;
 
     if (state.worker) {
         return new Promise((resolve, reject) => {
