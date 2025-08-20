@@ -15,7 +15,7 @@ export const state = {
 
     // Платформа
     isIOS: /iPhone|iPad|iPod/i.test(navigator.userAgent),
-    silentMode: false,
+    silentMode: true,
 
     // Сохранённые настройки
     get savedSettings() {

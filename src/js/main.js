@@ -27,10 +27,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (!state.worker) {
          state.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
     }
-    const HOST = import.meta.env.VITE_HOST;
-    const PORT = import.meta.env.VITE_PORT;
+    const HOST = (import.meta.env && import.meta.env.VITE_HOST) || 'localhost';
+    const PORT = (import.meta.env && import.meta.env.VITE_PORT) || '51234';
     state.worker.postMessage({ type: 'init', host: HOST, port: PORT });
-    
+
     if (state.isIOS) {
         // упрощение обработки touch-событий
         document.documentElement.style.touchAction = 'manipulation';
