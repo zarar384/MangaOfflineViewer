@@ -10,6 +10,17 @@ self.onmessage = async function (e) {
     }
 
     if (type === 'processFile') {
+        try {
+            const resp = await fetch(`${BASE_URL}/ping`, { method: "GET" });
+            if (!resp.ok) {
+                self.postMessage({ type: 'serverOff', id, file });
+                return;
+            }
+        } catch (err) {
+            self.postMessage({ type: 'serverOff', id, file });
+            return;
+        }
+
         const uint8 = new Uint8Array(file);
 
         const chunkSize = 5 * 1024 * 1024; // 5MB

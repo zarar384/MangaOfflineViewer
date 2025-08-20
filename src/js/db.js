@@ -80,6 +80,12 @@ export async function saveFileToDB(id, fileData) {
             state.worker.onmessage = async (e) => {
                 const message = e.data;
 
+                if (message.type === 'serverOff') {
+                    console.warn("SERVER OFF");
+                    saveFileWithoutWorker(id, message.file).then(resolve).catch(reject);
+                    return;
+                }
+
                 if (message.type === 'progress') {
                     updateProgress(message.progress);
                 }
@@ -91,7 +97,7 @@ export async function saveFileToDB(id, fileData) {
                         await new Promise(r => setTimeout(r, 0));
                     }
                 }
-
+                
                 if (message.type === 'result') {
                     try {
                         updateProgress(90);
@@ -121,33 +127,30 @@ export async function saveFileToDB(id, fileData) {
         });
     } else {
         // fallback без Worker
-        const reader = new FileReader();
-        let allImages = [];
-
-        return new Promise((resolve, reject) => {
-            reader.onload = async (event) => {
-                try {
-                    const text = event.target?.result;
-                    const decoded = decodeQuotedPrintable(text);
-
-                    allImages = parseHTMLForImages(decoded);
-
-                    const preview = allImages.length > 0
-                        ? await findFirstValidPreview(allImages)
-                        : null;
-
-                    await saveToIndexedDB(id, preview, allImages);
-                    updateProgress(100);
-                    resolve();
-                } catch (err) {
-                    reject(err);
-                }
-            };
-
-            reader.onerror = () => reject(reader.error);
-            reader.readAsText(new Blob([arrayBuffer]));
-        });
+        return saveFileWithoutWorker(id, arrayBuffer);
     }
+}
+
+function saveFileWithoutWorker(id, arrayBuffer) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const text = new TextDecoder().decode(arrayBuffer);
+            const decoded = decodeQuotedPrintable(text);
+
+            const allImages = parseHTMLForImages(decoded);
+
+            const preview = allImages.length > 0
+                ? await findFirstValidPreview(allImages)
+                : null;
+
+            await saveToIndexedDB(id, preview, allImages);
+            updateProgress(100);
+
+            resolve();
+        } catch (err) {
+            reject(err);
+        }
+    });
 }
 
 export async function readFromIndexedDB(id) {

@@ -1,5 +1,17 @@
 // Разные хелперы и утилиты
-import { parse } from 'node-html-parser';
+let parseHTML;
+const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+
+if (isBrowser) {
+    parseHTML = (html) => {
+        const parser = new DOMParser();
+        return parser.parseFromString(html, "text/html");
+    };
+} else {
+    // Node.js 
+    const { parse } = await import("node-html-parser");
+    parseHTML = (html) => parse(html);
+}
 
 export function updateProgress(progress) {
     const progressBar = document.getElementById('progressBar');
@@ -24,7 +36,7 @@ export function delay(ms) {
 }
 
 export function parseHTMLForImages(html) {
-    const root = parse(html);
+    const root = parseHTML(html);
     const images = [];
     // найти все div с id, начинающимся на "page-"
     const pageDivs = root.querySelectorAll('div[id^="page-"]');

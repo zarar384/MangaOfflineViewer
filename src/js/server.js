@@ -18,6 +18,10 @@ app.use(express.json());
 const tempDir = join(process.cwd(), 'temp');
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
 app.post('/upload-chunk', async (req, res) => {
     const fileId = req.headers['x-file-id'];
     const chunkIndex = req.headers['x-chunk-index'];
