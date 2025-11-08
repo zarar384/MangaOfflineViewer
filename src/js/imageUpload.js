@@ -10,9 +10,16 @@ export async function handleImageFiles(files) {
     const zips = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.zip'));
 
     images.sort((a, b) => extractNumber(a.name) - extractNumber(b.name));
-
+    
     for (const file of images) {
         loadImageFile(file);
+    }
+
+    // бери название первого зипа и вставляй в imageTabNameInput
+    if (zips.length > 0 && state.dom.imageTabNameInput) {
+        const firstZip = zips[0];
+        const fileNameWithoutExt = firstZip.name.replace(/\.zip$/i, '');
+        state.dom.imageTabNameInput.value = fileNameWithoutExt;
     }
 
     for (const file of zips) {
