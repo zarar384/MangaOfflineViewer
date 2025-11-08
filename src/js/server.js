@@ -4,7 +4,7 @@ import fs from 'fs';
 import http from 'http';
 import { join } from 'path';
 import { MHTMLProcessor } from './mhtmlParser.js';
-
+import path from 'path';
 
 const PORT = 51235;
 
@@ -65,6 +65,19 @@ app.post('/merge-chunks', async (req, res) => {
     files.forEach(f => fs.unlinkSync(join(folder, f)));
 });
  
+const LOG_DIR = path.resolve('../MangaOfflineViewer/logs');
+const LOG_FILE = path.join(LOG_DIR, `manga-server-error-${new Date().toISOString().slice(0, 10)}.log`);
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+
+app.post('/log', (req, res) => {
+  const data = JSON.stringify(req.body) + '\n';
+  fs.appendFile(LOG_FILE, data, { flag: 'a' }, (err) => {
+    if (err) console.error('Failed to write log:', err);
+});
+  res.sendStatus(200);
+});
+
+
 // // HTTPS
 // const https = require('https');
 

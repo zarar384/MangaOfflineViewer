@@ -5,9 +5,9 @@ const FILES_TO_CACHE = [
   '/',
   '/index.html', 
   '/service-worker.js',
-  '/assets/*.css',
-  '/assets/*.png',
-  '/assets/*.js',
+  '/src/css/*.css',
+  '/src/images/*.png',
+  '/src/js/*.js',
 ];
 
 // service worker и кэширование статик файлов

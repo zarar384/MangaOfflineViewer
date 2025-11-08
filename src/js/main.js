@@ -4,6 +4,9 @@ import { loadTabs, renderTabs, showTabForm, bindTabFileChooser } from './tabs.js
 import { renderGallery, updateGalleryStyles, bindGalleryScrollCheck, showHomePage } from './gallery.js';
 import { handleImageFiles, showImageTabForm, hideImageTabForm, createImageTab } from './imageUpload.js';
 import { setSakuraEnabled, toggleSakuraAnimation } from './sakura.js';
+import { initErrorLogger } from './errorLogger.js';
+
+initErrorLogger();
 
 document.addEventListener('DOMContentLoaded', async function () {
     // Платформа и задержки для Safari
