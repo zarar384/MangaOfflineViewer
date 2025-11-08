@@ -79,13 +79,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         state.activeTabId = null;
         localStorage.removeItem('activeTabId');
 
-        const savedPage = localStorage.getItem('currentPageBeforeNavigation');
         const savedSettings = localStorage.getItem('paginationSettings');
 
-        if (savedPage) {
-            const { page, perPage } = JSON.parse(savedPage);
-            loadTabs(page, perPage);
-        } else if (savedSettings) {
+       if (savedSettings) {
             const { page, perPage } = JSON.parse(savedSettings);
             loadTabs(page, perPage);
         } else {

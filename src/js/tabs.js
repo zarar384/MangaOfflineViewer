@@ -219,7 +219,6 @@ function addExportButton(tab) {
 // главная превью — клик по карточке
 export function tabPreviewClicked(e, tab, page, perPage) {
     if (!e.target.classList.contains('tab-preview-close')) {
-        localStorage.setItem('currentPageBeforeNavigation', JSON.stringify({ page, perPage }));
         displayTabContent(tab.id, true);
     }
 }
