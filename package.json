@@ -8,7 +8,7 @@
     "_comment_build": "vite preview ##OR## npx serve -s dist",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node src/js/server.js",
+    "server": "node server/server.js",
     "start": "concurrently \"npm run server\" \"npm run dev\"",
     "start-prod": "npm run build && concurrently \"npm run server\" \"vite preview\""
   },
