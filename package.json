@@ -20,7 +20,6 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "multer": "^2.0.2",
     "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
