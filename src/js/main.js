@@ -1,14 +1,15 @@
 import { getDom } from './domElements.js';
 import { state } from './state.js';
-import { loadTabs, renderTabs, showTabForm, bindTabFileChooser } from './tabs.js';
-import { renderGallery, updateGalleryStyles, bindGalleryScrollCheck, showHomePage } from './gallery.js';
-import { handleImageFiles, showImageTabForm, hideImageTabForm, createImageTab } from './imageUpload.js';
 import { setSakuraEnabled, toggleSakuraAnimation } from './sakura.js';
 import { initErrorLogger } from './errorLogger.js';
 
 initErrorLogger();
 
-document.addEventListener('DOMContentLoaded', async function () {
+document.addEventListener('DOMContentLoaded', async () => {
+    const tabs = await import('./tabs.js');
+    const gallery = await import('./gallery.js');
+    const imageUpload = await import('./imageUpload.js');
+
     // Платформа и задержки для Safari
     window.DELAY_FOR_SAFARI = state.isIOS ? 120 : 0;
 
@@ -28,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // worker init
     if (!state.worker) {
-         state.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+        state.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
     }
     const HOST = (import.meta.env && import.meta.env.VITE_HOST) || 'localhost';
     const PORT = (import.meta.env && import.meta.env.VITE_PORT) || '51234';
@@ -64,13 +65,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     state.dom.animationToggle.addEventListener('change', function () {
         state.scrollAnimationEnabled = this.checked;
-        updateGalleryStyles();
+        gallery.updateGalleryStyles();
     });
 
     state.dom.spacingSlider.addEventListener('input', function () {
         state.imageSpacing = parseInt(this.value);
         state.dom.spacingValue.textContent = state.imageSpacing + 'px';
-        updateGalleryStyles();
+        gallery.updateGalleryStyles();
     });
 
     state.dom.sakuraToggle.addEventListener('change', function () {
@@ -84,24 +85,24 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         const savedSettings = localStorage.getItem('paginationSettings');
 
-       if (savedSettings) {
+        if (savedSettings) {
             const { page, perPage } = JSON.parse(savedSettings);
-            loadTabs(page, perPage);
+            tabs.loadTabs(page, perPage);
         } else {
-            loadTabs();
+            tabs.loadTabs();
         }
     });
 
     // Галерея: подстраховка подзагрузки
-    bindGalleryScrollCheck();
+    gallery.bindGalleryScrollCheck();
 
     // Обработчики форм вкладок
-    state.dom.addTabBtn.addEventListener('click', showTabForm);
-    state.dom.addImageTabBtn.addEventListener('click', showImageTabForm);
-    bindTabFileChooser();
+    state.dom.addTabBtn.addEventListener('click', tabs.showTabForm);
+    state.dom.addImageTabBtn.addEventListener('click', imageUpload.showImageTabForm);
+    tabs.bindTabFileChooser();
 
-    state.dom.cancelImageBtn.addEventListener('click', hideImageTabForm);
-    state.dom.createImageTabBtn.addEventListener('click', () => createImageTab(true));
+    state.dom.cancelImageBtn.addEventListener('click', imageUpload.hideImageTabForm);
+    state.dom.createImageTabBtn.addEventListener('click', () => imageUpload.createImageTab(true));
 
     // Drag and drop для изображений
     state.dom.imageDropZone.addEventListener('click', () => state.dom.imageUploadInput.click());
@@ -115,10 +116,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     state.dom.imageDropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         state.dom.imageDropZone.classList.remove('drag-over');
-        handleImageFiles(e.dataTransfer.files);
+        imageUpload.handleImageFiles(e.dataTransfer.files);
     });
     state.dom.imageUploadInput.addEventListener('change', (e) => {
-        handleImageFiles(e.target.files);
+        imageUpload.handleImageFiles(e.target.files);
         e.target.value = '';
     });
 
@@ -152,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? JSON.parse(state.savedSettings)
         : { page: 1, perPage: 10 };
 
-    await loadTabs(initialSettings.page, initialSettings.perPage).then(() => {
+    await tabs.loadTabs(initialSettings.page, initialSettings.perPage).then(() => {
         if (state.activeTabId) {
             const tabExists = state.tabs.some(tab => tab.id === state.activeTabId);
             if (tabExists) {

@@ -2,8 +2,8 @@
 
 import { state } from './state.js';
 import { clearImagesDB, getPreviewByTabId } from './db.js';
-import { updateProgress } from './utils.js';
 import { renderPaginationControls } from './pagination.js';
+import { loadTabs, tabPreviewClicked, closeTab } from './tabs.js';
 
 // объект состояния галереи
 const galleryState = { images: [] };
@@ -157,7 +157,6 @@ export function createClearButtons(isNotHomePage) {
             localStorage.setItem('mhtmlViewerTabs', JSON.stringify(state.tabs));
             alert('LocalDb очищен');
             // перезагрузка вкладок с настройками по умолчанию
-            const { loadTabs } = await import('./tabs.js');
             loadTabs();
         } catch (e) {
             console.error('Ошибка при очистке LocalDb:', e);
@@ -185,7 +184,6 @@ export function isControlPanelHidden() {
 
 // Главная страница: превью вкладок, плавное появление, пагинация
 export async function showHomePage() {
-    const { tabPreviewClicked, closeTab } = await import('./tabs.js');
 
     state.dom.homePage.innerHTML = `
         <div class="loading-container">
@@ -245,7 +243,6 @@ export async function showHomePage() {
                 const savedTabs = localStorage.getItem('mhtmlViewerTabs');
                 if (savedTabs) {
                     const allTabs = JSON.parse(savedTabs);
-                    const { loadTabs } = await import('./tabs.js');
                     loadTabs(page, perPage);
                 }
             });
@@ -270,7 +267,6 @@ export async function showHomePage() {
         if (savedTabs) {
             const allTabs = JSON.parse(savedTabs);
             renderPaginationControls(allTabs.length, page, perPage, async (newPage, newPerPage) => {
-                const { loadTabs } = await import('./tabs.js');
                 loadTabs(newPage, newPerPage);
             });
         }
@@ -284,3 +280,4 @@ export async function showHomePage() {
         `;
     }
 }
+
