@@ -2,8 +2,8 @@
 
 import { state } from './state.js';
 import { isImageFile, extractNumber } from './utils.js';
-import JSZip from "https://cdn.skypack.dev/jszip@3.10.1";
 import { saveTabs, displayTabContent } from './tabs.js';
+import { renderTabs } from './tabs.js';
 
 export async function handleImageFiles(files) {
     const images = Array.from(files).filter(f => isImageFile(f.name));
@@ -45,7 +45,7 @@ async function loadZipFile(file) {
     state.dom.imageDropZone.appendChild(loadingIndicator);
 
     try {
-        const zip = new JSZip();
+        const zip = window.JSZip;
         const content = await zip.loadAsync(file);
 
         let loadedCount = 0;
@@ -147,7 +147,6 @@ export async function createImageTab(isReadOnly) {
     }
 
     saveTabs();
-    const { renderTabs } = await import('./tabs.js');
     renderTabs();
     await displayTabContent(newTab.id);
     hideImageTabForm();
