@@ -1,29 +1,29 @@
 {
-  "name": "src",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
+  "name": "MangaOfflineViewerAngular",
+  "version": "0.0.0",
+  "private": true,
   "scripts": {
-    "dev": "vite",
-    "_comment_build": "vite preview ##OR## npx serve -s dist",
-    "build": "vite build",
-    "preview": "vite preview",
-    "server": "node server/server.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
-    "start-prod": "npm run build && concurrently \"npm run server\" \"vite preview\""
+    "ng": "ng",
+    "start": "ng serve --open",
+    "build": "ng build --configuration production",
+    "test": "ng test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0",
-    "node-html-parser": "^7.0.1"
+    "@angular/animations": "^20.3.12",
+    "@angular/common": "^20.3.12",
+    "@angular/compiler": "^20.3.12",
+    "@angular/core": "^20.3.12",
+    "@angular/forms": "^20.3.12",
+    "@angular/platform-browser": "^20.3.12",
+    "@angular/platform-browser-dynamic": "^20.3.12",
+    "@angular/router": "^20.3.12",
+    "dexie": "^3.2.2",
+    "zone.js": "~0.14.0"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0",
-    "vite": "^7.1.2"
-  }
+  "@angular/cli": "^20.3.10",
+  "@angular/compiler-cli": "^20.3.12",
+  "@angular-devkit/build-angular": "^20.3.10",
+  "typescript": "5.9.3"
+}
 }

@@ -1,0 +1,22 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strict": true,
+    "lib": ["es2022", "dom"],
+    "baseUrl": "./",
+    "typeRoots": ["node_modules/@types"],
+    "outDir": "./dist/out-tsc"
+  },
+  "angularCompilerOptions": {
+    "enableIvy": true,
+    "strictTemplates": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

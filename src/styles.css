@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+:root{
+  --bg1: #071028;
+  --bg2: #0f172a;
+  --accent1: #ff7eb3;
+  --accent2: #ffd6e8;
+  --card-bg: rgba(255,255,255,0.02);
+}
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: #fff;
+}
+
+app-root { display:block; }
