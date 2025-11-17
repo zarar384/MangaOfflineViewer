@@ -1,0 +1,8 @@
+# Сlean Project
+rm -rf node_modules package-lock.json   
+Remove-Item -Recurse -Force node_modules
+npm cache clean --force    
+
+# Build & Run Prod
+ng build
+http-server ./dist/MangaOfflineViewerAngular -p 8080
