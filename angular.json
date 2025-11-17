@@ -28,8 +28,15 @@
               "src/app/shared/styles/buttons.css"
             ],
             "scripts": [],
-            "serviceWorker": true,
-            "ngswConfigPath": "ngsw-config.json"
+            "serviceWorker": false
+          },
+          "configurations": {
+            "production": {
+              "serviceWorker": true,
+              "ngswConfigPath": "ngsw-config.json",
+              "optimization": true,
+              "outputHashing": "all"
+            }
           }
         },
         "serve": {
