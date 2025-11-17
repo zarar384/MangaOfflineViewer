@@ -1,0 +1,13 @@
+<div class="grid">
+    <div *ngFor="let ch of chapters" class="card" (click)="openChapterInTab(ch)">
+        <div class="cover" >
+            <!-- [style.backgroundImage]="'url(' + ch.pages[0] + ')'" -->
+            <div class="cover-overlay">
+                <div class="title">{{ ch.title }}</div>
+            </div>
+        </div>
+        <div class="meta">
+            <div class="meta-actions">Read →</div>
+        </div>
+    </div>
+</div>

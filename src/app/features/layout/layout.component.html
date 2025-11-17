@@ -1,0 +1,17 @@
+<div class="app-shell">
+  <app-manga-navbar 
+    [activeManga]="selectedMangaId" 
+    (mangaSelected)="selectedMangaId = $event">
+  </app-manga-navbar>
+
+  <ng-container *ngIf="!selectedMangaId; else readerBlock">
+    <app-manga-home 
+      [activeManga]="selectedMangaId" 
+      (mangaSelected)="selectedMangaId = $event">
+    </app-manga-home>
+  </ng-container>
+
+  <ng-template #readerBlock>
+    <app-manga-reader [activeManga]="selectedMangaId"></app-manga-reader>
+  </ng-template>
+</div>

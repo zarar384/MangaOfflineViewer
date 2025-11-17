@@ -1,15 +1,12 @@
 import { Component } from '@angular/core';
-import { MangaHomeComponent } from './features/manga-home/manga-home.component';
+import { LayoutComponent } from './features/layout/layout.component';
 
 @Component({
   selector: 'app-root',
   template: `
-    <div class="app-shell">
-      <app-manga-home></app-manga-home>
-    </div>
+      <app-manga-layout></app-manga-layout>
   `,
-  styles: [`.app-shell { min-height: 100vh; }`],
   standalone: true,
-  imports: [MangaHomeComponent] // импортируем standalone компонент
+  imports: [LayoutComponent]
 })
 export class AppComponent {}

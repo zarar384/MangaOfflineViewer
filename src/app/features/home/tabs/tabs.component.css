@@ -1,0 +1,9 @@
+.card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; box-shadow: 0 6px 20px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03); }
+.card:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 30px rgba(2,6,23,0.8); }
+.cover { height: 240px; background-size: cover; background-position: center; position: relative; }
+.cover-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100%); display:flex; align-items:flex-end; padding: 12px; }
+.title { font-weight: 700; font-size: 16px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+.meta { display:flex; justify-content:space-between; align-items:center; padding:10px; }
+.meta-title { color: rgba(255,255,255,0.9); font-weight:600; }
+.meta-actions { color: #ffd6e8; font-weight:700; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
