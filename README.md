@@ -1,4 +1,8 @@
 # Manga Offline Viewer
+This repository contains two versions of the MangaOfflineViewer project:
+
+- **vanilla-ver** branch — the original Vanilla JS (ESM) version of the application.  
+- **Angular PWA version** — currently in progress. This version is being migrated from the vanilla implementation.
 
 Simple web application for viewing MHTML files
 
