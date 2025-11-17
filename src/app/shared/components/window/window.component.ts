@@ -16,12 +16,15 @@ export class WindowComponent {
   @Input() position: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' = 'center';
   @Input() showClose = true;
   @Input() showHide = false;
+  @Input() blockBackground = true;
 
   @Output() close = new EventEmitter<void>();
   @Output() hide = new EventEmitter<void>();
 
   onClose() { this.close.emit(); }
   onHide() { this.hide.emit(); }
+
+  isCollapsed = false;
 
   get styles() {
     return {
@@ -40,5 +43,10 @@ export class WindowComponent {
       case 'bottom-right': return { bottom: '0', right: '0' };
       default: return {};
     }
+  }
+
+
+  toggleCollapse() {
+    this.isCollapsed = !this.isCollapsed;
   }
 }

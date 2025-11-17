@@ -1,15 +1,15 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { IndexedDbService, MangaChapter } from '../../core/database/indexeddb.service';
 import { ImageUploadService } from '../../core/files/image-upload.service';
 import { CommonModule } from '@angular/common';
 import { TabsComponent } from './tabs/tabs.component';
+import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
 
 @Component({
   selector: 'app-manga-home',
   templateUrl: './manga-home.component.html',
   styleUrls: ['./manga-home.component.css'],
   standalone: true,
-  imports: [TabsComponent,CommonModule]
+  imports: [TabsComponent, CommonModule, SettingsWindowComponent]
 })
 export class MangaHomeComponent implements OnInit {
   @Input() activeManga: string = '';
@@ -38,5 +38,13 @@ export class MangaHomeComponent implements OnInit {
   changePageSize(n: number) {
     this.pageSize = Number(n);
     // this.updateVisibleTabs();
+  }
+
+
+  // windows
+  showSettingsWindow = true;
+
+  onSettingsWindowHide() {
+    this.showSettingsWindow = false;
   }
 }

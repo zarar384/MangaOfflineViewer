@@ -1,3 +1,6 @@
 <div class="manga-home-root">
     <tabs (mangaSelected)="onTabSelected($event)"></tabs>
 </div>
+
+<settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()">
+</settings-window>
