@@ -1,17 +1,23 @@
 <div class="tabs-row">
-  <div class="tabs-scroll">
-    <!-- home button -->
-    <div class="explorer-tab">
-      <button class="tab-btn" (click)="goHome()">Home</button>
-    </div>
-    
-    <!-- tabs -->
-    <ng-container *ngFor="let t of visibleTabs">
-      <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
-        <button class="tab-btn" (click)="selectTab(t)">{{ t.title }}</button>
-        <button class="tab-close" (click)="closeTab(t)">✕</button>
+  <div class="tabs-left">
+    <div class="tabs-scroll">
+      <!-- home button -->
+      <div class="explorer-tab">
+        <button class="tab-btn" (click)="goHome()">Home</button>
       </div>
-    </ng-container>
+
+      <!-- tabs -->
+      <ng-container *ngFor="let t of visibleTabs">
+        <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
+          <button class="tab-btn" (click)="selectTab(t)">{{ t.title }}</button>
+          <button class="tab-close" (click)="closeTab(t)">✕</button>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+
+  <div class="tabs-right">
+    <button class="btn-gradient" (click)="openUploadWindow()">Upload Files</button>
   </div>
 </div>
 
@@ -21,3 +27,6 @@
     <img *ngFor="let p of selectedChapter.pages" [src]="p" />
   </div>
 </div>
+
+<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()">
+</upload-file-window>

@@ -1,0 +1,14 @@
+<div class="window-backdrop" *ngIf="visible">
+  <div class="window" [ngStyle]="styles">
+    <div class="window-header">
+      <span class="window-title">{{ title }}</span>
+      <div class="window-controls">
+        <button *ngIf="showHide" (click)="onHide()">_</button>
+        <button *ngIf="showClose" (click)="onClose()">✕</button>
+      </div>
+    </div>
+    <div class="window-content">
+      <ng-content></ng-content>
+    </div>
+  </div>
+</div>

@@ -1,9 +1,10 @@
-.manga-home-root { font-family: 'Montserrat', Arial, sans-serif; padding: 16px; color: #f5f5f5; background: linear-gradient(180deg, #0f172a 0%, #071028 100%); min-height: 100vh; }
-.tabs-row { display: flex; align-items: center; height: 48px; margin-bottom: 12px; }
-.tabs-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-.explorer-tab { display: flex; align-items: center; background: linear-gradient(180deg, #0b1220, #0e1530); border: 1px solid rgba(255,255,255,0.06); padding: 6px 8px 6px 12px; border-top-left-radius: 6px; border-top-right-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); position: relative; }
-.explorer-tab.active { background: linear-gradient(180deg, #2a3d66, #233455); color: #fff; transform: translateY(-4px); }
-.tab-btn { background: transparent; border: none; color: inherit; font-weight: 600; cursor: pointer; padding-right: 8px; }
-.tab-close { background: transparent; border: none; color: rgba(255,255,255,0.6); cursor: pointer; }
-.reader-preview { margin-top: 24px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; }
-.reader-preview img { max-width: 120px; margin-right: 8px; margin-bottom:8px; }
+.tabs-row { display: flex; align-items: center; justify-content: space-between; height: 48px; margin-bottom: 12px; }
+.tabs-left { display: flex; flex: 1; }
+.tabs-scroll {  display: flex;  gap: 6px;  overflow-x: auto;  padding-bottom: 4px;}
+.tabs-right {  display: flex;  align-items: center;  gap: 6px;}
+.explorer-tab {  display: flex;  align-items: center;  background: linear-gradient(180deg, #0b1220, #0e1530);  border: 1px solid rgba(255,255,255,0.06);  padding: 6px 8px 6px 12px;  border-top-left-radius: 6px;  border-top-right-radius: 6px;  box-shadow: 0 2px 4px rgba(0,0,0,0.4);  position: relative;}
+.explorer-tab.active {  background: linear-gradient(180deg, #2a3d66, #233455);  color: #fff;  transform: translateY(-4px);}
+.tab-btn {  background: transparent;  border: none;  color: inherit;  font-weight: 600;  cursor: pointer;  padding-right: 8px;}
+.tab-close {  background: transparent;  border: none;  color: rgba(255,255,255,0.6);  cursor: pointer;}
+.reader-preview {  margin-top: 24px;  padding: 12px;  background: rgba(255,255,255,0.03);  border-radius: 10px;}
+.reader-preview img {  max-width: 120px;  margin-right: 8px;  margin-bottom: 8px;}

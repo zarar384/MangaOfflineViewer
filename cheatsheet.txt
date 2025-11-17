@@ -6,3 +6,10 @@ npm cache clean --force
 # Build & Run Prod
 ng build
 http-server ./dist/MangaOfflineViewerAngular -p 8080
+
+# Run Dev
+ng serve --hmr=false 
+ng serve --open 
+
+--open - open browswer
+--hmr - Hot Module Replacement - Hot Reload

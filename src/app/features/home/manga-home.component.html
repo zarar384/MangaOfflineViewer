@@ -1,17 +1,3 @@
 <div class="manga-home-root">
-  <div class="controls">
-    <label>Tabs to show:
-      <select (change)="changePageSize($any($event.target).value)" [value]="pageSize">
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-      </select>
-    </label>
-    <label class="upload">
-      <input type="file" (change)="onFiles($event)" multiple />
-      <span>Import Mangas</span>
-    </label>
-  </div>
-
     <tabs (mangaSelected)="onTabSelected($event)"></tabs>
 </div>

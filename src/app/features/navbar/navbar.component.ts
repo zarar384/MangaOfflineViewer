@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { IndexedDbService, MangaChapter } from 'src/app/core/database/indexeddb.service';
+import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 
 @Component({
   selector: 'app-manga-navbar',
-  imports: [CommonModule],
+  imports: [CommonModule, UploadFileWindowComponent],
   standalone: true,
   templateUrl: './navbar.component.html',
-  styleUrl: './navbar.component.css',
+  styleUrls: ['./navbar.component.css'],
 })
 export class NavbarComponent implements OnInit {
   @Input() activeManga: string = '';
@@ -39,5 +40,16 @@ export class NavbarComponent implements OnInit {
 
   goHome() {
     this.mangaSelected.emit('');
+  }
+
+  // windows
+  showUploadWindow = false;
+
+  openUploadWindow() {
+    this.showUploadWindow = true;
+  }
+
+  onUploadWindowClose() {
+    this.showUploadWindow = false;
   }
 }
