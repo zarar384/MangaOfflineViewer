@@ -75,7 +75,7 @@ self.onmessage = async function (e) {
             chunkIndex++;
 
             // Base64 строки изображений в буфере
-            const matches = buffer.match(/"data:image\/png;base64,[^"]+"/g);
+            const matches = buffer.match(/"data:image\/(jpg|jpeg|png|gif|bmp|webp);base64,[^"]+"/gi);
             if (matches) {
                 images.push(...matches.map(s => s.slice(1, -1))); // убрать кавычки
 
