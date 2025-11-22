@@ -1,0 +1,3 @@
+.reader-container-wrapper {  flex: 1;   overflow-y: auto;   -ms-overflow-style: none;  scrollbar-width: none;}
+
+.reader-container-wrapper::-webkit-scrollbar {  display: none; }

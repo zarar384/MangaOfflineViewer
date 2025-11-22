@@ -1,0 +1,21 @@
+<app-window [visible]="isVisible" title="Settings Mangas" [width]="'500px'" [height]="'400px'" position="bottom-right"
+  [showClose]="false" [showHide]="true" [blockBackground]="false" (hide)="onWindowHide()">
+  <div class="controls">
+    <label>Gap:
+      <input type="range" min="0" max="100" (input)="gapChange.emit(+$event.target.value)">
+    </label>
+
+    <label>Zoom:
+      <input type="range" min="0.5" max="3" step="0.1" (input)="zoomChange.emit(+$event.target.value)">
+    </label>
+
+    <div class="mode-switch">
+    <label>{{ mode === 'scroll' ? 'Scroll Mode' : 'Page Mode' }}:
+      <label class="switch">
+        <input type="checkbox" [checked]="mode === 'page'" (change)="toggleMode($event)">
+        <span class="slider"></span>
+      </label>
+    </label>
+    </div>
+  </div>
+</app-window>

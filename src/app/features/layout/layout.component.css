@@ -1,1 +1,1 @@
-.app-shell { min-height: 100vh; }
+.app-shell {  height: 100vh;   overflow: hidden;  display: flex;  flex-direction: column;}

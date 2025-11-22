@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { MangaHomeComponent } from '../home/manga-home.component';
-import { ReaderComponent } from '../reader/reader.component';
 import { CommonModule } from '@angular/common';
+import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper.component';
 
 @Component({
   selector: 'app-manga-layout',
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   imports: [
     NavbarComponent,
     MangaHomeComponent,
-    ReaderComponent,
+    ReaderWrapperComoponent,
     CommonModule
   ],
   templateUrl: './layout.component.html',

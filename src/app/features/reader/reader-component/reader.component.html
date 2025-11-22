@@ -1,0 +1,10 @@
+<div class="reader-container" [class.page-mode]="mode === 'page'">
+  <img 
+  *ngFor="let src of pages"
+  #imgRef
+  class="reader-img"
+  [attr.data-src]="src"
+  [style.marginBottom.px]="mode === 'scroll' ? gap : 0"
+  [style.transform]="mode === 'scroll' ? 'scale(' + zoom + ')' : 'scale(1)'"
+/>
+</div>

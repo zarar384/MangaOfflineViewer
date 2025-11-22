@@ -1,0 +1,16 @@
+<reader-settings-window
+  [isVisible]="showSettingsWindow" 
+  (hideWindow)="onSettingsWindowHide()"
+  (gapChange)="gap = $event"
+  [(mode)]="mode"
+  (zoomChange)="zoom = $event">
+</reader-settings-window>
+
+<div class="reader-container-wrapper">
+  <manga-reader
+    [pages]="pages"
+    [gap]="gap"
+    [mode]="mode"
+    [zoom]="zoom">
+  </manga-reader>
+</div>
