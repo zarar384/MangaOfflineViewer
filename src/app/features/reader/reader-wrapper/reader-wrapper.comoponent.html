@@ -1,9 +1,9 @@
 <reader-settings-window
   [isVisible]="showSettingsWindow" 
   (hideWindow)="onSettingsWindowHide()"
-  (gapChange)="gap = $event"
+  [(gapLevel)]="gap"
   [(mode)]="mode"
-  (zoomChange)="zoom = $event">
+  [(zoomLevel)]="zoom">
 </reader-settings-window>
 
 <div class="reader-container-wrapper">

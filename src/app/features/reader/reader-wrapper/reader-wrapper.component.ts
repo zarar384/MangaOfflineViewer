@@ -13,8 +13,8 @@ import { ReaderComponent } from '../reader-component/reader.component';
 export class ReaderWrapperComoponent {
   @Input() activeManga: string = '';
 
-  pages: string[] = []
-  gap = 16;
+  pages: string[] = [];
+  gap = 0.5;
   mode: 'scroll'|'page' = 'scroll';
   zoom = 1;
 

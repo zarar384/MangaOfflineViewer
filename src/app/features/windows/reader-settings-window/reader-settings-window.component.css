@@ -1,44 +1,7 @@
-.controls { display: inline-grid; gap: 12px; align-items: center; margin-bottom: 20px; }
+.controls {  display: flex;  flex-direction: column;  gap: 20px;  padding: 15px;}
 
-/* switch TODO CREATE COMPONENT*/
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
+.setting-left {  display: flex;  align-items: center;  gap: 30%;}
+.setting-right {  display: flex;  justify-content: space-between;  align-items: center;  gap: 15px;}
+.setting-label {  font-weight: 500;  min-width: 100px;}
 
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background: linear-gradient(90deg,#ff7eb3,#ff758c);
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
+molv-slider {  flex: 1;  max-width: 200px;}
