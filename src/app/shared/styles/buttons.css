@@ -12,3 +12,28 @@
 .btn-gradient:hover {
   filter: brightness(1.1);
 }
+
+.btn-small-remove {
+  background: linear-gradient(90deg, #db6395, #e32847);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-small-remove:hover {
+  filter: brightness(1.1);
+}
+
+.btn-small-remove:focus {
+  outline: none;
+}

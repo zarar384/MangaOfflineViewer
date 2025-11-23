@@ -8,6 +8,6 @@
   [showHide]="false"
   (close)="onWindowClose()">
   <div>
-    <p>Upload your files here...</p>
+    <drop-uploader [visible]="isVisible" (onFinished)="onUploadFinished()"></drop-uploader>
   </div>
 </app-window>

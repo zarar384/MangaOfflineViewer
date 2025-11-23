@@ -1,0 +1,20 @@
+<div class="drop-area"
+     [class.disabled]="filesProcessing"
+     (drop)="onDrop($event)"
+     (dragover)="onDragOver($event)">
+  <p *ngIf="!filesProcessing">Drag & drop files here or click to select</p>
+  <p *ngIf="filesProcessing">Processing... {{progress | number:'1.0-0'}}%</p>
+
+  <input type="file" multiple (change)="onFilesSelected($event)" style="display:none" #fileInput>
+  <button class="btn-gradient" (click)="fileInput.click()" [disabled]="filesProcessing">Select files</button>
+
+  <div cdkDropList class="thumbs-list" (cdkDropListDropped)="drop($event)">
+    <div class="thumb" *ngFor="let t of thumbnails; let i=index" cdkDrag>
+      <img [src]="t.src" />
+      <div class="meta">
+        <div>{{ t.name }}</div>
+        <button class="btn-small-remove" (click)="remove(i)">x</button>
+      </div>
+    </div>
+  </div>
+</div>
