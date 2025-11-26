@@ -1,4 +1,4 @@
-.btn-gradient {
+.molv-btn-gradient {
   background: linear-gradient(90deg, #ff7eb3, #ff758c);
   padding: 6px 10px;
   border-radius: 6px;
@@ -9,11 +9,11 @@
   transition: all 0.2s ease;
 }
 
-.btn-gradient:hover {
+.molv-btn-gradient:hover {
   filter: brightness(1.1);
 }
 
-.btn-small-remove {
+.molv-btn-small-remove {
   background: linear-gradient(90deg, #db6395, #e32847);
   border: none;
   border-radius: 50%;
@@ -26,14 +26,13 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  margin: 8px;
   transition: all 0.2s ease;
 }
 
-.btn-small-remove:hover {
+.molv-btn-small-remove:hover {
   filter: brightness(1.1);
 }
 
-.btn-small-remove:focus {
+.molv-btn-small-remove:focus {
   outline: none;
 }

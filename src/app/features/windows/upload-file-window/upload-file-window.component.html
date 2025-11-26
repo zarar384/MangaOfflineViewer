@@ -7,7 +7,9 @@
   [showClose]="true"
   [showHide]="false"
   (close)="onWindowClose()">
-  <div>
-    <drop-uploader [visible]="isVisible" (onFinished)="onUploadFinished()"></drop-uploader>
+  <div class="molv-container">
+    <input type="text" class="molv-txtbx" placeholder="Manga Name" [value]="finalName"  />
+    <button class="molv-btn-gradient" (click)="saveAndClose()">Save</button>
+    <drop-uploader [visible]="isVisible" (onFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></drop-uploader>
   </div>
 </app-window>

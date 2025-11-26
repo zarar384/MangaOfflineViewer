@@ -9,19 +9,17 @@
       <!-- tabs -->
       @for (t of visibleTabs; track $index)
       {
-      <ng-container>
         <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
           <button class="tab-btn" (click)="selectTab(t)">{{ t.title }}</button>
           <button class="tab-close" (click)="closeTab(t)">✕</button>
         </div>
-      </ng-container>
       }
     </div>
   </div>
 
   <!-- buttons -->
   <div class="tabs-right">
-    <button class="btn-gradient" (click)="openUploadWindow()">Upload Files</button>
+    <button class="molv-btn-gradient" (click)="openUploadWindow()">Upload Files</button>
   </div>
 </div>
 
@@ -37,5 +35,4 @@
   </div>
 </div>
 }
-<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()">
-</upload-file-window>
+<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()"></upload-file-window>

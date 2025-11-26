@@ -3,16 +3,18 @@
   @else{<p>Processing... {{progress | number:'1.0-0'}}%</p>}
 
   <input type="file" multiple (change)="onFilesSelected($event)" style="display:none" #fileInput>
-  <button class="btn-gradient" (click)="fileInput.click()" [disabled]="filesProcessing">Select files</button>
+  <button class="molv-btn-gradient" (click)="fileInput.click()" [disabled]="filesProcessing">Select files</button>
 
   <div cdkDropList class="thumbs-list" (cdkDropListDropped)="drop($event)">
     @for (t of thumbnails; track $index; let i = $index)
     {
     <div class="thumb" cdkDrag>
+      <div class="header">
+        <button class="molv-btn-small-remove" (click)="remove(i)">x</button>
+      </div>
       <img [src]="t.src" />
       <div class="meta">
         <div>{{ t.name }}</div>
-        <button class="btn-small-remove" (click)="remove(i)">x</button>
       </div>
     </div>
     }

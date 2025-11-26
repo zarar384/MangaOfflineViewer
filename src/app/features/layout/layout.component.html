@@ -4,14 +4,10 @@
 
   @if(!selectedMangaId)
   {
-  <ng-container>
     <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="selectedMangaId = $event">
     </app-manga-home>
-  </ng-container>
   }
   @else{
-  <ng-template>
     <app-manga-reader [activeManga]="selectedMangaId"></app-manga-reader>
-  </ng-template>
   }
 </div>

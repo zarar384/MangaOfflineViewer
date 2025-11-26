@@ -15,6 +15,7 @@ import { decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages,
 export class DropUploaderComponents implements OnChanges {
   @Input() visible = true;
   @Output() onFinished = new EventEmitter<void>();
+  @Output() fileSelected = new EventEmitter<string>();
 
   filesProcessing = false;
   progress = 0;
@@ -44,6 +45,7 @@ export class DropUploaderComponents implements OnChanges {
         await this.processFile(f);
       }
       this.onFinished.emit();
+      this.fileSelected.emit(files[0]?.name);
     } catch (err) {
       console.error('Upload error', err);
     } finally {

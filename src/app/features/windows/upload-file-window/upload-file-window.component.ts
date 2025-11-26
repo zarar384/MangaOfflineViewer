@@ -14,11 +14,18 @@ export class UploadFileWindowComponent {
   @Input() isVisible = true;
   @Output() closeWindow = new EventEmitter<void>();
 
+  finalName: string | null = null;
+
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');
   }
 
   onWindowClose() {
+    this.closeWindow.emit();
+  }
+
+  saveAndClose(){
+    // save logic here
     this.closeWindow.emit();
   }
 }
