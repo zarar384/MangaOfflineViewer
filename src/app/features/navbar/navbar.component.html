@@ -7,12 +7,15 @@
       </div>
 
       <!-- tabs -->
-      <ng-container *ngFor="let t of visibleTabs">
+      @for (t of visibleTabs; track $index)
+      {
+      <ng-container>
         <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
           <button class="tab-btn" (click)="selectTab(t)">{{ t.title }}</button>
           <button class="tab-close" (click)="closeTab(t)">✕</button>
         </div>
       </ng-container>
+      }
     </div>
   </div>
 
@@ -22,12 +25,17 @@
   </div>
 </div>
 
-<div class="reader-preview" *ngIf="selectedChapter">
+@if(selectedChapter)
+{
+<div class="reader-preview" >
   <h3>Preview: {{selectedChapter.title}}</h3>
   <div class="preview-pages">
-    <img *ngFor="let p of selectedChapter.pages" [src]="p" />
+    @for (p of selectedChapter.pages; track $index)
+    {
+    <img [src]="p" />
+    }
   </div>
 </div>
-
+}
 <upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()">
 </upload-file-window>

@@ -1,17 +1,11 @@
-<div class="reader-container" 
-     [class.page-mode]="mode === 'page'" 
-     [class.scroll-mode]="mode === 'scroll'">
-  
-  <div *ngFor="let src of pages" 
-       class="image-container"
-       [style.zoom]="mode === 'scroll' ? zoom : 1"
-       [style.margin-bottom.px]="mode === 'scroll' ? gap : 0">
-    
-    <img 
-      #imgRef
-      class="reader-img"
-      [attr.data-src]="src"
-    />
-    
+<div class="reader-container" [class.page-mode]="mode === 'page'" [class.scroll-mode]="mode === 'scroll'">
+
+  @for (src of pages; track $index)
+  {
+  <div class="image-container" [style.zoom]="mode === 'scroll' ? zoom : 1"
+    [style.margin-bottom.px]="mode === 'scroll' ? gap : 0">
+
+    <img #imgRef class="reader-img" [attr.data-src]="src" />
   </div>
+  }
 </div>

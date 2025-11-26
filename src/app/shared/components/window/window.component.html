@@ -1,13 +1,14 @@
-<div class="window-backdrop" *ngIf="visible" [class.backdrop-disabled]="!blockBackground">
+@if(visible){
+<div class="window-backdrop" [class.backdrop-disabled]="!blockBackground">
   <div class="window" [ngClass]="{ 'collapsed': isCollapsed }" [ngStyle]="styles">
 
     <div class="window-header">
       <span class="window-title">{{ title }}</span>
       <div class="window-controls">
-        <button *ngIf="showHide" (click)="toggleCollapse()">
+        @if(showHide){<button (click)="toggleCollapse()">
           {{ isCollapsed ? '▔' : '_' }}
-        </button>
-        <button *ngIf="showClose" (click)="onClose()">✕</button>
+        </button>}
+        @if(showClose){<button (click)="onClose()">✕</button>}
       </div>
     </div>
 
@@ -17,3 +18,4 @@
 
   </div>
 </div>
+}
