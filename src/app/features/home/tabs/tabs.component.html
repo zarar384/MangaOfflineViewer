@@ -1,6 +1,9 @@
 <div class="grid">
     @for (tabData of tabs; track tabData.tab.id) {
     <div class="card" (click)="openChapterInTab(tabData)">
+        <div class="header">
+            <button class="molv-btn-small-remove" (click)="remove(tabData.tab.id!); $event.stopPropagation()">x</button>
+        </div>
         <div class="cover" [style.backgroundImage]="'url(' + tabData.previewUrl + ')'">
             <div class="cover-overlay">
                 <div class="title">{{ tabData.tab.name }}</div>

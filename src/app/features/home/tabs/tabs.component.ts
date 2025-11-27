@@ -57,4 +57,10 @@ export class TabsComponent implements OnInit {
       this.mangaSelected.emit(tabData.tab.id);
     }
   }
+
+  remove(tabId: number) {
+    this.tabRepo.deleteTabWithPages(tabId).then(() => {
+      this.tabs = this.tabs.filter(t => t.tab.id !== tabId);
+    });
+  }
 }

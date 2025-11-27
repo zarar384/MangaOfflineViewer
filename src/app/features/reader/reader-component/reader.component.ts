@@ -50,7 +50,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
   private setupObserver() {
     this.observer = new IntersectionObserver((entries) => {
-      // Сортируем по близости к viewport
+      // sort entries by proximity to viewport
       const visibleEntries = entries
         .filter(entry => entry.isIntersecting)
         .sort((a, b) => {
@@ -59,7 +59,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
           return aDistance - bDistance;
         });
 
-      // Загружаем только ближайшие изображения, не превышая лимит
+        // logic to load images with concurrency limit
       for (const entry of visibleEntries) {
         if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) {
           break;

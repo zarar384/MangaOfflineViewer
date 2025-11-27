@@ -9,17 +9,17 @@ export class PagesRepository {
 
   // CRUD base 
   async add(page: Page) {
-    const store = await this.db.tx(STORE_PAGES);
+    const store = await this.db.tx(STORE_PAGES, 'readwrite');
     return this.db.wrap(store.add(page));
   }
 
   async update(page: Page) {
-    const store = await this.db.tx(STORE_PAGES);
+    const store = await this.db.tx(STORE_PAGES, 'readwrite');
     return this.db.wrap(store.put(page));
   }
 
   async delete(id: number) {
-    const store = await this.db.tx(STORE_PAGES);
+    const store = await this.db.tx(STORE_PAGES, 'readwrite');
     return this.db.wrap(store.delete(id));
   }
 
