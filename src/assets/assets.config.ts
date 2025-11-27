@@ -1,0 +1,1 @@
+export const DEFAULT_PREVIEW = 'assets/images/default-tabs-preview.png';

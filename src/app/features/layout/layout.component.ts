@@ -17,5 +17,5 @@ import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper
   styleUrls: ['./layout.component.css'],
 })
 export class LayoutComponent {
-  selectedMangaId: string = '';
+  selectedMangaId: number|null = null;
 }

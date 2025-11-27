@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { IndexedDbService } from 'src/app/core/database/indexeddb.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import * as JSZip from 'jszip';
 import { decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages, sleepIfNeeded } from '../../utils/file-parsing';
+import { Tab } from 'src/app/core/models/tab.model';
+import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
+import { Page } from 'src/app/core/models/page.model';
 
 @Component({
   selector: 'drop-uploader',
@@ -12,26 +14,30 @@ import { decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages,
   templateUrl: './drop-uploader.components.html',
   styleUrl: './drop-uploader.components.css',
 })
-export class DropUploaderComponents implements OnChanges {
+export class DropUploaderComponents {
   @Input() visible = true;
-  @Output() onFinished = new EventEmitter<void>();
+  @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
 
   filesProcessing = false;
   progress = 0;
-  thumbnails: { id: string; src: string; name?: string }[] = [];
+  pages:Page[] = [];
+  urls:{name?:string; src: string}[] = [];
   // TODO saved as Blobs:
   // items: { id:string; blob: Blob; name?:string }[] = [];
 
-  constructor(private db: IndexedDbService, private sanitizer: DomSanitizer) { }
-  ngOnChanges(changes: SimpleChanges) {
-    if ('visible' in changes && !this.visible) {
-      this.clearAll();
-    }
+  constructor(private tabsRepo: TabsRepository, private sanitizer: DomSanitizer) { }
+
+  saveAll(tab: Tab) {
+    this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).then(() => {
+      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages);
+    }).catch(err => {
+      console.error('DropUploaderComponents.saveAll - error saving', err);
+    });
   }
 
   clearAll() {
-    this.thumbnails = [];
+    this.pages = [];
     console.log('DropUploaderComponents.clearAll - parent window closed');
   }
 
@@ -44,7 +50,7 @@ export class DropUploaderComponents implements OnChanges {
       for (const f of Array.from(files)) {
         await this.processFile(f);
       }
-      this.onFinished.emit();
+      this.onDropFinished.emit();
       this.fileSelected.emit(files[0]?.name);
     } catch (err) {
       console.error('Upload error', err);
@@ -96,8 +102,8 @@ export class DropUploaderComponents implements OnChanges {
     const text = new TextDecoder().decode(arrayBuffer);
     const decoded = decodeQuotedPrintable(text);
     const imgs = parseHTMLForImages(decoded);
-    // add images
 
+    // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
       await this.addBlobImage(blob, `mhtml-${generateId()}`);
@@ -113,21 +119,25 @@ export class DropUploaderComponents implements OnChanges {
 
   private async addBlobImage(blob: Blob, name?: string) {
     const url = URL.createObjectURL(blob);
-    this.thumbnails.push({ id: generateId(), src: url, name });
-  }
-
-  private async addDataUrl(dataUrl: string) {
-    this.thumbnails.push({ id: generateId(), src: dataUrl });
+    this.pages.push({
+      src: blob, name,
+      tab: 0
+    });
+    this.urls.push({
+      src: url, name,
+    });
   }
 
   remove(index: number) {
-    const it = this.thumbnails[index];
-    if (it?.src?.startsWith('blob:')) URL.revokeObjectURL(it.src);
-    this.thumbnails.splice(index, 1);
+    const it = this.pages[index];
+    const itUrl = this.urls[index];
+    if (itUrl?.src?.startsWith('blob:')) URL.revokeObjectURL(itUrl.src);
+    this.pages.splice(index, 1);
+    this.urls.splice(index, 1);
   }
 
   drop(event: CdkDragDrop<any[]>) {
-    moveItemInArray(this.thumbnails, event.previousIndex, event.currentIndex);
+    moveItemInArray(this.pages, event.previousIndex, event.currentIndex);
   }
 
   // Drop handling

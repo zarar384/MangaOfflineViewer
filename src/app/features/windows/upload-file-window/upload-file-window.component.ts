@@ -1,7 +1,8 @@
-import { Component, EventEmitter, Output, Input } from '@angular/core';
+import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 import { CommonModule } from '@angular/common';
 import { DropUploaderComponents } from 'src/app/shared/components/drop-uploader/drop-uploader.components';
+import { Tab } from 'src/app/core/models/tab.model';
 
 @Component({
   selector: 'upload-file-window',
@@ -11,9 +12,12 @@ import { DropUploaderComponents } from 'src/app/shared/components/drop-uploader/
   standalone: true
 })
 export class UploadFileWindowComponent {
-  @Input() isVisible = true;
+  @Input() isVisible = false;
   @Output() closeWindow = new EventEmitter<void>();
 
+  @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
+
+  tab: Tab = { name: '' };
   finalName: string | null = null;
 
   onUploadFinished() {
@@ -21,11 +25,14 @@ export class UploadFileWindowComponent {
   }
 
   onWindowClose() {
+    this.dropUploader?.clearAll();
     this.closeWindow.emit();
   }
 
-  saveAndClose(){
-    // save logic here
+  saveAndClose() {
+    this.tab.name = this.finalName ?? 'Untitled';
+    this.dropUploader?.saveAll(this.tab);
+
     this.closeWindow.emit();
   }
 }

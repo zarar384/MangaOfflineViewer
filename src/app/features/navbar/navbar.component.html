@@ -10,7 +10,7 @@
       @for (t of visibleTabs; track $index)
       {
         <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
-          <button class="tab-btn" (click)="selectTab(t)">{{ t.title }}</button>
+          <button class="tab-btn" (click)="selectTab(t)">{{ t.name }}</button>
           <button class="tab-close" (click)="closeTab(t)">✕</button>
         </div>
       }
@@ -23,10 +23,10 @@
   </div>
 </div>
 
-@if(selectedChapter)
+<!-- @if(selectedChapter)
 {
 <div class="reader-preview" >
-  <h3>Preview: {{selectedChapter.title}}</h3>
+  <h3>Preview: {{selectedChapter.name}}</h3>
   <div class="preview-pages">
     @for (p of selectedChapter.pages; track $index)
     {
@@ -34,5 +34,5 @@
     }
   </div>
 </div>
-}
+} -->
 <upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()"></upload-file-window>

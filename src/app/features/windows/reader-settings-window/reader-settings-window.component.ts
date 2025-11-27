@@ -11,7 +11,7 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
   standalone: true
 })
 export class ReaderSettingsWindowComponent {
-  @Input() isVisible = true;
+  @Input() isVisible = false;
   @Input() mode: 'scroll' | 'page' = 'scroll';
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;

@@ -1,7 +1,10 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
+import { PagesRepository } from 'src/app/core/repositories/pages.repository';
+import { Page } from 'src/app/core/models/page.model';
+import { numericNameSort } from 'src/app/shared/utils/file-parsing';
 
 @Component({
   selector: 'app-manga-reader',
@@ -10,15 +13,32 @@ import { ReaderComponent } from '../reader-component/reader.component';
   styleUrl: './reader-wrapper.comoponent.css',
   standalone: true
 })
-export class ReaderWrapperComoponent {
-  @Input() activeManga: string = '';
+export class ReaderWrapperComoponent implements OnInit {
+  @Input() activeManga: number | null = null;;
 
-  pages: string[] = [];
+  pages: Page[] = [];
   gap = 0.5;
-  mode: 'scroll'|'page' = 'scroll';
+  mode: 'scroll' | 'page' = 'scroll';
   zoom = 1;
 
-    // windows
+  constructor(private pagesRepo: PagesRepository) { }
+
+  ngOnInit(): void {
+    this.loadPages();
+  }
+
+  loadPages() {
+    if (!this.activeManga) return;
+
+    this.pagesRepo.getByTab(this.activeManga)
+      .then(pages => {
+        this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
+        console.log('Loaded pages:', this.pages);
+      })
+      .catch(err => console.error('Error loading pages', err));
+  }
+
+  // windows
   showSettingsWindow = true;
 
   onSettingsWindowHide() {

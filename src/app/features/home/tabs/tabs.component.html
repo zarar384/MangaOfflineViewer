@@ -1,11 +1,9 @@
 <div class="grid">
-    @for (ch of chapters; track $index)
-    {
-    <div class="card" (click)="openChapterInTab(ch)">
-        <div class="cover">
-            <!-- [style.backgroundImage]="'url(' + ch.pages[0] + ')'" -->
+    @for (tabData of tabs; track tabData.tab.id) {
+    <div class="card" (click)="openChapterInTab(tabData)">
+        <div class="cover" [style.backgroundImage]="'url(' + tabData.previewUrl + ')'">
             <div class="cover-overlay">
-                <div class="title">{{ ch.title }}</div>
+                <div class="title">{{ tabData.tab.name }}</div>
             </div>
         </div>
         <div class="meta">

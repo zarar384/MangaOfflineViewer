@@ -97,5 +97,5 @@ export function numericNameSort(a: string, b: string) {
     return a.localeCompare(b);
   }
 
-  export function generateId() { return Math.random().toString(36).slice(2, 9); }
+  export function generateId():string { return Math.random().toString(36).slice(2, 9); }
   export function sleepIfNeeded() { return new Promise(r => setTimeout(r, 0)); }

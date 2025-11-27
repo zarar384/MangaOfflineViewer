@@ -10,7 +10,7 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
   standalone: true
 })
 export class SettingsWindowComponent {
-  @Input() isVisible = true;
+  @Input() isVisible = false;
   @Output() hideWindow = new EventEmitter<void>();
 
   onWindowHide() {

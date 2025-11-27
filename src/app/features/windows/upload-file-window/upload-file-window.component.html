@@ -10,6 +10,6 @@
   <div class="molv-container">
     <input type="text" class="molv-txtbx" placeholder="Manga Name" [value]="finalName"  />
     <button class="molv-btn-gradient" (click)="saveAndClose()">Save</button>
-    <drop-uploader [visible]="isVisible" (onFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></drop-uploader>
+    <drop-uploader [visible]="isVisible" (onDropFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></drop-uploader>
   </div>
 </app-window>
