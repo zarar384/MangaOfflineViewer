@@ -7,6 +7,7 @@ import { decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages,
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
+import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 
 @Component({
   selector: 'drop-uploader',
@@ -26,7 +27,7 @@ export class DropUploaderComponents {
   // TODO saved as Blobs:
   // items: { id:string; blob: Blob; name?:string }[] = [];
 
-  constructor(private tabsRepo: TabsRepository, private sanitizer: DomSanitizer) { }
+  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService) { }
 
   saveAll(tab: Tab) {
     this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).then(() => {
@@ -118,7 +119,7 @@ export class DropUploaderComponents {
   }
 
   private async addBlobImage(blob: Blob, name?: string) {
-    const url = URL.createObjectURL(blob);
+    const url = this.urlService.createUrl(name!, blob);
     this.pages.push({
       src: blob, name,
       tab: 0

@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, Input, QueryList, ViewChildren, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from 'src/app/core/models/page.model';
+import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 
 @Component({
   selector: 'manga-reader',
@@ -21,7 +22,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
   private currentlyLoading = 0;
 
   @ViewChildren('imgRef') imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
-
+  constructor(private urlService: ObjectUrlService) { }
   ngAfterViewInit(): void {
     this.setupObserver();
     this.observeImages();
@@ -124,7 +125,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
   private createPageUrls(pages: Page[]) {
     pages.forEach(page => {
       if (page.src instanceof Blob && page.id !== undefined && !this.pageUrls.has(page.id)) {
-        const blobUrl = URL.createObjectURL(page.src);
+        const blobUrl = this.urlService.createUrl(`${page.id}`, page.src);
         this.pageUrls.set(page.id, blobUrl);
       }
     });

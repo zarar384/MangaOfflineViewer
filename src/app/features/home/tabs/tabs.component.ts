@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
+import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
 
 
@@ -16,7 +17,7 @@ export class TabsComponent implements OnInit {
   @Output() mangaSelected = new EventEmitter<number>();
   tabs: { tab: Tab; previewUrl: string }[] = [];
 
-  constructor(private tabRepo: TabsRepository) { }
+  constructor(private tabRepo: TabsRepository, private urlService: ObjectUrlService) { }
 
   async ngOnInit() {
     const tabs = await this.tabRepo.getAll();
@@ -24,28 +25,19 @@ export class TabsComponent implements OnInit {
     this.tabs = await Promise.all(
       tabs.map(async (tab) => ({
         tab,
-        previewUrl: await this.getPreviewUrl(tab.preview)
+        previewUrl: await this.getPreviewUrl(tab.name, tab.preview)
       }))
     );
   }
 
-  private async getPreviewUrl(preview: Blob | string | undefined): Promise<string> {
+  private async getPreviewUrl(name: string, preview: Blob | string | undefined): Promise<string> {
     if (preview instanceof Blob) {
-      return await this.blobToDataUrl(preview);
+      return this.urlService.createUrl(name, preview);
     } else if (typeof preview === 'string') {
       return preview;
     } else {
       return this.getDefaultPreview();
     }
-  }
-
-  private blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   }
 
   private getDefaultPreview(): string {
