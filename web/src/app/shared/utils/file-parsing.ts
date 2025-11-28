@@ -90,12 +90,18 @@ function normalizeSrc(raw: string): string {
 
 // sorts file names numerically when possible
 export function numericNameSort(a: string, b: string) {
-    // extract a number from a name
-    const na = a.match(/(\d+)/);
-    const nb = b.match(/(\d+)/);
-    if (na && nb) return Number(na[0]) - Number(nb[0]);
-    return a.localeCompare(b);
-  }
+  // extract a number from a name
+  const na = a.match(/(\d+)/);
+  const nb = b.match(/(\d+)/);
+  if (na && nb) return Number(na[0]) - Number(nb[0]);
+  return a.localeCompare(b);
+}
 
-  export function generateId():string { return Math.random().toString(36).slice(2, 9); }
-  export function sleepIfNeeded() { return new Promise(r => setTimeout(r, 0)); }
+export function generateId(): string { return Math.random().toString(36).slice(2, 9); }
+export function sleepIfNeeded() { return new Promise(r => setTimeout(r, 0)); }
+
+export function calculateProgress(start: number, end: number, index: number, total: number): number {
+  if (total === 0) return end;
+  const step = (end - start) / total;
+  return Math.min(end, Math.floor(start + step * index));
+}

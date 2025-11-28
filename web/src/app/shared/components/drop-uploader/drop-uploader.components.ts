@@ -3,11 +3,12 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DomSanitizer } from '@angular/platform-browser';
 import * as JSZip from 'jszip';
-import { decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages, sleepIfNeeded } from '../../utils/file-parsing';
+import { calculateProgress, decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
+import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 
 @Component({
   selector: 'drop-uploader',
@@ -22,12 +23,12 @@ export class DropUploaderComponents {
 
   filesProcessing = false;
   progress = 0;
-  pages:Page[] = [];
-  urls:{name?:string; src: string}[] = [];
+  pages: Page[] = [];
+  urls: { name?: string; src: string }[] = [];
   // TODO saved as Blobs:
   // items: { id:string; blob: Blob; name?:string }[] = [];
 
-  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService) { }
+  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService, private mhtmlService: MhtmlExtractorService) { }
 
   saveAll(tab: Tab) {
     this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).then(() => {
@@ -39,6 +40,7 @@ export class DropUploaderComponents {
 
   clearAll() {
     this.pages = [];
+    this.urls = [];
     console.log('DropUploaderComponents.clearAll - parent window closed');
   }
 
@@ -99,17 +101,18 @@ export class DropUploaderComponents {
 
   // MHTML
   private async extractMhtml(file: File) {
-    const arrayBuffer = await file.arrayBuffer();
-    const text = new TextDecoder().decode(arrayBuffer);
-    const decoded = decodeQuotedPrintable(text);
-    const imgs = parseHTMLForImages(decoded);
+    const imgs = await this.mhtmlService.extractImagesFromMhtml(file);
 
+    this.mhtmlService.progress$.subscribe(p => {
+      this.progress = p;
+    });
+
+    let index = 0;
     // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
       await this.addBlobImage(blob, `mhtml-${generateId()}`);
-      this.progress = Math.min(90, this.progress + 1);
-      await sleepIfNeeded();
+      this.progress = calculateProgress(85, 100, index++, imgs.length); await sleepIfNeeded();
     }
   }
 

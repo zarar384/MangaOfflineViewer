@@ -30,7 +30,8 @@
               "src/app/shared/styles/window-container.css"
             ],
             "scripts": [],
-            "serviceWorker": false
+            "serviceWorker": false,
+            "webWorkerTsConfig": "tsconfig.worker.json"
           },
           "configurations": {
             "production": {

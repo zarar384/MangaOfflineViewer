@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/worker",
+    "lib": ["es2022", "webworker"],
+    "types": [], 
+    "skipLibCheck": true,
+    "module": "es2020",
+    "target": "es2022"
+  },
+  "include": [
+    "src/**/*.worker.ts"
+  ],
+  "exclude": [
+    "src/main.ts",
+    "src/**/*.spec.ts"
+  ]
+}

@@ -25,6 +25,7 @@ export class UploadFileWindowComponent {
   }
 
   onWindowClose() {
+    this.finalName = null;
     this.dropUploader?.clearAll();
     this.closeWindow.emit();
   }

@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist/out-tsc",
-    "types": []
+    "types": [] 
   },
   "files": [
     "src/main.ts",
@@ -10,5 +10,9 @@
   ],
   "include": [
     "src/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.worker.ts",
+    "src/**/*.worker.ts"
   ]
 }
