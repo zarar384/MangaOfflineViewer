@@ -30,7 +30,7 @@ export class DbService {
     };
 
     request.onerror = () => {
-      console.error('IndexedDB error', request.error);
+      console.error('IndexedDB init error', request.error);
     };
   }
 
@@ -40,7 +40,7 @@ export class DbService {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onupgradeneeded = (e) => {
+      request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_TABS)) {
           db.createObjectStore(STORE_TABS, { keyPath: 'id', autoIncrement: true });
@@ -60,15 +60,37 @@ export class DbService {
     });
   }
 
-  async tx(store: string, mode: IDBTransactionMode = 'readonly') {
+  async run<T>(
+    storeName: string,
+    mode: IDBTransactionMode,
+    operation: (store: IDBObjectStore) => IDBRequest<T>
+  ): Promise<T> {
     const db = await this.getDb();
-    return db.transaction(store, mode).objectStore(store);
-  }
 
-  wrap<T>(req: IDBRequest<T>): Promise<T> {
     return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+
+      const req = operation(store);
+
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+
+      tx.oncomplete = () => {};
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
+  }
+
+  put(storeName: string, value: any) {
+    return this.run(storeName, 'readwrite', store => store.put(value));
+  }
+
+  get(storeName: string, key: IDBValidKey) {
+    return this.run(storeName, 'readonly', store => store.get(key));
+  }
+
+  getAll(storeName: string) {
+    return this.run(storeName, 'readonly', store => store.getAll());
   }
 }

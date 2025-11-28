@@ -8,33 +8,31 @@ export class PagesRepository {
   constructor(private db: DbService) { }
 
   // CRUD base 
+  // put() garantees transaction completion
+  // run to wait for transaction completion, and use it inside to access indexes
   async add(page: Page) {
-    const store = await this.db.tx(STORE_PAGES, 'readwrite');
-    return this.db.wrap(store.add(page));
+    return this.db.put(STORE_PAGES, page);
   }
 
   async update(page: Page) {
-    const store = await this.db.tx(STORE_PAGES, 'readwrite');
-    return this.db.wrap(store.put(page));
+    return this.db.put(STORE_PAGES, page);
   }
 
   async delete(id: number) {
-    const store = await this.db.tx(STORE_PAGES, 'readwrite');
-    return this.db.wrap(store.delete(id));
+    return this.db.run(STORE_PAGES, 'readwrite', store => store.delete(id));
   }
 
-  async get(id: number) : Promise<Page|undefined> {
-    const store = await this.db.tx(STORE_PAGES);
-    return this.db.wrap<Page | undefined>(store.get(id));
+  async get(id: number): Promise<Page | undefined> {
+    return this.db.get(STORE_PAGES, id);
   }
 
-  async getAll() : Promise<Page[]> {
-    const store = await this.db.tx(STORE_PAGES);
-    return this.db.wrap<Page[]>(store.getAll());
+  async getAll(): Promise<Page[]> {
+    return this.db.getAll(STORE_PAGES);
   }
 
   async getByTab(tabId: number): Promise<Page[]> {
-    const index = await (await this.db.tx(STORE_PAGES)).index('tab');
-    return this.db.wrap<Page[]>(index.getAll(IDBKeyRange.only(tabId)));
+    return this.db.run(STORE_PAGES, 'readonly', store =>
+      (store.index('tab') as IDBIndex).getAll(IDBKeyRange.only(tabId))
+    );
   }
 }

@@ -11,50 +11,47 @@ export class TabsRepository {
 
   // CRUD base 
   async add(tab: Tab) {
-  const store = await this.db.tx(STORE_TABS, 'readwrite'); 
-  return this.db.wrap(store.add(tab));
-}
+    return this.db.put(STORE_TABS, tab);
+  }
 
-async update(tab: Tab) {
-  const store = await this.db.tx(STORE_TABS, 'readwrite'); 
-  return this.db.wrap(store.put(tab));
-}
+  async update(tab: Tab) {
+    return this.db.put(STORE_TABS, tab);
+  }
 
-async delete(id: number) {
-  const store = await this.db.tx(STORE_TABS, 'readwrite');
-  return this.db.wrap(store.delete(id));
-}
+  async delete(id: number) {
+    return this.db.run(STORE_TABS, 'readwrite', store => store.delete(id));
+  }
 
-async get(id: number): Promise<Tab | undefined> {
-  const store = await this.db.tx(STORE_TABS);
-  return this.db.wrap<Tab | undefined>(store.get(id));
-}
+  async get(id: number): Promise<Tab | undefined> {
+    return this.db.get(STORE_TABS, id);
+  }
 
-async getAll(): Promise<Tab[]> {
-  const store = await this.db.tx(STORE_TABS);
-  return this.db.wrap(store.getAll());
-}
-
+  async getAll(): Promise<Tab[]> {
+    return this.db.getAll(STORE_TABS);
+  }
 
   async deleteTabWithPages(tabId: number): Promise<void> {
-    const tx = this.db['db'].transaction([STORE_TABS, STORE_PAGES], 'readwrite');
+    // multi-store delete transaction - create transaction and wait for completion
+    const db = await this.db.getDb();
+    const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
     const tabsStore = tx.objectStore(STORE_TABS);
     const pagesStore = tx.objectStore(STORE_PAGES);
+    const index = pagesStore.index('tab');
 
     // delete tab
     tabsStore.delete(tabId);
 
-    // delete associated pages
-    const index = pagesStore.index('tab');
-    const range = IDBKeyRange.only(tabId);
-    const request = index.openCursor(range);
-
-    request.onsuccess = (event: any) => {
-      const cursor: IDBCursorWithValue = event.target.result;
+    // delete associated pages via курсора
+    const request = index.openCursor(IDBKeyRange.only(tabId));
+    request.onsuccess = (ev: Event) => {
+      const cursor = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
       if (cursor) {
-        cursor.delete(); // delete the page
+        cursor.delete();
         cursor.continue();
       }
+    };
+    request.onerror = () => {
+      // fetch error in tx.onerror
     };
 
     return new Promise((resolve, reject) => {
@@ -64,47 +61,63 @@ async getAll(): Promise<Tab[]> {
     });
   }
 
-
   // BULK SAVE OR UPDATE(tab + pages[])
   async saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = false): Promise<number> {
-    //  create tab with preview
-    let tabWithPreview: Tab;
+    // create tab with preview (не модифицируем оригинал, если preview не нужен)
+    let tabWithPreview: Tab = tab;
     const preview = await createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE);
     if (preview) tabWithPreview = { ...tab, preview };
 
+    // bloch refresh until done (necessary for big blobs)
+    window.onbeforeunload = () => true;
 
-    // create transaction to save tab and pages
-    return new Promise<number>((resolve, reject) => {
-      const transaction = this.db['db'].transaction([STORE_TABS, STORE_PAGES], 'readwrite');
+    try {
+      const db = await this.db.getDb();
+      const transaction = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
       const tabStore = transaction.objectStore(STORE_TABS);
       const pagesStore = transaction.objectStore(STORE_PAGES);
       const pagesIndex = pagesStore.index('tab');
 
+      // создаём/обновляем tab
       const tabRequest = tabStore.put(tabWithPreview);
 
-      tabRequest.onsuccess = (event: Event) => {
-        const tabId = (event.target as IDBRequest).result as number;
+      return await new Promise<number>((resolve, reject) => {
+        tabRequest.onsuccess = (event: Event) => {
+          const tabId = (event.target as IDBRequest).result as number;
 
-        const finalizePages = () => {
-          pages.forEach(page => pagesStore.put({ ...page, tab: tabId }));
-          resolve(tabId);
+          const finalizePages = () => {
+            // put is more safe, but tx will complete only after oncomplete
+            for (const page of pages) {
+              pagesStore.put({ ...page, tab: tabId });
+            }
+          };
+
+          if (deleteOldPages) {
+            const deleteRequest = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
+            deleteRequest.onsuccess = () => {
+              const keys: IDBValidKey[] = deleteRequest.result || [];
+              for (const key of keys) {
+                pagesStore.delete(key);
+              }
+              finalizePages();
+            };
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+          } else {
+            finalizePages();
+          }
         };
 
-        if (deleteOldPages) {
-          const deleteRequest = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
-          deleteRequest.onsuccess = () => {
-            deleteRequest.result.forEach(key => pagesStore.delete(key));
-            finalizePages();
-          };
-          deleteRequest.onerror = () => reject(deleteRequest.error);
-        } else {
-          finalizePages();
-        }
-      };
+        tabRequest.onerror = () => reject(tabRequest.error);
 
-      tabRequest.onerror = () => reject(tabRequest.error);
-      transaction.onerror = () => reject(transaction.error);
-    });
+        transaction.oncomplete = () => {
+          resolve((tabRequest.result as unknown as number) || 0);
+        };
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    } finally {
+      // udblock refresh 
+      window.onbeforeunload = null;
+    }
   }
-
 }

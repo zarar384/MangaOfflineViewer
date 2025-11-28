@@ -4,7 +4,8 @@ Remove-Item -Recurse -Force node_modules
 npm cache clean --force    
 
 # Build & Run Prod
-ng build
+ng build 
+ng build --configuration production
 http-server ./dist/MangaOfflineViewerAngular -p 8080
 
 # Run Dev

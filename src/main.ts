@@ -1,7 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { isDevMode } from '@angular/core';
-import { provideServiceWorker } from '@angular/service-worker';
+import { provideServiceWorker, SwUpdate } from '@angular/service-worker';
 
 const providers = [];
 if (!isDevMode()) {
@@ -15,4 +15,9 @@ if (!isDevMode()) {
 
 bootstrapApplication(AppComponent, {
   providers
+}).then(appRef => {
+  const updates = appRef.injector.get(SwUpdate);
+  updates.unrecoverable.subscribe(() => {
+    // ignore errors for now
+  });
 });
