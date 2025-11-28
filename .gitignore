@@ -59,14 +59,11 @@ out/
 Thumbs.db
 
 # Optional npm cache directory
-.npm/
+web/.npm/
 
 # Optional eslint cache
 .eslintcache
 
 # Angular specific
-.angular/cache/
-.angular/build/
-
-# Vite config (если используется)
-vite.config.js
+web/.angular/cache/
+web/.angular/build/
