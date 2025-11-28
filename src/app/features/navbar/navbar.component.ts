@@ -31,7 +31,7 @@ export class NavbarComponent implements OnInit {
   }
 
   selectTab(tab: Tab) {
-    // this.selectedChapter = ch; 
+    this.selectedChapter = tab; 
     this.mangaSelected.emit(tab.id);
   }
   closeTab(tab: Tab) {

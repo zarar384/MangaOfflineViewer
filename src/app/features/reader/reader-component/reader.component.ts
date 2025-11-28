@@ -35,7 +35,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
       const previousPages = changes['pages'].previousValue as Page[] || [];
       const currentPages = changes['pages'].currentValue as Page[] || [];
       
-      this.cleanupUnusedUrls(previousPages, currentPages);
+      this.cleanupUnusedUrls(currentPages);
       this.createPageUrls(currentPages); // create blob URLs for all pages
       this.currentlyLoading = 0;
       
@@ -131,16 +131,17 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     });
   }
 
-  private cleanupUnusedUrls(oldPages: Page[], newPages: Page[]) {
-    const newPageIds = new Set(newPages.map(p => p.id).filter(Boolean));
-    
-    this.pageUrls.forEach((url, pageId) => {
-      if (!newPageIds.has(pageId)) {
-        URL.revokeObjectURL(url);
-        this.pageUrls.delete(pageId);
-      }
-    });
-  }
+  private cleanupUnusedUrls(newPages: Page[]) {
+  const newPageIds = new Set(newPages.map(p => p.id).filter(Boolean));
+
+  this.pageUrls.forEach((url, pageId) => {
+    if (!newPageIds.has(pageId)) {
+      this.urlService.revokeUrl(url); 
+      this.pageUrls.delete(pageId); 
+    }
+  });
+}
+
 
   getPageUrl(page: Page): string {
     if (page.src instanceof Blob && page.id !== undefined) {
