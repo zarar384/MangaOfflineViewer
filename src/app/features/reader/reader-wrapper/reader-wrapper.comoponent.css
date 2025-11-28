@@ -1,3 +1,5 @@
 .reader-container-wrapper {  flex: 1;   overflow-y: auto;   -ms-overflow-style: none;  scrollbar-width: none;}
-
 .reader-container-wrapper::-webkit-scrollbar {  display: none; }
+
+/* ADAPT */
+@media (max-width: 768px) {  .reader-container-wrapper {    padding: 8px;  }}
