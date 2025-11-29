@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvModule } from 'src/app/shared/components/molv-module.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 
@@ -10,7 +11,7 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
   styleUrl: './reader-settings-window.component.css',
   standalone: true
 })
-export class ReaderSettingsWindowComponent {
+export class ReaderSettingsWindowComponent implements OnInit {
   @Input() isVisible = false;
   @Input() mode: 'scroll' | 'page' = 'scroll';
   @Input() zoomLevel = 0;
@@ -19,20 +20,25 @@ export class ReaderSettingsWindowComponent {
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
   @Output() modeChange = new EventEmitter<'scroll' | 'page'>();
-  @Output() zoomLevelChange = new EventEmitter<number>(); 
-  @Output() gapLevelChange = new EventEmitter<number>(); 
+  @Output() zoomLevelChange = new EventEmitter<number>();
+  @Output() gapLevelChange = new EventEmitter<number>();
+
+  constructor(private uiState: UiStateService) { }
+  ngOnInit(): void {
+  }
 
   onWindowHide() {
     this.hideWindow.emit();
   }
 
   // MOD
-  get modeIsPage(): boolean{
+  get modeIsPage(): boolean {
     return this.mode === 'page';
   }
 
-  set modeIsPage(value: boolean){
-    this.mode = value? 'page' : 'scroll';
+  set modeIsPage(value: boolean) {
+    this.mode = value ? 'page' : 'scroll';
+    this.uiState.saveState({ readerMode: this.mode });
     this.modeChange.emit(this.mode);
   }
 
@@ -43,16 +49,18 @@ export class ReaderSettingsWindowComponent {
 
   set zoom(value: number) {
     this.zoomLevel = value;
+    this.uiState.saveState({ readerZoom: this.zoomLevel });
     this.zoomLevelChange.emit(value);
   }
 
   // RANGE
-   get gap(): number {
+  get gap(): number {
     return this.gapLevel;
   }
 
   set gap(value: number) {
     this.gapLevel = value;
+    this.uiState.saveState({ readerGap: this.gapLevel });
     this.gapLevelChange.emit(value);
   }
 }

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
 
 @Component({
   selector: 'app-window',
@@ -8,7 +9,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   styleUrls: ['./window.component.css'],
   standalone: true
 })
-export class WindowComponent {
+export class WindowComponent implements OnInit {
   @Input() visible = true;
   @Input() title = 'Window';
   @Input() width = '400px';
@@ -20,6 +21,11 @@ export class WindowComponent {
 
   @Output() close = new EventEmitter<void>();
   @Output() hide = new EventEmitter<void>();
+
+  constructor(private uiState: UiStateService) { }
+  ngOnInit() {
+    this.isCollapsed = this.uiState.getValue<boolean>('windowSettingCollapsed') ?? false;
+  }
 
   onClose() { this.close.emit(); }
   onHide() { this.hide.emit(); }
@@ -48,5 +54,8 @@ export class WindowComponent {
 
   toggleCollapse() {
     this.isCollapsed = !this.isCollapsed;
+    this.uiState.saveState({
+      windowSettingCollapsed: this.isCollapsed
+    });
   }
 }

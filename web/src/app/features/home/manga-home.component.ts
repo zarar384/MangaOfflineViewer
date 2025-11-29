@@ -10,14 +10,12 @@ import { SettingsWindowComponent } from '../windows/settings-window/settings-win
   standalone: true,
   imports: [TabsComponent, CommonModule, SettingsWindowComponent]
 })
-export class MangaHomeComponent implements OnInit {
+export class MangaHomeComponent {
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
 
   pageSize = 10;
-  constructor() { }
-  async ngOnInit() {
-  }
+  showSettingsWindow = true;
 
   onTabSelected(id: number) {
     this.activeManga = id;
@@ -28,10 +26,6 @@ export class MangaHomeComponent implements OnInit {
     this.pageSize = Number(n);
     // this.updateVisibleTabs();
   }
-
-
-  // windows
-  showSettingsWindow = true;
 
   onSettingsWindowHide() {
     this.showSettingsWindow = false;

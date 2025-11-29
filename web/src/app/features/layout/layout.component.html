@@ -1,10 +1,10 @@
 <div class="app-shell">
-  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="selectedMangaId = $event">
+  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
   </app-manga-navbar>
 
   @if(!selectedMangaId)
   {
-    <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="selectedMangaId = $event">
+    <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
     </app-manga-home>
   }
   @else{

@@ -5,6 +5,7 @@ import { ReaderComponent } from '../reader-component/reader.component';
 import { PagesRepository } from 'src/app/core/repositories/pages.repository';
 import { Page } from 'src/app/core/models/page.model';
 import { numericNameSort } from 'src/app/shared/utils/file-parsing';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
 
 @Component({
   selector: 'app-manga-reader',
@@ -20,10 +21,14 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   gap = 0.5;
   mode: 'scroll' | 'page' = 'scroll';
   zoom = 1;
+  showSettingsWindow = true;
 
-  constructor(private pagesRepo: PagesRepository) { }
+  constructor(private pagesRepo: PagesRepository, private uiState: UiStateService) { }
 
   ngOnInit(): void {
+    this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
+    this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
+    this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
     this.loadPages();
   }
 
@@ -45,8 +50,6 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   }
 
   // windows
-  showSettingsWindow = true;
-
   onSettingsWindowHide() {
     this.showSettingsWindow = false;
   }
