@@ -22,17 +22,3 @@
     <button class="molv-btn-gradient" (click)="openUploadWindow()">Upload Files</button>
   </div>
 </div>
-
-<!-- @if(selectedChapter)
-{
-<div class="reader-preview" >
-  <h3>Preview: {{selectedChapter.name}}</h3>
-  <div class="preview-pages">
-    @for (p of selectedChapter.pages; track $index)
-    {
-    <img [src]="p" />
-    }
-  </div>
-</div>
-} -->
-<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()"></upload-file-window>

@@ -24,7 +24,8 @@ export class WindowComponent implements OnInit {
 
   constructor(private uiState: UiStateService) { }
   ngOnInit() {
-    this.isCollapsed = this.uiState.getValue<boolean>('windowSettingCollapsed') ?? false;
+    // only restore collapsed state if showHide is true
+    this.isCollapsed = this.showHide ? this.uiState.getValue<boolean>('windowSettingCollapsed') ?? false : false;
   }
 
   onClose() { this.close.emit(); }

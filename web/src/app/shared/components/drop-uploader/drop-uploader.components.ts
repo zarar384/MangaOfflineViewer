@@ -16,26 +16,39 @@ import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.ser
   templateUrl: './drop-uploader.components.html',
   styleUrl: './drop-uploader.components.css',
 })
-export class DropUploaderComponents {
+export class DropUploaderComponents implements OnChanges {
+  @Input() pages: Page[] = [];
   @Input() visible = true;
   @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
 
   filesProcessing = false;
   progress = 0;
-  pages: Page[] = [];
   urls: { name?: string; src: string }[] = [];
   // TODO saved as Blobs:
   // items: { id:string; blob: Blob; name?:string }[] = [];
 
   constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService, private mhtmlService: MhtmlExtractorService) { }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['pages'] && this.pages?.length > 0) {
+      this.rebuildUrls();
+    }
+  }
 
-  saveAll(tab: Tab) {
-    this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).then(() => {
-      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages);
-    }).catch(err => {
-      console.error('DropUploaderComponents.saveAll - error saving', err);
+  private rebuildUrls() {
+    this.urls = this.pages.map(p => {
+      const url = this.urlService.createUrl(p.name ?? 'page', p.src);
+      return { name: p.name, src: url };
     });
+  }
+
+  async saveAll(tab: Tab) {
+    try {
+      await this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages);
+      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages);
+    } catch (err) {
+      console.error('DropUploaderComponents.saveAll - error saving', err);
+    }
   }
 
   clearAll() {
@@ -142,6 +155,10 @@ export class DropUploaderComponents {
 
   drop(event: CdkDragDrop<any[]>) {
     moveItemInArray(this.pages, event.previousIndex, event.currentIndex);
+    moveItemInArray(this.urls, event.previousIndex, event.currentIndex);
+
+    this.pages = [...this.pages];
+    this.urls = [...this.urls];
   }
 
   // Drop handling

@@ -1,0 +1,15 @@
+<app-window
+  [visible]="isVisible"
+  title="Import Mangas"
+  [width]="'500px'"
+  [height]="'400px'"
+  position="center"
+  [showClose]="true"
+  [showHide]="false"
+  (close)="onWindowClose()">
+  <div class="molv-container">
+    <input type="text" class="molv-txtbx" placeholder="Manga Name" [value]="finalName" [(ngModel)]="finalName" />
+    <button class="molv-btn-gradient" (click)="saveAndClose()">Save</button>
+    <drop-uploader [visible]="isVisible" [pages]="pages" (onDropFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></drop-uploader>
+  </div>
+</app-window>

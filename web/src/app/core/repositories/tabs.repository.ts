@@ -31,7 +31,8 @@ export class TabsRepository {
   }
 
   async deleteTabWithPages(tabId: number): Promise<void> {
-    // multi-store delete transaction - create transaction and wait for completion
+    // multi-store delete transaction
+    // create transaction and wait for completion
     const db = await this.db.getDb();
     const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
     const tabsStore = tx.objectStore(STORE_TABS);
@@ -41,7 +42,7 @@ export class TabsRepository {
     // delete tab
     tabsStore.delete(tabId);
 
-    // delete associated pages via курсора
+    // delete associated pages  
     const request = index.openCursor(IDBKeyRange.only(tabId));
     request.onsuccess = (ev: Event) => {
       const cursor = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
@@ -62,13 +63,14 @@ export class TabsRepository {
   }
 
   // BULK SAVE OR UPDATE(tab + pages[])
-  async saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = false): Promise<number> {
-    // create tab with preview (не модифицируем оригинал, если preview не нужен)
+  async saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = true): Promise<number> {
     let tabWithPreview: Tab = tab;
+
+    // generate preview
     const preview = await createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE);
     if (preview) tabWithPreview = { ...tab, preview };
 
-    // bloch refresh until done (necessary for big blobs)
+    // block refresh until done
     window.onbeforeunload = () => true;
 
     try {
@@ -78,45 +80,72 @@ export class TabsRepository {
       const pagesStore = transaction.objectStore(STORE_PAGES);
       const pagesIndex = pagesStore.index('tab');
 
-      // создаём/обновляем tab
+      // start operation
       const tabRequest = tabStore.put(tabWithPreview);
 
       return await new Promise<number>((resolve, reject) => {
+        tabRequest.onerror = () => reject(tabRequest.error);
+
         tabRequest.onsuccess = (event: Event) => {
           const tabId = (event.target as IDBRequest).result as number;
 
-          const finalizePages = () => {
-            // put is more safe, but tx will complete only after oncomplete
+          const savePages = () => {
+            console.log('Saving pages count=', pages.length, 'for tabId=', tabId);
             for (const page of pages) {
-              pagesStore.put({ ...page, tab: tabId });
+              const pageToSave = { ...page };
+              delete pageToSave.id; // to create new record
+              pageToSave.tab = tabId;
+              pagesStore.put(pageToSave);
             }
           };
 
-          if (deleteOldPages) {
-            const deleteRequest = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
-            deleteRequest.onsuccess = () => {
-              const keys: IDBValidKey[] = deleteRequest.result || [];
-              for (const key of keys) {
-                pagesStore.delete(key);
-              }
-              finalizePages();
-            };
-            deleteRequest.onerror = () => reject(deleteRequest.error);
-          } else {
-            finalizePages();
+          if (!deleteOldPages) {
+            // simply save new pages
+            savePages();
+            return;
           }
+
+          // delete old pages first
+          const getKeysReq = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
+
+          getKeysReq.onerror = () => reject(getKeysReq.error);
+
+          getKeysReq.onsuccess = () => {
+            const keys: IDBValidKey[] = getKeysReq.result || [];
+
+            if (keys.length === 0) {
+              // no old pages => directly save new
+              savePages();
+              return;
+            }
+
+            // wait for all deletes
+            let pending = keys.length;
+
+            keys.forEach(key => {
+              const deleteReq = pagesStore.delete(key);
+
+              deleteReq.onerror = () => reject(deleteReq.error);
+
+              deleteReq.onsuccess = () => {
+                pending--;
+                if (pending === 0) {
+                  // all old pages removed
+                  savePages();
+                  // don't resolve here => wait for transaction.oncomplete
+                }
+              };
+            });
+          };
         };
 
-        tabRequest.onerror = () => reject(tabRequest.error);
-
         transaction.oncomplete = () => {
-          resolve((tabRequest.result as unknown as number) || 0);
+          resolve((tabRequest.result as number) || 0);
         };
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
       });
     } finally {
-      // udblock refresh 
       window.onbeforeunload = null;
     }
   }

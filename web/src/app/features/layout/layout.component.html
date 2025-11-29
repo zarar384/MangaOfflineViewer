@@ -1,5 +1,5 @@
 <div class="app-shell">
-  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
+  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)" (openUploadWindowClicked)="onOpenUploadWindowClicked()">
   </app-manga-navbar>
 
   @if(!selectedMangaId)

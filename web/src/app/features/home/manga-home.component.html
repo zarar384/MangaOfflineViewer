@@ -1,6 +1,7 @@
 <div class="manga-home-root">
-    <tabs (mangaSelected)="onTabSelected($event)"></tabs>
+    <tabs (mangaSelected)="onTabSelected($event)" (mangaToEditSelected)="onMangaToEditSelected($event)"></tabs>
 </div>
 
-<settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()">
-</settings-window>
+<edit-tab-window [isVisible]="showEditWindow" [tab]="this.tab" (closeWindow)="onEditWindowClose($event)"></edit-tab-window >
+<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose($event)"></upload-file-window>
+<settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()"></settings-window>

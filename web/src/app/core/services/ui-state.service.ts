@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class UiStateService {
@@ -19,4 +20,7 @@ export class UiStateService {
     const state = this.getState();
     return state[key] ?? null;
   }
+
+public refreshTabs$ = new Subject<void>();
+
 }

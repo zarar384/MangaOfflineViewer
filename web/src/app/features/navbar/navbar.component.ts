@@ -1,19 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
+import { TabsComponent } from '../home/tabs/tabs.component';
 
 @Component({
   selector: 'app-manga-navbar',
-  imports: [CommonModule, UploadFileWindowComponent],
+  imports: [CommonModule],
   standalone: true,
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.css'],
 })
 export class NavbarComponent implements OnInit {
   @Input() activeManga: number | null = null;
-  @Output() mangaSelected = new EventEmitter<number|null>();
+  @Output() mangaSelected = new EventEmitter<number | null>();
+  @Output() openUploadWindowClicked = new EventEmitter<void>();
+
   selectedChapter: Tab | null = null;
   visibleTabs: Tab[] = [];
   chapters: Tab[] = [];
@@ -31,7 +34,7 @@ export class NavbarComponent implements OnInit {
   }
 
   selectTab(tab: Tab) {
-    this.selectedChapter = tab; 
+    this.selectedChapter = tab;
     this.mangaSelected.emit(tab.id);
   }
   closeTab(tab: Tab) {
@@ -43,14 +46,7 @@ export class NavbarComponent implements OnInit {
     this.mangaSelected.emit(null);
   }
 
-  // windows
-  showUploadWindow = false;
-
   openUploadWindow() {
-    this.showUploadWindow = true;
-  }
-
-  onUploadWindowClose() {
-    this.showUploadWindow = false;
+    this.openUploadWindowClicked.emit();
   }
 }

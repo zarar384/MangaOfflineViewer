@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { MangaHomeComponent } from '../home/manga-home.component';
 import { CommonModule } from '@angular/common';
@@ -18,9 +18,11 @@ import { UiStateService } from 'src/app/core/services/ui-state.service';
   styleUrls: ['./layout.component.css'],
 })
 export class LayoutComponent implements OnInit {
-  selectedMangaId: number|null = null;
+  @ViewChild(MangaHomeComponent) homeComp!: MangaHomeComponent;
 
-  constructor(private uiState: UiStateService) {}
+  selectedMangaId: number | null = null;
+
+  constructor(private uiState: UiStateService) { }
   ngOnInit(): void {
     this.selectedMangaId = this.uiState.getValue<number>('selectedMangaId');
   }
@@ -28,5 +30,9 @@ export class LayoutComponent implements OnInit {
   onMangaSelected(mangaId: number | null) {
     this.selectedMangaId = mangaId;
     this.uiState.saveState({ selectedMangaId: mangaId });
+  }
+
+  onOpenUploadWindowClicked() {
+    this.homeComp.showUploadWindow = true;
   }
 }
