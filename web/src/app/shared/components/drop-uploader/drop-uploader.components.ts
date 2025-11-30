@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { DomSanitizer } from '@angular/platform-browser';
 import * as JSZip from 'jszip';
 import { calculateProgress, decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from 'src/app/core/models/tab.model';
@@ -9,12 +8,15 @@ import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { LoadingService } from 'src/app/core/services/loading.service';
 
 @Component({
   selector: 'drop-uploader',
   imports: [CommonModule, DragDropModule],
   templateUrl: './drop-uploader.components.html',
-  styleUrl: './drop-uploader.components.css',
+  styleUrls: ['./drop-uploader.components.css'],
+  standalone: true
 })
 export class DropUploaderComponents implements OnChanges {
   @Input() pages: Page[] = [];
@@ -28,7 +30,9 @@ export class DropUploaderComponents implements OnChanges {
   // TODO saved as Blobs:
   // items: { id:string; blob: Blob; name?:string }[] = [];
 
-  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService, private mhtmlService: MhtmlExtractorService) { }
+  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService,
+    private mhtmlService: MhtmlExtractorService, private loading: LoadingService,
+    private uiState: UiStateService) { }
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['pages'] && this.pages?.length > 0) {
       this.rebuildUrls();
@@ -43,17 +47,24 @@ export class DropUploaderComponents implements OnChanges {
   }
 
   async saveAll(tab: Tab) {
+    this.loading.show();
     try {
-      await this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages);
-      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages);
+      const savedTabId = await this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages);
+
+      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
+
+      this.uiState.refreshTabs$.next();
     } catch (err) {
       console.error('DropUploaderComponents.saveAll - error saving', err);
+    } finally {
+      this.loading.hide();
     }
   }
 
   clearAll() {
     this.pages = [];
     this.urls = [];
+
     console.log('DropUploaderComponents.clearAll - parent window closed');
   }
 
@@ -105,7 +116,7 @@ export class DropUploaderComponents implements OnChanges {
     for (const entryName of entries) {
       const entry = zip.files[entryName];
       const blob = await entry.async('blob');
-      await this.addBlobImage(blob, entryName);
+      await this.addBlobImage(blob, `${file.name}/${entryName}`);
 
       this.progress = Math.min(90, this.progress + 1);
       await sleepIfNeeded();
@@ -148,7 +159,7 @@ export class DropUploaderComponents implements OnChanges {
   remove(index: number) {
     const it = this.pages[index];
     const itUrl = this.urls[index];
-    if (itUrl?.src?.startsWith('blob:')) URL.revokeObjectURL(itUrl.src);
+    if (itUrl?.src?.startsWith('blob:')) this.urlService.revokeUrl(itUrl.src);
     this.pages.splice(index, 1);
     this.urls.splice(index, 1);
   }

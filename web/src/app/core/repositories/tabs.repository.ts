@@ -70,6 +70,8 @@ export class TabsRepository {
     const preview = await createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE);
     if (preview) tabWithPreview = { ...tab, preview };
 
+    tabWithPreview = { ...tabWithPreview, updatedAt: tab.updatedAt ?? Date.now() };
+
     // block refresh until done
     window.onbeforeunload = () => true;
 
@@ -86,22 +88,26 @@ export class TabsRepository {
       return await new Promise<number>((resolve, reject) => {
         tabRequest.onerror = () => reject(tabRequest.error);
 
-        tabRequest.onsuccess = (event: Event) => {
+        tabRequest.onsuccess = async (event: Event) => {
           const tabId = (event.target as IDBRequest).result as number;
 
-          const savePages = () => {
+          // helper to save all pages and wait for completion
+          const savePages = async () => {
             console.log('Saving pages count=', pages.length, 'for tabId=', tabId);
-            for (const page of pages) {
+            const promises = pages.map(page => new Promise<void>((res, rej) => {
               const pageToSave = { ...page };
               delete pageToSave.id; // to create new record
               pageToSave.tab = tabId;
-              pagesStore.put(pageToSave);
-            }
+              const req = pagesStore.put(pageToSave);
+              req.onsuccess = () => res();
+              req.onerror = () => rej(req.error);
+            }));
+            await Promise.all(promises); // wait all pages saved
           };
 
           if (!deleteOldPages) {
             // simply save new pages
-            savePages();
+            await savePages();
             return;
           }
 
@@ -110,35 +116,30 @@ export class TabsRepository {
 
           getKeysReq.onerror = () => reject(getKeysReq.error);
 
-          getKeysReq.onsuccess = () => {
+          getKeysReq.onsuccess = async () => {
             const keys: IDBValidKey[] = getKeysReq.result || [];
 
             if (keys.length === 0) {
               // no old pages => directly save new
-              savePages();
+              await savePages();
               return;
             }
 
             // wait for all deletes
-            let pending = keys.length;
+            await Promise.all(
+              keys.map(key => new Promise<void>((res, rej) => {
+                const deleteReq = pagesStore.delete(key);
+                deleteReq.onsuccess = () => res();
+                deleteReq.onerror = () => rej(deleteReq.error);
+              }))
+            );
 
-            keys.forEach(key => {
-              const deleteReq = pagesStore.delete(key);
-
-              deleteReq.onerror = () => reject(deleteReq.error);
-
-              deleteReq.onsuccess = () => {
-                pending--;
-                if (pending === 0) {
-                  // all old pages removed
-                  savePages();
-                  // don't resolve here => wait for transaction.oncomplete
-                }
-              };
-            });
+            // all old pages removed => save new pages
+            await savePages();
           };
         };
 
+        // resolve when transaction fully completed
         transaction.oncomplete = () => {
           resolve((tabRequest.result as number) || 0);
         };
@@ -149,4 +150,5 @@ export class TabsRepository {
       window.onbeforeunload = null;
     }
   }
+
 }

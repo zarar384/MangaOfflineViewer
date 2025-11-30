@@ -32,18 +32,19 @@ export class TabsComponent implements OnInit {
 
       this.tabs = await Promise.all(
         tabs.map(async (tab) => {
-          const previewUrl = await this.getPreviewUrl(tab.name, tab.preview);
-          return { tab, previewUrl };
+          const previewUrl = await this.getPreviewUrl(tab.name, tab.preview, true);
+          return { tab: { ...tab }, previewUrl };
         })
       );
 
     } catch (err) {
-      this.tabs = []; 
+      this.tabs = [];
     }
   }
 
-  private async getPreviewUrl(name: string, preview: Blob | string | undefined): Promise<string> {
+  private async getPreviewUrl(name: string, preview: Blob | string | undefined, revoke: boolean = false): Promise<string> {
     if (preview instanceof Blob) {
+      if (revoke) this.urlService.revokeUrl(name);
       return this.urlService.createUrl(name, preview);
     } else if (typeof preview === 'string') {
       return preview;

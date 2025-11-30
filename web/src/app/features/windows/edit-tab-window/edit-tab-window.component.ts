@@ -17,7 +17,7 @@ import { WindowComponent } from "src/app/shared/components/window/window.compone
 export class EditTabWindowComponent implements OnChanges {
   @Input() isVisible = false;
   @Input() tab: Tab | null = null;
-  @Output() closeWindow = new EventEmitter<boolean>(); // true - with changes
+  @Output() closeWindow = new EventEmitter<void>(); 
 
   @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
 
@@ -42,13 +42,13 @@ export class EditTabWindowComponent implements OnChanges {
   onWindowClose() {
     this.finalName = null;
     this.dropUploader?.clearAll();
-    this.closeWindow.emit(false);
+    this.closeWindow.emit();
   }
 
   async saveAndClose() {
     this.tab!.name = this.finalName ?? `Tab ${this.tab!.id}`;
+    this.tab!.updatedAt = Date.now();
     await this.dropUploader?.saveAll(this.tab!);
-
-    this.closeWindow.emit(true);
+    this.onWindowClose();
   }
 }

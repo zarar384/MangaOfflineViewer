@@ -13,7 +13,7 @@ import { Tab } from 'src/app/core/models/tab.model';
 })
 export class UploadFileWindowComponent {
   @Input() isVisible = false;
-  @Output() closeWindow = new EventEmitter<boolean>(); // true - with changes
+  @Output() closeWindow = new EventEmitter<void>();
 
   @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
 
@@ -27,13 +27,12 @@ export class UploadFileWindowComponent {
   onWindowClose() {
     this.finalName = null;
     this.dropUploader?.clearAll();
-    this.closeWindow.emit(false);
+    this.closeWindow.emit();
   }
 
   async saveAndClose() {
     this.tab.name = this.finalName ?? 'Untitled';
     await this.dropUploader?.saveAll(this.tab);
-
-    this.closeWindow.emit(true);
+    this.onWindowClose();
   }
 }

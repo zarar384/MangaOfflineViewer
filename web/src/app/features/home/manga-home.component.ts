@@ -51,18 +51,12 @@ export class MangaHomeComponent {
     this.showEditWindow = true;
   }
 
-  onEditWindowClose(refreshTabs: boolean) {
-  if (refreshTabs) {
-    this.uiState.refreshTabs$.next();
-  }
+  onEditWindowClose() {
     this.showEditWindow = false;
   }
 
   // UPLOAD
-  onUploadWindowClose(refreshTabs: boolean) {
-  if (refreshTabs) {
-    this.uiState.refreshTabs$.next();
-  }
+  onUploadWindowClose() {
     this.showUploadWindow = false;
   }
 }

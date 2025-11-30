@@ -2,6 +2,6 @@
     <tabs (mangaSelected)="onTabSelected($event)" (mangaToEditSelected)="onMangaToEditSelected($event)"></tabs>
 </div>
 
-<edit-tab-window [isVisible]="showEditWindow" [tab]="this.tab" (closeWindow)="onEditWindowClose($event)"></edit-tab-window >
-<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose($event)"></upload-file-window>
+<edit-tab-window [isVisible]="showEditWindow" [tab]="this.tab" (closeWindow)="onEditWindowClose()"></edit-tab-window >
+<upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()"></upload-file-window>
 <settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()"></settings-window>
