@@ -1,7 +1,22 @@
 <div class="manga-home-root">
-    <tabs (mangaSelected)="onTabSelected($event)" (mangaToEditSelected)="onMangaToEditSelected($event)"></tabs>
+<tabs 
+  [page]="page" 
+  [perPage]="perPage"
+  (mangaSelected)="onTabSelected($event)" 
+  (mangaToEditSelected)="onMangaToEditSelected($event)"
+  (totalTabsChanged)="onUpdateTotalCount($event)"
+></tabs>
+
 </div>
 
+<molv-pagination
+  [totalTabs]="totalCount"
+  [currentPage]="page()"
+  [perPage]="perPage()"
+  (pageChange)="onPageChange($event.page, $event.perPage)"
+></molv-pagination>
+
+<!-- windows -->
 <edit-tab-window [isVisible]="showEditWindow" [tab]="this.tab" (closeWindow)="onEditWindowClose()"></edit-tab-window >
 <upload-file-window [isVisible]="showUploadWindow" (closeWindow)="onUploadWindowClose()"></upload-file-window>
 <settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()"></settings-window>

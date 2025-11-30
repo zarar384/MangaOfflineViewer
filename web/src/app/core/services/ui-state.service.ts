@@ -21,6 +21,5 @@ export class UiStateService {
     return state[key] ?? null;
   }
 
-public refreshTabs$ = new Subject<void>();
-
+  public refreshTabs$ = new Subject<void>();
 }

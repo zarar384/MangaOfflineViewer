@@ -30,6 +30,23 @@ export class TabsRepository {
     return this.db.getAll(STORE_TABS);
   }
 
+  async getTotalCount(): Promise<number> {
+    return this.db.run(STORE_TABS, 'readonly', store => store.count());
+  }
+
+async getPaged(page: number, perPage: number): Promise<Tab[]> {
+  const all = await this.db.runCursor<Tab>(
+    STORE_TABS,
+    "readonly",
+    store => store.openCursor()
+  );
+
+  const start = (page - 1) * perPage;
+  const end = start + perPage;
+  
+  return all.slice(start, end);
+}
+
   async deleteTabWithPages(tabId: number): Promise<void> {
     // multi-store delete transaction
     // create transaction and wait for completion

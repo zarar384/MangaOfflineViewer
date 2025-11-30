@@ -82,6 +82,38 @@ export class DbService {
     });
   }
 
+ async runCursor<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  operation: (store: IDBObjectStore) => IDBRequest<IDBCursorWithValue | null>
+): Promise<T[]> {
+  const db = await this.getDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, mode);
+    const store = tx.objectStore(storeName);
+
+    const result: T[] = [];
+
+    const req = operation(store); 
+
+    req.onsuccess = (e: any) => {
+      const cursor: IDBCursorWithValue | null = e.target.result;
+      if (cursor) {
+        result.push(cursor.value);
+        cursor.continue();
+      } else {
+        resolve(result);
+      }
+    };
+
+    req.onerror = () => reject(req.error);
+
+    tx.oncomplete = () => {};
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
   put(storeName: string, value: any) {
     return this.run(storeName, 'readwrite', store => store.put(value));
   }

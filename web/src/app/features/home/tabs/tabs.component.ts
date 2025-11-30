@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, Signal, SimpleChanges } from '@angular/core';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
@@ -15,11 +15,17 @@ import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
   imports: [CommonModule]
 })
 export class TabsComponent implements OnInit {
+  @Input() page!: Signal<number>;
+  @Input() perPage!: Signal<number>;
+
   @Output() mangaSelected = new EventEmitter<number>();
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
+  @Output() totalTabsChanged = new EventEmitter<number>();
+
   tabs: { tab: Tab; previewUrl: string }[] = [];
 
-  constructor(private tabRepo: TabsRepository, private urlService: ObjectUrlService, private uiState: UiStateService) { }
+  constructor(private tabRepo: TabsRepository, private urlService: ObjectUrlService,
+    private uiState: UiStateService) { }
 
   async ngOnInit() {
     this.uiState.refreshTabs$.subscribe(() => this.refreshTabs());
@@ -28,8 +34,9 @@ export class TabsComponent implements OnInit {
 
   refreshTabs = async () => {
     try {
-      const tabs = await this.tabRepo.getAll();
-
+      var p = this.page();
+      var pp = this.perPage();
+      const tabs = await this.tabRepo.getPaged(p, pp);
       this.tabs = await Promise.all(
         tabs.map(async (tab) => {
           const previewUrl = await this.getPreviewUrl(tab.name, tab.preview, true);
@@ -37,8 +44,11 @@ export class TabsComponent implements OnInit {
         })
       );
 
+      const total = await this.tabRepo.getTotalCount();
+      this.totalTabsChanged.emit(total);
     } catch (err) {
       this.tabs = [];
+      this.totalTabsChanged.emit(0);
     }
   }
 

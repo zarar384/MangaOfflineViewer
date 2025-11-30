@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, signal, } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TabsComponent } from './tabs/tabs.component';
 import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
@@ -6,25 +6,42 @@ import { EditTabWindowComponent } from '../windows/edit-tab-window/edit-tab-wind
 import { Tab } from 'src/app/core/models/tab.model';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { MolvPaginationComponent } from 'src/app/shared/components/molv-pagination/molv-pagination.component';
 
 @Component({
   selector: 'app-manga-home',
   templateUrl: './manga-home.component.html',
   styleUrls: ['./manga-home.component.css'],
   standalone: true,
-  imports: [TabsComponent, CommonModule, SettingsWindowComponent, EditTabWindowComponent, UploadFileWindowComponent]
+  imports: [TabsComponent, CommonModule, MolvPaginationComponent,
+    SettingsWindowComponent, EditTabWindowComponent, UploadFileWindowComponent]
 })
-export class MangaHomeComponent {
+export class MangaHomeComponent implements OnInit {
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
 
-  pageSize = 10;
+  totalCount = 0;
+  page = signal(1);
+  perPage = signal(10);
+
   showSettingsWindow = true;
   showUploadWindow = false;
   showEditWindow = false;
   tab: Tab | null = null;
 
-  constructor(private uiState: UiStateService){}
+  constructor(private uiState: UiStateService) { }
+  ngOnInit(): void {
+    this.totalCount = this.uiState.getValue<number>('totalCount') ?? 0;
+    this.page.set(this.uiState.getValue<number>('page') ?? 1);
+    this.perPage.set(this.uiState.getValue<number>('perPage') ?? 10);
+  }
+
+  onPageChange(newPage: number, newPerPage: number) {
+    this.perPage.set(newPerPage);
+    this.page.set(newPage);
+    this.uiState.saveState({ page: newPage, perPage: newPerPage });
+    this.uiState.refreshTabs$.next();
+  }
 
   onTabSelected(id: number) {
     this.activeManga = id;
@@ -36,9 +53,9 @@ export class MangaHomeComponent {
     this.openEditWindow();
   }
 
-  changePageSize(n: number) {
-    this.pageSize = Number(n);
-    // this.updateVisibleTabs();
+  onUpdateTotalCount(total: number) {
+    this.totalCount = total;
+    this.uiState.saveState({ totalCount: total });
   }
 
   // windows 

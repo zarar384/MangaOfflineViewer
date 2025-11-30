@@ -1,0 +1,42 @@
+<div class="pagination-controls">
+    <!-- Prev -->
+    <button class="pagination-button prev" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">
+        <i class="icon-arrow-left"></i>
+    </button>
+
+    <!-- First page + ellipsis -->
+    @if(pages[0] > 1) {
+    <button class="pagination-button" (click)="goToPage(1)">1</button>
+    @if(pages[0] > 2) {
+    <span class="pagination-ellipsis">...</span>
+    }
+    }
+
+    <!-- Visible page range -->
+    <button *ngFor="let p of pages" (click)="goToPage(p)" class="pagination-button" [class.active]="p === currentPage">
+        {{ p }}
+    </button>
+
+    <!-- Last page + ellipsis -->
+    @if(pages[pages.length - 1] < totalPages) { @if(pages[pages.length - 1] < totalPages - 1) { <span
+        class="pagination-ellipsis">...</span>
+        }
+        <button class="pagination-button" (click)="goToPage(totalPages)">
+            {{ totalPages }}
+        </button>
+        }
+
+        <!-- Next -->
+        <button class="pagination-button next" [disabled]="currentPage === totalPages"
+            (click)="goToPage(currentPage + 1)">
+            <i class="icon-arrow-right"></i>
+        </button>
+
+        <!-- Per page selector -->
+        <div class="pagination-perpage">
+            <span class="pagination-label"></span>
+            <select class="pagination-select" [(ngModel)]="perPage" (ngModelChange)="changePerPage($event)">
+                <option *ngFor="let val of [10,20,30,50]" [value]="val">{{ val }}</option>
+            </select>
+        </div>
+</div>
