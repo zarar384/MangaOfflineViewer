@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, Signal, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, Signal, SimpleChanges, WritableSignal } from '@angular/core';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
+import { LoadingService } from 'src/app/core/services/loading.service';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
@@ -15,8 +16,8 @@ import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
   imports: [CommonModule]
 })
 export class TabsComponent implements OnInit {
-  @Input() page!: Signal<number>;
-  @Input() perPage!: Signal<number>;
+  @Input() page!: WritableSignal<number>;
+  @Input() perPage!: WritableSignal<number>;
 
   @Output() mangaSelected = new EventEmitter<number>();
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
@@ -25,7 +26,7 @@ export class TabsComponent implements OnInit {
   tabs: { tab: Tab; previewUrl: string }[] = [];
 
   constructor(private tabRepo: TabsRepository, private urlService: ObjectUrlService,
-    private uiState: UiStateService) { }
+    private uiState: UiStateService, private loading: LoadingService) { }
 
   async ngOnInit() {
     this.uiState.refreshTabs$.subscribe(() => this.refreshTabs());
@@ -67,8 +68,6 @@ export class TabsComponent implements OnInit {
     return DEFAULT_PREVIEW;
   }
 
-
-
   openChapterInTab(tabData: { tab: Tab; previewUrl: string }) {
     if (tabData.tab.id) {
       this.mangaSelected.emit(tabData.tab.id);
@@ -82,8 +81,22 @@ export class TabsComponent implements OnInit {
   }
 
   remove(tabId: number) {
-    this.tabRepo.deleteTabWithPages(tabId).then(() => {
+    this.loading.show();
+
+    // Delete tab and if no tabs left on the page, refresh and go back a page if possible
+    this.tabRepo.deleteTabWithPages(tabId).then(async () => {
       this.tabs = this.tabs.filter(t => t.tab.id !== tabId);
+
+      if (this.tabs.length === 0 && this.page() > 1) {// go back a page
+        var newPage = this.page() - 1;
+        this.page.set(newPage);
+        this.uiState.saveState({ page: newPage });
+        await this.refreshTabs();
+      } else if (this.tabs.length === 0 && this.page() === 1) { // first page but no tabs
+        await this.refreshTabs();
+      }
+
+      this.loading.hide();
     });
   }
 }
