@@ -1,9 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
-import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { Tab } from 'src/app/core/models/tab.model';
-import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
-import { TabsComponent } from '../home/tabs/tabs.component';
+import { TabsService } from 'src/app/core/services/tabs.service';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -19,26 +18,30 @@ export class NavbarComponent implements OnInit {
 
   selectedChapter: Tab | null = null;
   visibleTabs: Tab[] = [];
-  chapters: Tab[] = [];
-  pageSize = 10;
 
-  constructor(private tabRepo: TabsRepository) { }
+  constructor(private tabsService: TabsService, private uiState: UiStateService) { }
 
-  async ngOnInit() {
-    this.chapters = await this.tabRepo.getAll();
-    this.updateVisibleTabs();
+  ngOnInit() {
+    this.tabsService.tabs$.subscribe(tabs => {
+      this.visibleTabs = tabs.map(x => x.tab).slice(0, this.perPage);
+    });
   }
 
-  updateVisibleTabs() {
-    this.visibleTabs = this.chapters.slice(0, this.pageSize);
+  get page(): number {
+    return this.uiState.getValue<number>('page') ?? 1;
+  }
+
+  get perPage(): number {
+    return this.uiState.getValue<number>('perPage') ?? 10;
   }
 
   selectTab(tab: Tab) {
     this.selectedChapter = tab;
     this.mangaSelected.emit(tab.id);
   }
+
   closeTab(tab: Tab) {
-    this.visibleTabs = this.visibleTabs.filter(c => c.id !== tab.id);
+    this.tabsService.removeTab(tab.id!, this.page, this.perPage);
     if (this.selectedChapter?.id === tab.id) this.selectedChapter = null;
   }
 
@@ -50,3 +53,4 @@ export class NavbarComponent implements OnInit {
     this.openUploadWindowClicked.emit();
   }
 }
+
