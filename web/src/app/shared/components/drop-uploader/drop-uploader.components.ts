@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
-import { calculateProgress, decodeQuotedPrintable, generateId, numericNameSort, parseHTMLForImages, sleepIfNeeded } from '../../utils/file-parsing';
+import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
@@ -10,6 +10,7 @@ import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
+import { finalize, Subject, switchMap, takeUntil, tap } from 'rxjs';
 
 @Component({
   selector: 'drop-uploader',
@@ -18,9 +19,11 @@ import { LoadingService } from 'src/app/core/services/loading.service';
   styleUrls: ['./drop-uploader.components.css'],
   standalone: true
 })
-export class DropUploaderComponents implements OnChanges {
+export class DropUploaderComponents implements OnChanges, OnInit, OnDestroy {
   @Input() pages: Page[] = [];
   @Input() visible = true;
+  @Input() saveAll$!: Subject<Tab>;  
+  @Input() clearAll$!: Subject<void>;
   @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
 
@@ -28,10 +31,32 @@ export class DropUploaderComponents implements OnChanges {
   progress = 0;
   urls: { name?: string; src: string }[] = [];
 
+  private destroy$ = new Subject<void>();
+
   constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService,
     private mhtmlService: MhtmlExtractorService, private loading: LoadingService,
     private uiState: UiStateService) { }
-  
+
+
+  ngOnInit(): void {
+    this.saveAll$
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(tab => this.saveAll(tab))
+      )
+      .subscribe();
+
+    this.clearAll$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.clearAll());
+  }
+
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['pages'] && this.pages?.length > 0) {
       this.rebuildUrls();
@@ -47,23 +72,23 @@ export class DropUploaderComponents implements OnChanges {
 
   saveAll(tab: Tab) {
     this.loading.show();
-
-    this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
-      .subscribe({
-        next: savedTabId => {
-          console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
-          this.uiState.refreshTabs$.next();
-        },
-        error: err => console.error('DropUploaderComponents.saveAll - error saving', err),
-        complete: () => this.loading.hide()
-      });
+    return this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).pipe(
+      tap(savedTabId => {
+        console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
+        this.uiState.refreshTabs$.next();
+      }),
+      finalize(() => 
+      {
+        this.loading.hide();
+        this.clearAll();
+      }
+    )
+    );
   }
 
   clearAll() {
     this.pages = [];
     this.urls = [];
-
-    console.log('DropUploaderComponents.clearAll - parent window closed');
   }
 
   async onFilesDropped(files: FileList | File[]) {

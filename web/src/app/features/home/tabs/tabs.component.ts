@@ -1,13 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, Signal, SimpleChanges, WritableSignal } from '@angular/core';
-import { finalize, switchMap } from 'rxjs';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, WritableSignal } from '@angular/core';
+import { finalize, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
-import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { LoadingService } from 'src/app/core/services/loading.service';
-import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
 
 
 @Component({
@@ -17,7 +14,7 @@ import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
   standalone: true,
   imports: [CommonModule]
 })
-export class TabsComponent implements OnInit {
+export class TabsComponent implements OnInit, OnDestroy {
   @Input() page!: WritableSignal<number>;
   @Input() perPage!: WritableSignal<number>;
   @Output() mangaSelected = new EventEmitter<number>();
@@ -26,22 +23,35 @@ export class TabsComponent implements OnInit {
 
   tabs: { tab: Tab; previewUrl: string }[] = [];
 
+  // destroy$ + takeUntil is better for multiple streams, sub = Subscription, fine for 1–2 subscriptions; 
+  private destroy$ = new Subject<void>();
+
   constructor(
-    private tabsService: TabsService, 
-    private uiState: UiStateService, 
+    private tabsService: TabsService,
+    private uiState: UiStateService,
     private loading: LoadingService) { }
 
   ngOnInit() {
     this.uiState.refreshTabs$
-      .pipe(switchMap(() => this.doRefresh()))
+      .pipe(
+        switchMap(() => this.doRefresh()),
+        takeUntil(this.destroy$)
+      )
       .subscribe();
 
-    this.doRefresh().subscribe();
+    this.tabsService.tabs$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(t => this.tabs = t);
 
-    this.tabsService.tabs$.subscribe(t => this.tabs = t);
-    this.tabsService.totalTabs$.subscribe(t => this.totalTabsChanged.emit(t));
+    this.tabsService.totalTabs$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(t => this.totalTabsChanged.emit(t));
   }
 
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
   doRefresh() {
     this.loading.show();
     return this.tabsService

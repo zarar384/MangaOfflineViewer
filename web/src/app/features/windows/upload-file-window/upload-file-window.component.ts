@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Output, Input} from '@angular/core';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 import { CommonModule } from '@angular/common';
 import { DropUploaderComponents } from 'src/app/shared/components/drop-uploader/drop-uploader.components';
 import { Tab } from 'src/app/core/models/tab.model';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'upload-file-window',
@@ -16,10 +17,11 @@ export class UploadFileWindowComponent {
   @Input() isVisible = false;
   @Output() closeWindow = new EventEmitter<void>();
 
-  @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
-
   tab: Tab = { name: '' };
   finalName: string | null = null;
+
+  saveAll$ = new Subject<Tab>();
+  clearAll$ = new Subject<void>();
 
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');
@@ -27,13 +29,13 @@ export class UploadFileWindowComponent {
 
   onWindowClose() {
     this.finalName = null;
-    this.dropUploader?.clearAll();
+    this.clearAll$.next();
     this.closeWindow.emit();
   }
 
   saveAndClose() {
     this.tab.name = this.finalName ?? 'Untitled';
-    this.dropUploader?.saveAll(this.tab);
+    this.saveAll$.next(this.tab);
     this.onWindowClose();
   }
 }

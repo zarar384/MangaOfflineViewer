@@ -1,12 +1,14 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, OnChanges, Output, ViewChild } from "@angular/core";
+import { Component, EventEmitter, Input, OnChanges, Output } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Page } from "src/app/core/models/page.model";
 import { Tab } from "src/app/core/models/tab.model";
 import { PagesRepository } from "src/app/core/repositories/pages.repository";
+import { UiStateService } from "src/app/core/services/ui-state.service";
 import { DropUploaderComponents } from "src/app/shared/components/drop-uploader/drop-uploader.components";
 import { WindowComponent } from "src/app/shared/components/window/window.component";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'edit-tab-window',
@@ -20,10 +22,11 @@ export class EditTabWindowComponent implements OnChanges {
   @Input() tab: Tab | null = null;
   @Output() closeWindow = new EventEmitter<void>();
 
-  @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
-
   finalName: string | null = null;
   pages: Page[] = [];
+
+     saveAll$ = new Subject<Tab>();
+     clearAll$ = new Subject<void>();
 
   constructor(private pagesRepo: PagesRepository) { }
   async ngOnChanges(): Promise<void> {
@@ -48,14 +51,14 @@ export class EditTabWindowComponent implements OnChanges {
 
   onWindowClose() {
     this.finalName = null;
-    this.dropUploader?.clearAll();
+    this.clearAll$.next();
     this.closeWindow.emit();
   }
 
-  async saveAndClose() {
+  saveAndClose() {
     this.tab!.name = this.finalName ?? `Tab ${this.tab!.id}`;
     this.tab!.updatedAt = Date.now();
-    this.dropUploader?.saveAll(this.tab!);
+    this.saveAll$.next(this.tab!);
     this.onWindowClose();
   }
 }

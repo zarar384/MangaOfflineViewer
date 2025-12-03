@@ -51,7 +51,13 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
         this.totalTabs$.pipe(startWith(this.totalTabs)),
         this.perPage$.pipe(startWith(this.perPage)),
         this.currentPage$.pipe(startWith(this.currentPage))
-      ]).subscribe(() => this.updatePages())
+      ])
+        .pipe(
+          map(([total, perPage, current]) => {
+            return this.updatePages(total, perPage, current);
+          })
+        )
+        .subscribe(pages => this.pages = pages)
     );
   }
 
@@ -73,19 +79,20 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
     this.sub.unsubscribe();
   }
 
-  private updatePages() {
-    this.totalPages = Math.ceil(this.totalTabs / this.perPage);
+  private updatePages(totalTabs: number, perPage: number, currentPage: number): number[] {
+    this.totalPages = Math.ceil(totalTabs / perPage);
 
-    if (this.currentPage > this.totalPages) {
-      const newPage = this.totalPages || 1;
-      if (this.currentPage !== newPage) {
-        this.currentPage$.next(newPage);
-        this.pageChange.emit({ page: newPage, perPage: this.perPage });
-        return;
+    let page = currentPage;
+    if (page > this.totalPages) {
+      page = this.totalPages || 1;
+      if (page !== currentPage) {
+        this.currentPage$.next(page);
+        this.pageChange.emit({ page, perPage });
+        return [];
       }
     }
 
-    let start = Math.max(1, this.currentPage - Math.floor(this.maxVisiblePages / 2));
+    let start = Math.max(1, page - Math.floor(this.maxVisiblePages / 2));
     let end = Math.min(this.totalPages, start + this.maxVisiblePages - 1);
 
     if (end - start + 1 < this.maxVisiblePages) {
@@ -95,5 +102,6 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
     const arr: number[] = [];
     for (let i = start; i <= end; i++) arr.push(i);
     this.pages = arr;
+    return arr;
   }
 }

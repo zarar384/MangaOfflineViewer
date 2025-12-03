@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, signal, } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, OnInit, Output, signal, } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TabsComponent } from './tabs/tabs.component';
 import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
@@ -16,7 +16,7 @@ import { MolvPaginationComponent } from 'src/app/shared/components/molv-paginati
   imports: [TabsComponent, CommonModule, MolvPaginationComponent,
     SettingsWindowComponent, EditTabWindowComponent, UploadFileWindowComponent]
 })
-export class MangaHomeComponent implements OnInit {
+export class MangaHomeComponent implements OnInit, AfterViewInit {
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
 
@@ -30,10 +30,15 @@ export class MangaHomeComponent implements OnInit {
   tab: Tab | null = null;
 
   constructor(private uiState: UiStateService) { }
+
   ngOnInit(): void {
     this.totalCount = this.uiState.getValue<number>('totalCount') ?? 0;
     this.page.set(this.uiState.getValue<number>('page') ?? 1);
     this.perPage.set(this.uiState.getValue<number>('perPage') ?? 10);
+  }
+
+  ngAfterViewInit(): void {
+    this.uiState.refreshTabs$.next();
   }
 
   onPageChange(newPage: number, newPerPage: number) {
