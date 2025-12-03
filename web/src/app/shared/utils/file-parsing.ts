@@ -105,3 +105,39 @@ export function calculateProgress(start: number, end: number, index: number, tot
   const step = (end - start) / total;
   return Math.min(end, Math.floor(start + step * index));
 }
+
+export function encodeQuotedPrintable(str: string): string {
+  return str.replace(/[^\x20-\x7E\r\n]/g, chr => {
+    if (chr === '\r' || chr === '\n') return chr;
+    return '=' + chr.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0');
+  }).replace(/ /g, (match, offset, original) => {
+    if (offset === original.length - 1 || original[offset + 1] === '\r' || original[offset + 1] === '\n') return '=20';
+    return ' ';
+  }).replace(/\t/g, '=09').replace(/=$/gm, '=3D');
+}
+
+export function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+export function getImageExtension(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/png': return 'png';
+    case 'image/jpeg': return 'jpg';
+    case 'image/gif': return 'gif';
+    default: return 'png';
+  }
+}

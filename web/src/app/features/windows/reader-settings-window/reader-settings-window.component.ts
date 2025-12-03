@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvModule } from 'src/app/shared/components/molv-module.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
@@ -11,7 +11,7 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
   styleUrl: './reader-settings-window.component.css',
   standalone: true
 })
-export class ReaderSettingsWindowComponent implements OnInit {
+export class ReaderSettingsWindowComponent {
   @Input() isVisible = false;
   @Input() mode: 'scroll' | 'page' = 'scroll';
   @Input() zoomLevel = 0;
@@ -22,10 +22,9 @@ export class ReaderSettingsWindowComponent implements OnInit {
   @Output() modeChange = new EventEmitter<'scroll' | 'page'>();
   @Output() zoomLevelChange = new EventEmitter<number>();
   @Output() gapLevelChange = new EventEmitter<number>();
+  @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
 
   constructor(private uiState: UiStateService) { }
-  ngOnInit(): void {
-  }
 
   onWindowHide() {
     this.hideWindow.emit();
@@ -62,5 +61,10 @@ export class ReaderSettingsWindowComponent implements OnInit {
     this.gapLevel = value;
     this.uiState.saveState({ readerGap: this.gapLevel });
     this.gapLevelChange.emit(value);
+  }
+
+  // EXPORT
+  export(format: 'mhtml' | 'zip') {
+    this.exportButtonClicked.emit(format);
   }
 }

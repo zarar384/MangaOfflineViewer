@@ -1,6 +1,7 @@
 <reader-settings-window
   [isVisible]="showSettingsWindow" 
   (hideWindow)="onSettingsWindowHide()"
+  (exportButtonClicked)="onExportButtonClicked($event)"
   [(gapLevel)]="gap"
   [(mode)]="mode"
   [(zoomLevel)]="zoom">

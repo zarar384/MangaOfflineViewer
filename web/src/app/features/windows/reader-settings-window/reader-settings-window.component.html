@@ -1,19 +1,29 @@
 <app-window [visible]="isVisible" title="Settings Mangas" [width]="'500px'" [height]="'400px'" position="bottom-right"
   [showClose]="false" [showHide]="true" [blockBackground]="false" (hide)="onWindowHide()">
   <div class="controls">
-  <div class="setting-right">
-    <span class="setting-label">Gap:</span>
-    <molv-slider  [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
-  </div>
+    <div class="setting-right">
+      <span class="setting-label">Gap:</span>
+      <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
+    </div>
 
-  <div class="setting-right">
-    <span class="setting-label">Zoom:</span>
-    <molv-slider  [min]="0.5" [max]="3" [step]="0.1" [(value)]="zoom"></molv-slider>
-  </div>
+    <div class="setting-right">
+      <span class="setting-label">Zoom:</span>
+      <molv-slider [min]="0.5" [max]="3" [step]="0.1" [(value)]="zoom"></molv-slider>
+    </div>
 
-  <div class="setting-left">
-    <span class="setting-label">{{ mode === 'scroll' ? 'Scroll Mode' : 'Page Mode' }}:</span>
-    <molv-switch [(checked)]="modeIsPage"></molv-switch>
+    <div class="setting-left">
+      <span class="setting-label">{{ mode === 'scroll' ? 'Scroll Mode' : 'Page Mode' }}:</span>
+      <molv-switch [(checked)]="modeIsPage"></molv-switch>
+    </div>
+
+    <!-- buttons to download tab-->
+    <!-- TODO: change it -->
+    <div class="setting-left">
+      <span class="setting-label">Download:</span>
+      <div style="display: flex; gap: 10px;">
+        <button class="molv-btn-gradient" (click)="export('mhtml')">MHTML</button>
+        <button class="molv-btn-gradient" (click)="export('zip')">ZIP</button>
+      </div>
+    </div>
   </div>
-</div>
 </app-window>

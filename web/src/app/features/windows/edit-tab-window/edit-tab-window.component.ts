@@ -4,7 +4,6 @@ import { FormsModule } from "@angular/forms";
 import { Page } from "src/app/core/models/page.model";
 import { Tab } from "src/app/core/models/tab.model";
 import { PagesRepository } from "src/app/core/repositories/pages.repository";
-import { UiStateService } from "src/app/core/services/ui-state.service";
 import { DropUploaderComponents } from "src/app/shared/components/drop-uploader/drop-uploader.components";
 import { WindowComponent } from "src/app/shared/components/window/window.component";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
@@ -25,8 +24,8 @@ export class EditTabWindowComponent implements OnChanges {
   finalName: string | null = null;
   pages: Page[] = [];
 
-     saveAll$ = new Subject<Tab>();
-     clearAll$ = new Subject<void>();
+  saveAll$ = new Subject<Tab>();
+  clearAll$ = new Subject<void>();
 
   constructor(private pagesRepo: PagesRepository) { }
   async ngOnChanges(): Promise<void> {
