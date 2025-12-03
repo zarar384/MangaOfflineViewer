@@ -4,168 +4,158 @@ import { Tab } from '../models/tab.model';
 import { Page } from '../models/page.model';
 import { DbService } from '../database/db.service';
 import { createPreviewFromFirstPage } from 'src/app/shared/utils/preview';
+import { from, map, Observable, switchMap } from 'rxjs';
+
 
 @Injectable({ providedIn: 'root' })
 export class TabsRepository {
   constructor(private db: DbService) { }
 
   // CRUD base 
-  async add(tab: Tab) {
-    return this.db.put(STORE_TABS, tab);
-  }
+  add(tab: Tab) { return this.db.put(STORE_TABS, tab); }
+  update(tab: Tab) { return this.db.put(STORE_TABS, tab); }
+  delete(id: number) { return this.db.run(STORE_TABS, 'readwrite', s => s.delete(id)); }
+  get(id: number) { return this.db.get<Tab>(STORE_TABS, id); }
+  getAll() { return this.db.getAll<Tab>(STORE_TABS); }
 
-  async update(tab: Tab) {
-    return this.db.put(STORE_TABS, tab);
-  }
-
-  async delete(id: number) {
-    return this.db.run(STORE_TABS, 'readwrite', store => store.delete(id));
-  }
-
-  async get(id: number): Promise<Tab | undefined> {
-    return this.db.get(STORE_TABS, id);
-  }
-
-  async getAll(): Promise<Tab[]> {
-    return this.db.getAll(STORE_TABS);
-  }
-
-  async getTotalCount(): Promise<number> {
+  getTotalCount() {
     return this.db.run(STORE_TABS, 'readonly', store => store.count());
   }
 
-async getPaged(page: number, perPage: number): Promise<Tab[]> {
-  const all = await this.db.runCursor<Tab>(
-    STORE_TABS,
-    "readonly",
-    store => store.openCursor()
-  );
+  getPaged(page: number, perPage: number) {
+    const all$ = this.db.runCursor<Tab>(
+      STORE_TABS,
+      "readonly",
+      store => store.openCursor()
+    );
 
-  const start = (page - 1) * perPage;
-  const end = start + perPage;
-  
-  return all.slice(start, end);
-}
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
 
-  async deleteTabWithPages(tabId: number): Promise<void> {
+    return all$.pipe(
+      map(tabs => tabs.slice(start, end))
+    );
+  }
+
+  deleteTabWithPages(tabId: number): Observable<void> {
     // multi-store delete transaction
     // create transaction and wait for completion
-    const db = await this.db.getDb();
-    const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
-    const tabsStore = tx.objectStore(STORE_TABS);
-    const pagesStore = tx.objectStore(STORE_PAGES);
-    const index = pagesStore.index('tab');
+    // switchMap is used to wait for the db Observable and then run the transaction
+    return this.db.getDb().pipe(
+      switchMap(db => new Observable<void>(subscriber => {
+        const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
+        const tabsStore = tx.objectStore(STORE_TABS);
+        const pagesStore = tx.objectStore(STORE_PAGES);
+        const index = pagesStore.index('tab');
 
-    // delete tab
-    tabsStore.delete(tabId);
+        // delete tab
+        tabsStore.delete(tabId);
 
-    // delete associated pages  
-    const request = index.openCursor(IDBKeyRange.only(tabId));
-    request.onsuccess = (ev: Event) => {
-      const cursor = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
-      if (cursor) {
-        cursor.delete();
-        cursor.continue();
-      }
-    };
-    request.onerror = () => {
-      // fetch error in tx.onerror
-    };
+        // delete associated pages  
+        const request = index.openCursor(IDBKeyRange.only(tabId));
+        request.onsuccess = (ev: Event) => {
+          const cursor = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
+          if (cursor) {
+            cursor.delete();
+            cursor.continue();
+          }
+        };
 
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
+        request.onerror = () => {
+          // fetch error in tx.onerror
+        };
+
+        tx.oncomplete = () => { subscriber.next(); subscriber.complete(); };
+        tx.onerror = () => subscriber.error(tx.error);
+        tx.onabort = () => subscriber.error(tx.error);
+
+        return () => { }; // unsubscribe
+      }))
+    );
   }
+
 
   // BULK SAVE OR UPDATE(tab + pages[])
-  async saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = true): Promise<number> {
-    let tabWithPreview: Tab = tab;
-
+  saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = true): Observable<number> {
     // generate preview
-    const preview = await createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE);
-    if (preview) tabWithPreview = { ...tab, preview };
+    // from:  convert promise (preview generation) to observable
+    return from(createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE)).pipe(
+      // map: create tab object with preview and updatedAt
+      map(preview => ({
+        ...tab,
+        preview: preview || tab.preview,
+        updatedAt: tab.updatedAt ?? Date.now()
+      })),
+      // switchMap: take tabWithPreview and switch to db observable
+      switchMap(tabWithPreview =>
+        this.db.getDb().pipe(
+          switchMap(db => new Observable<number>(subscriber => {
+            const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
+            const tabStore = tx.objectStore(STORE_TABS);
+            const pagesStore = tx.objectStore(STORE_PAGES);
+            const pagesIndex = pagesStore.index('tab');
 
-    tabWithPreview = { ...tabWithPreview, updatedAt: tab.updatedAt ?? Date.now() };
+            // save tab
+            const tabReq = tabStore.put(tabWithPreview);
 
-    // block refresh until done
-    window.onbeforeunload = () => true;
+            tabReq.onsuccess = async (event: Event) => {
+              const tabId = (event.target as IDBRequest).result as number;
 
-    try {
-      const db = await this.db.getDb();
-      const transaction = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
-      const tabStore = transaction.objectStore(STORE_TABS);
-      const pagesStore = transaction.objectStore(STORE_PAGES);
-      const pagesIndex = pagesStore.index('tab');
+              // save all pages as observable using from
+              const savePages = () => from(Promise.all(
+                pages.map(page => new Promise<void>((res, rej) => {
+                  const p = { ...page };
+                  delete p.id; // to create new record
+                  p.tab = tabId;
+                  const req = pagesStore.put(p);
+                  req.onsuccess = () => res();
+                  req.onerror = () => rej(req.error);
+                }))
+              ));
 
-      // start operation
-      const tabRequest = tabStore.put(tabWithPreview);
+              const deleteOld$ = new Observable<void>(sub => {
+                if (!deleteOldPages) {
+                  // simply save new pages
+                  savePages().subscribe({ complete: () => sub.next() });
+                  return;
+                }
 
-      return await new Promise<number>((resolve, reject) => {
-        tabRequest.onerror = () => reject(tabRequest.error);
+                // delete old pages first
+                const getKeysReq = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
+                getKeysReq.onsuccess = async () => {
+                  const keys: IDBValidKey[] = getKeysReq.result || [];
+                  await Promise.all(
+                    keys.map(k => new Promise<void>((res, rej) => {
+                      const req = pagesStore.delete(k);
+                      req.onsuccess = () => res();
+                      req.onerror = () => rej(req.error);
+                    }))
+                  );
+                  // then save new pages
+                  savePages().subscribe({ complete: () => sub.next() });
+                };
+                getKeysReq.onerror = () => sub.error(getKeysReq.error);
+              });
 
-        tabRequest.onsuccess = async (event: Event) => {
-          const tabId = (event.target as IDBRequest).result as number;
+              // subscribe: wait for all deletes
+              deleteOld$.subscribe({
+                complete: () => { /* done */ },
+                error: err => subscriber.error(err)
+              });
+            };
 
-          // helper to save all pages and wait for completion
-          const savePages = async () => {
-            console.log('Saving pages count=', pages.length, 'for tabId=', tabId);
-            const promises = pages.map(page => new Promise<void>((res, rej) => {
-              const pageToSave = { ...page };
-              delete pageToSave.id; // to create new record
-              pageToSave.tab = tabId;
-              const req = pagesStore.put(pageToSave);
-              req.onsuccess = () => res();
-              req.onerror = () => rej(req.error);
-            }));
-            await Promise.all(promises); // wait all pages saved
-          };
+            tabReq.onerror = () => subscriber.error(tabReq.error);
 
-          if (!deleteOldPages) {
-            // simply save new pages
-            await savePages();
-            return;
-          }
-
-          // delete old pages first
-          const getKeysReq = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
-
-          getKeysReq.onerror = () => reject(getKeysReq.error);
-
-          getKeysReq.onsuccess = async () => {
-            const keys: IDBValidKey[] = getKeysReq.result || [];
-
-            if (keys.length === 0) {
-              // no old pages => directly save new
-              await savePages();
-              return;
-            }
-
-            // wait for all deletes
-            await Promise.all(
-              keys.map(key => new Promise<void>((res, rej) => {
-                const deleteReq = pagesStore.delete(key);
-                deleteReq.onsuccess = () => res();
-                deleteReq.onerror = () => rej(deleteReq.error);
-              }))
-            );
-
-            // all old pages removed => save new pages
-            await savePages();
-          };
-        };
-
-        // resolve when transaction fully completed
-        transaction.oncomplete = () => {
-          resolve((tabRequest.result as number) || 0);
-        };
-        transaction.onerror = () => reject(transaction.error);
-        transaction.onabort = () => reject(transaction.error);
-      });
-    } finally {
-      window.onbeforeunload = null;
-    }
+            // resolve observable when transaction fully completed
+            tx.oncomplete = () => {
+              subscriber.next(tabReq.result as number || 0);
+              subscriber.complete();
+            };
+            tx.onerror = () => subscriber.error(tx.error);
+            tx.onabort = () => subscriber.error(tx.error);
+          }))
+        )
+      )
+    );
   }
-
 }

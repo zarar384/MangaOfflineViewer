@@ -46,29 +46,12 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
   private sub = new Subscription();
 
   ngOnInit() {
-  this.sub.add(
-    combineLatest([
-      this.totalTabs$.pipe(startWith(this.totalTabs)),
-      this.perPage$.pipe(startWith(this.perPage)),
-      this.currentPage$.pipe(startWith(this.currentPage))
-    ])
-        .pipe(
-          map(([total, perPage, current]) => {
-            this.totalPages = Math.ceil(total / perPage);
-
-            let start = Math.max(1, current - Math.floor(this.maxVisiblePages / 2));
-            let end = Math.min(this.totalPages, start + this.maxVisiblePages - 1);
-
-            if (end - start + 1 < this.maxVisiblePages) {
-              start = Math.max(1, end - this.maxVisiblePages + 1);
-            }
-
-            const arr: number[] = [];
-            for (let i = start; i <= end; i++) arr.push(i);
-            return arr;
-          })
-        )
-        .subscribe(pages => this.pages = pages)
+    this.sub.add(
+      combineLatest([
+        this.totalTabs$.pipe(startWith(this.totalTabs)),
+        this.perPage$.pipe(startWith(this.perPage)),
+        this.currentPage$.pipe(startWith(this.currentPage))
+      ]).subscribe(() => this.updatePages())
     );
   }
 
@@ -88,5 +71,29 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.sub.unsubscribe();
+  }
+
+  private updatePages() {
+    this.totalPages = Math.ceil(this.totalTabs / this.perPage);
+
+    if (this.currentPage > this.totalPages) {
+      const newPage = this.totalPages || 1;
+      if (this.currentPage !== newPage) {
+        this.currentPage$.next(newPage);
+        this.pageChange.emit({ page: newPage, perPage: this.perPage });
+        return;
+      }
+    }
+
+    let start = Math.max(1, this.currentPage - Math.floor(this.maxVisiblePages / 2));
+    let end = Math.min(this.totalPages, start + this.maxVisiblePages - 1);
+
+    if (end - start + 1 < this.maxVisiblePages) {
+      start = Math.max(1, end - this.maxVisiblePages + 1);
+    }
+
+    const arr: number[] = [];
+    for (let i = start; i <= end; i++) arr.push(i);
+    this.pages = arr;
   }
 }

@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angu
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { take } from 'rxjs';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -41,8 +42,14 @@ export class NavbarComponent implements OnInit {
   }
 
   closeTab(tab: Tab) {
-    this.tabsService.removeTab(tab.id!, this.page, this.perPage);
-    if (this.selectedChapter?.id === tab.id) this.selectedChapter = null;
+    this.tabsService
+      .removeTab(tab.id!, this.page, this.perPage)
+      .pipe(take(1))
+      .subscribe();
+
+    if (this.selectedChapter?.id === tab.id) {
+      this.selectedChapter = null;
+    }
   }
 
   goHome() {

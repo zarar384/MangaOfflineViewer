@@ -41,12 +41,13 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   loadPages() {
     if (!this.activeManga) return;
 
-    this.pagesRepo.getByTab(this.activeManga)
-      .then(pages => {
+  this.pagesRepo.getByTab(this.activeManga)
+    .subscribe({
+      next: pages => {
         this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
-        console.log('Loaded pages:', this.pages);
-      })
-      .catch(err => console.error('Error loading pages', err));
+      },
+      error: err => console.error('Error loading pages', err)
+    });
   }
 
   // windows

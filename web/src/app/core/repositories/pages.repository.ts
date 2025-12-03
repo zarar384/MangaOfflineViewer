@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { STORE_PAGES } from '../db.config';
 import { Page } from '../models/page.model';
 import { DbService } from '../database/db.service';
+import { from, Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class PagesRepository {
@@ -10,29 +11,17 @@ export class PagesRepository {
   // CRUD base 
   // put() garantees transaction completion
   // run to wait for transaction completion, and use it inside to access indexes
-  async add(page: Page) {
-    return this.db.put(STORE_PAGES, page);
-  }
+  add(tab: Page) { return this.db.put(STORE_PAGES, tab); }
+  update(tab: Page) { return this.db.put(STORE_PAGES, tab); }
+  delete(id: number) { return this.db.run(STORE_PAGES, 'readwrite', s => s.delete(id)); }
+  get(id: number) { return this.db.get<Page>(STORE_PAGES, id); }
+  getAll() { return this.db.getAll<Page>(STORE_PAGES); }
 
-  async update(page: Page) {
-    return this.db.put(STORE_PAGES, page);
-  }
-
-  async delete(id: number) {
-    return this.db.run(STORE_PAGES, 'readwrite', store => store.delete(id));
-  }
-
-  async get(id: number): Promise<Page | undefined> {
-    return this.db.get(STORE_PAGES, id);
-  }
-
-  async getAll(): Promise<Page[]> {
-    return this.db.getAll(STORE_PAGES);
-  }
-
-  async getByTab(tabId: number): Promise<Page[]> {
-    return this.db.run(STORE_PAGES, 'readonly', store =>
-      (store.index('tab') as IDBIndex).getAll(IDBKeyRange.only(tabId))
+  getByTab(tabId: number): Observable<Page[]> {
+    return from(
+      this.db.run(STORE_PAGES, 'readonly', store =>
+        (store.index('tab') as IDBIndex).getAll(IDBKeyRange.only(tabId))
+      )
     );
   }
 }

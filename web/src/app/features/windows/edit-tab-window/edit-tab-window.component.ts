@@ -6,6 +6,7 @@ import { Tab } from "src/app/core/models/tab.model";
 import { PagesRepository } from "src/app/core/repositories/pages.repository";
 import { DropUploaderComponents } from "src/app/shared/components/drop-uploader/drop-uploader.components";
 import { WindowComponent } from "src/app/shared/components/window/window.component";
+import { numericNameSort } from "src/app/shared/utils/file-parsing";
 
 @Component({
   selector: 'edit-tab-window',
@@ -17,7 +18,7 @@ import { WindowComponent } from "src/app/shared/components/window/window.compone
 export class EditTabWindowComponent implements OnChanges {
   @Input() isVisible = false;
   @Input() tab: Tab | null = null;
-  @Output() closeWindow = new EventEmitter<void>(); 
+  @Output() closeWindow = new EventEmitter<void>();
 
   @ViewChild(DropUploaderComponents) dropUploader!: DropUploaderComponents;
 
@@ -32,7 +33,13 @@ export class EditTabWindowComponent implements OnChanges {
   private async loadPages() {
     if (!this.tab?.id) return;
     this.finalName = this.tab.name;
-    this.pages = await this.pagesRepo.getByTab(this.tab.id);
+    this.pagesRepo.getByTab(this.tab.id!)
+      .subscribe({
+        next: pages => {
+          this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
+        },
+        error: err => console.error('Error loading pages', err)
+      });
   }
 
   onUploadFinished() {
@@ -48,7 +55,7 @@ export class EditTabWindowComponent implements OnChanges {
   async saveAndClose() {
     this.tab!.name = this.finalName ?? `Tab ${this.tab!.id}`;
     this.tab!.updatedAt = Date.now();
-    await this.dropUploader?.saveAll(this.tab!);
+    this.dropUploader?.saveAll(this.tab!);
     this.onWindowClose();
   }
 }

@@ -3,10 +3,11 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
 import { CommonModule } from '@angular/common';
 import { DropUploaderComponents } from 'src/app/shared/components/drop-uploader/drop-uploader.components';
 import { Tab } from 'src/app/core/models/tab.model';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'upload-file-window',
-  imports: [WindowComponent, CommonModule, DropUploaderComponents],
+  imports: [WindowComponent, CommonModule, DropUploaderComponents, FormsModule],
   templateUrl: './upload-file-window.component.html',
   styleUrls: ['./upload-file-window.component.css'],
   standalone: true
@@ -30,9 +31,9 @@ export class UploadFileWindowComponent {
     this.closeWindow.emit();
   }
 
-  async saveAndClose() {
+  saveAndClose() {
     this.tab.name = this.finalName ?? 'Untitled';
-    await this.dropUploader?.saveAll(this.tab);
+    this.dropUploader?.saveAll(this.tab);
     this.onWindowClose();
   }
 }

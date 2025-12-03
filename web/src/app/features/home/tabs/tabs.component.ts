@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, Signal, SimpleChanges, WritableSignal } from '@angular/core';
+import { finalize, switchMap } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { LoadingService } from 'src/app/core/services/loading.service';
@@ -25,25 +26,34 @@ export class TabsComponent implements OnInit {
 
   tabs: { tab: Tab; previewUrl: string }[] = [];
 
-  constructor(private tabsService: TabsService, private uiState: UiStateService, private loading: LoadingService) { }
+  constructor(
+    private tabsService: TabsService, 
+    private uiState: UiStateService, 
+    private loading: LoadingService) { }
 
   ngOnInit() {
-    this.uiState.refreshTabs$.subscribe(() => this.refreshTabs());
+    this.uiState.refreshTabs$
+      .pipe(switchMap(() => this.doRefresh()))
+      .subscribe();
+
+    this.doRefresh().subscribe();
+
     this.tabsService.tabs$.subscribe(t => this.tabs = t);
-    this.tabsService.totalTabs$.subscribe(total => this.totalTabsChanged.emit(total));
-    this.refreshTabs();
+    this.tabsService.totalTabs$.subscribe(t => this.totalTabsChanged.emit(t));
   }
 
-  refreshTabs = async () => {
+  doRefresh() {
     this.loading.show();
-    await this.tabsService.refreshTabs(this.page(), this.perPage());
-    this.loading.hide();
+    return this.tabsService
+      .refreshTabs(this.page(), this.perPage())
+      .pipe(finalize(() => this.loading.hide()));
   }
 
-  remove(tabId: number) {
+  remove(id: number) {
     this.loading.show();
-    this.tabsService.removeTab(tabId, this.page(), this.perPage())
-      .finally(() => this.loading.hide());
+    this.tabsService.removeTab(id, this.page(), this.perPage())
+      .pipe(finalize(() => this.loading.hide()))
+      .subscribe();
   }
 
   openChapterInTab(tabData: { tab: Tab; previewUrl: string }) {

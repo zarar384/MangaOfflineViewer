@@ -3,50 +3,54 @@ import { TabsRepository } from '../repositories/tabs.repository';
 import { ObjectUrlService } from './object-url.service';
 import { Tab } from '../models/tab.model';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, catchError, EMPTY, forkJoin, from, map, of, switchMap, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
-    private tabsSubject = new BehaviorSubject<{ tab: Tab; previewUrl: string }[]>([]);
-    tabs$ = this.tabsSubject.asObservable();
+  private tabsSubject = new BehaviorSubject<{ tab: Tab; previewUrl: string }[]>([]);
+  tabs$ = this.tabsSubject.asObservable();
 
-    private totalTabsSubject = new BehaviorSubject<number>(0);
-    totalTabs$ = this.totalTabsSubject.asObservable();
+  private totalTabsSubject = new BehaviorSubject<number>(0);
+  totalTabs$ = this.totalTabsSubject.asObservable();
 
-    constructor(private tabRepo: TabsRepository, private urlService: ObjectUrlService) { }
+  constructor(private repo: TabsRepository, private url: ObjectUrlService) { }
 
-    async refreshTabs(page: number, perPage: number) {
-        try {
-            const tabs = await this.tabRepo.getPaged(page, perPage);
-            const processedTabs = await Promise.all(
-                tabs.map(async tab => {
-                    const previewUrl = await this.getPreviewUrl(tab.name, tab.preview, true);
-                    return { tab: { ...tab }, previewUrl };
-                })
-            );
+  refreshTabs(page: number, perPage: number) {
+    return this.repo.getPaged(page, perPage).pipe(
+      switchMap(tabs => {
+        if (tabs.length === 0) return of([]);
+        return forkJoin(
+          tabs.map(tab =>
+            from(this.buildPreview(tab)).pipe(
+              map(previewUrl => ({ tab, previewUrl }))
+            )
+          )
+        );
+      }),
+      tap(data => this.tabsSubject.next(data)),
+      switchMap(() => this.repo.getTotalCount()),
+      tap(total => this.totalTabsSubject.next(total)),
+      catchError(() => {
+        this.tabsSubject.next([]);
+        this.totalTabsSubject.next(0);
+        return EMPTY;
+      })
+    );
+  }
 
-            const total = await this.tabRepo.getTotalCount();
-            this.totalTabsSubject.next(total);
-            this.tabsSubject.next(processedTabs);
-        } catch {
-            this.tabsSubject.next([]);
-            this.totalTabsSubject.next(0);
-        }
+  removeTab(id: number, page: number, perPage: number) {
+    return this.repo.delete(id).pipe(
+      switchMap(() => this.refreshTabs(page, perPage))
+    );
+  }
+
+  private async buildPreview(tab: Tab): Promise<string> {
+    if (tab.preview instanceof Blob) {
+      this.url.revokeUrl(tab.name);
+      return this.url.createUrl(tab.name, tab.preview);
     }
-
-    async removeTab(tabId: number, page: number, perPage: number) {
-        await this.tabRepo.deleteTabWithPages(tabId);
-        await this.refreshTabs(page, perPage);
-    }
-
-    private async getPreviewUrl(name: string, preview: Blob | string | undefined, revoke: boolean = false): Promise<string> {
-        if (preview instanceof Blob) {
-            if (revoke) this.urlService.revokeUrl(name);
-            return this.urlService.createUrl(name, preview);
-        } else if (typeof preview === 'string') {
-            return preview;
-        } else {
-            return DEFAULT_PREVIEW;
-        }
-    }
+    return typeof tab.preview === 'string'
+      ? tab.preview
+      : DEFAULT_PREVIEW;
+  }
 }

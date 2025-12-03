@@ -27,12 +27,11 @@ export class DropUploaderComponents implements OnChanges {
   filesProcessing = false;
   progress = 0;
   urls: { name?: string; src: string }[] = [];
-  // TODO saved as Blobs:
-  // items: { id:string; blob: Blob; name?:string }[] = [];
 
   constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService,
     private mhtmlService: MhtmlExtractorService, private loading: LoadingService,
     private uiState: UiStateService) { }
+  
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['pages'] && this.pages?.length > 0) {
       this.rebuildUrls();
@@ -46,19 +45,18 @@ export class DropUploaderComponents implements OnChanges {
     });
   }
 
-  async saveAll(tab: Tab) {
+  saveAll(tab: Tab) {
     this.loading.show();
-    try {
-      const savedTabId = await this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages);
 
-      console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
-
-      this.uiState.refreshTabs$.next();
-    } catch (err) {
-      console.error('DropUploaderComponents.saveAll - error saving', err);
-    } finally {
-      this.loading.hide();
-    }
+    this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
+      .subscribe({
+        next: savedTabId => {
+          console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
+          this.uiState.refreshTabs$.next();
+        },
+        error: err => console.error('DropUploaderComponents.saveAll - error saving', err),
+        complete: () => this.loading.hide()
+      });
   }
 
   clearAll() {

@@ -8,7 +8,7 @@
   [showHide]="false"
   (close)="onWindowClose()">
   <div class="molv-container">
-    <input type="text" class="molv-txtbx" placeholder="Manga Name" [value]="finalName"  />
+    <input type="text" class="molv-txtbx" placeholder="Manga Name" [(ngModel)]="finalName"  />
     <button class="molv-btn-gradient" (click)="saveAndClose()">Save</button>
     <drop-uploader [visible]="isVisible" (onDropFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></drop-uploader>
   </div>
