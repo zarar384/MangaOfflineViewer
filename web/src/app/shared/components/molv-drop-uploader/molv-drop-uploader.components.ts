@@ -13,13 +13,13 @@ import { LoadingService } from 'src/app/core/services/loading.service';
 import { finalize, Subject, switchMap, takeUntil, tap } from 'rxjs';
 
 @Component({
-  selector: 'drop-uploader',
+  selector: 'molv-drop-uploader',
   imports: [CommonModule, DragDropModule],
-  templateUrl: './drop-uploader.components.html',
-  styleUrls: ['./drop-uploader.components.css'],
+  templateUrl: './molv-drop-uploader.components.html',
+  styleUrls: ['./molv-drop-uploader.components.css'],
   standalone: true
 })
-export class DropUploaderComponents implements OnChanges, OnInit, OnDestroy {
+export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy {
   @Input() pages: Page[] = [];
   @Input() visible = true;
   @Input() saveAll$!: Subject<Tab>;  
@@ -74,7 +74,7 @@ export class DropUploaderComponents implements OnChanges, OnInit, OnDestroy {
     this.loading.show();
     return this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).pipe(
       tap(savedTabId => {
-        console.log('DropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
+        console.log('MolvDropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
         this.uiState.refreshTabs$.next();
       }),
       finalize(() => 

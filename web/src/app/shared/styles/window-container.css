@@ -11,7 +11,7 @@
 
 .molv-container > input,
 .molv-container > button,
-.molv-container > drop-uploader {
+.molv-container > molv-drop-uploader {
   width: 100%; 
 }
 

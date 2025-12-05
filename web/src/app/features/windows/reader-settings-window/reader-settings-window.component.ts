@@ -14,6 +14,7 @@ import { WindowComponent } from 'src/app/shared/components/window/window.compone
 export class ReaderSettingsWindowComponent {
   @Input() isVisible = false;
   @Input() mode: 'scroll' | 'page' = 'scroll';
+  @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
 
@@ -23,6 +24,7 @@ export class ReaderSettingsWindowComponent {
   @Output() zoomLevelChange = new EventEmitter<number>();
   @Output() gapLevelChange = new EventEmitter<number>();
   @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
+  @Output() downloadModChange = new EventEmitter<'mhtml' | 'zip'>();
 
   constructor(private uiState: UiStateService) { }
 
@@ -39,6 +41,7 @@ export class ReaderSettingsWindowComponent {
     this.mode = value ? 'page' : 'scroll';
     this.uiState.saveState({ readerMode: this.mode });
     this.modeChange.emit(this.mode);
+    this.uiState.saveState({ downloadMod: this.downloadMod });
   }
 
   // ZOOM
@@ -63,6 +66,18 @@ export class ReaderSettingsWindowComponent {
     this.gapLevelChange.emit(value);
   }
 
+  // DOWNLOAD MOD
+   // RANGE
+  get dwnldMod(): 'mhtml' | 'zip' {
+    return this.downloadMod;
+  }
+
+  set dwnldMod(value: 'mhtml' | 'zip') {
+    this.downloadMod = value;
+    this.uiState.saveState({ downloadMod: this.downloadMod });
+    this.downloadModChange.emit(value);
+  }
+  
   // EXPORT
   export(format: 'mhtml' | 'zip') {
     this.exportButtonClicked.emit(format);

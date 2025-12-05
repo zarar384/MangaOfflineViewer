@@ -1,0 +1,7 @@
+.anime-select-wrapper {  position: relative;  display: inline-block;}
+.anime-select {  appearance: none;  padding: 10px 14px;  font-size: 1.1rem;  font-family: "Amatic SC", sans-serif;  font-weight: bold;  color: #ffeefe;  background: linear-gradient(145deg, #2a2a4a, #1a1a2e);  border: 1px solid rgba(255, 107, 158, 0.35);  border-radius: 10px;  cursor: pointer;  transition: all 0.25s ease;  min-width: 120px;  box-shadow: 0 3px 8px rgba(0,0,0,0.35);}
+.anime-select:hover {  border-color: #ff7eb3;  box-shadow: 0 8px 18px rgba(255, 107, 158, 0.45);  background: linear-gradient(145deg, #3a3a5a, #2a2a4a);}
+.anime-select:focus {  outline: none;  border-color: #ff8bd9;  box-shadow: 0 0 12px #ff8bd9;}
+.anime-select:focus-visible {  outline: none;  border-color: #ff8bd9;  box-shadow: 0 0 12px #ff8bd9;}
+.anime-select-wrapper::after {  content: "▼";  position: absolute;  right: 12px;  top: 50%;  pointer-events: none;  font-size: 0.9rem;  color: #ffbde7;  transition: transform 0.25s ease;}
+.anime-select option {  background: #2a2a4a;   color: #ffeefe;         font-family: "Amatic SC", sans-serif;  font-size: 1.1rem;  padding: 10px;}

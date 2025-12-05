@@ -4,14 +4,14 @@ import { FormsModule } from "@angular/forms";
 import { Page } from "src/app/core/models/page.model";
 import { Tab } from "src/app/core/models/tab.model";
 import { PagesRepository } from "src/app/core/repositories/pages.repository";
-import { DropUploaderComponents } from "src/app/shared/components/drop-uploader/drop-uploader.components";
+import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
 import { WindowComponent } from "src/app/shared/components/window/window.component";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
 import { Subject } from 'rxjs';
 
 @Component({
   selector: 'edit-tab-window',
-  imports: [WindowComponent, CommonModule, DropUploaderComponents, FormsModule],
+  imports: [WindowComponent, CommonModule, MolvDropUploaderComponents, FormsModule],
   templateUrl: './edit-tab-window.component.html',
   styleUrls: ['./edit-tab-window.component.css'],
   standalone: true

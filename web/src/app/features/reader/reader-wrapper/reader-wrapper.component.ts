@@ -25,6 +25,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   pages: Page[] = [];
   gap = 0.5;
   mode: 'scroll' | 'page' = 'scroll';
+  downloadMod: 'mhtml' | 'zip' = 'mhtml';
   zoom = 1;
   showSettingsWindow = true;
 
@@ -35,6 +36,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
     this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
+    this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
     this.loadPages();
   }
 

@@ -16,14 +16,17 @@
       <molv-switch [(checked)]="modeIsPage"></molv-switch>
     </div>
 
-    <!-- buttons to download tab-->
-    <!-- TODO: change it -->
+    <!-- button to download tab-->
     <div class="setting-left">
-      <span class="setting-label">Download:</span>
-      <div style="display: flex; gap: 10px;">
-        <button class="molv-btn-gradient" (click)="export('mhtml')">MHTML</button>
-        <button class="molv-btn-gradient" (click)="export('zip')">ZIP</button>
+      <div class="setting-label">
+        <molv-dropdown [(value)]="dwnldMod" [options]="[
+        { value: 'mhtml', label: 'MHTML' },
+        { value: 'zip', label: 'ZIP' }
+        ]">
+        </molv-dropdown>
       </div>
+        <button class="molv-btn-gradient download-btn" (click)="export(dwnldMod)">  Download</button>
     </div>
+
   </div>
 </app-window>

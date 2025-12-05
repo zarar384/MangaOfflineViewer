@@ -1,0 +1,11 @@
+<div class="anime-select-wrapper">
+    <select class="anime-select" (change)="onChange($event)">
+        @for (o of options; track $index) {
+            <option 
+                [value]="o.value" 
+                [selected]="o.value === value">
+                {{ o.label }}
+            </option>
+        }
+    </select>
+</div>
