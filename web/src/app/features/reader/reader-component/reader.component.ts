@@ -183,13 +183,16 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     this.scrollInProgress = true;
     this.loading.show();
 
+    // check if already at the bookmark
     const container = document.querySelector<HTMLElement>('.reader-container');
-    if (!container) {
+    const currentBookmark = this.getCurrentBookmark();
+    if (!container || currentBookmark?.pageId === bm.page) {
       this.loading.hide();
       this.scrollInProgress = false;
-      return;
+      return null;
     }
 
+    // find the index of the target page
     const pageIndex = this.pages.findIndex(p => p.id === bm.page);
     if (pageIndex === -1) {
       this.loading.hide();
@@ -246,13 +249,21 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
   private waitForScroll(container: HTMLElement, target: number): Promise<void> {
     return new Promise(resolve => {
+      const tolerance = 1;
+      const maxTime = 2000;
+      const startTime = performance.now();
+
       const check = () => {
-        if (Math.abs(container.scrollTop - target) <= 1) {
-          container.removeEventListener('scroll', check);
+        if (Math.abs(container.scrollTop - target) <= tolerance) {
           resolve();
+        } else if (performance.now() - startTime > maxTime) {
+          console.warn('Scroll timeout reached');
+          resolve();
+        } else {
+          requestAnimationFrame(check);
         }
       };
-      container.addEventListener('scroll', check);
+
       requestAnimationFrame(check);
     });
   }
