@@ -7,17 +7,13 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
     standalone: false
 })
 export class MolvDropdownComponent {
-    @Input() options: { value: string; label: string }[] = [];
-    @Input() value: string = "";
+@Input() options: { value: any; label: string }[] = [];
+@Input() value: any;
+@Output() valueChange = new EventEmitter<any>();
 
-    @Output() valueChange = new EventEmitter<string>();
-
-    onChange(e: Event) {
-        const el = e.target as HTMLSelectElement;
-        const val = el.value;
-        this.value = val;
-        this.valueChange.emit(val);
-
-        el.blur();
-    }
+onChange(e: Event) {
+  const val = (e.target as HTMLSelectElement).value;
+  this.value = val;
+  this.valueChange.emit(val);
+}
 }

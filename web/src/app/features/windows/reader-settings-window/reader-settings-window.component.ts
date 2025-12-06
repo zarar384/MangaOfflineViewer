@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, input, Input, Output } from '@angular/core';
+import { Bookmark } from 'src/app/core/models/bookmark';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvModule } from 'src/app/shared/components/molv-module.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
@@ -17,14 +18,21 @@ export class ReaderSettingsWindowComponent {
   @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
+  @Input() bookmarks: Bookmark[] = [];
+  @Input() selectedBookmarkId: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
   @Output() modeChange = new EventEmitter<'scroll' | 'page'>();
   @Output() zoomLevelChange = new EventEmitter<number>();
   @Output() gapLevelChange = new EventEmitter<number>();
-  @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
+  @Output() selectedBookmarkIdChange = new EventEmitter<number | null>();
   @Output() downloadModChange = new EventEmitter<'mhtml' | 'zip'>();
+
+  @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
+  @Output() saveBookmarkClicked = new EventEmitter<void>();
+  @Output() goToBookmarkClicked = new EventEmitter<number>();
+
 
   constructor(private uiState: UiStateService) { }
 
@@ -67,7 +75,6 @@ export class ReaderSettingsWindowComponent {
   }
 
   // DOWNLOAD MOD
-   // RANGE
   get dwnldMod(): 'mhtml' | 'zip' {
     return this.downloadMod;
   }
@@ -77,6 +84,17 @@ export class ReaderSettingsWindowComponent {
     this.uiState.saveState({ downloadMod: this.downloadMod });
     this.downloadModChange.emit(value);
   }
+
+  // BOOKMARKS
+get bookmarkOptions() {
+  const options = [{ value: 0, label: 'Select' }];
+  var bookmarks = this.bookmarks.map(b => ({
+    value : b.id!,
+    label: `Page ${b.page}`
+  }));
+  
+  return options.concat(bookmarks);
+}
   
   // EXPORT
   export(format: 'mhtml' | 'zip') {

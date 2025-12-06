@@ -1,4 +1,4 @@
-import { DB_NAME, DB_VERSION, STORE_PAGES, STORE_TABS } from "../db.config";
+import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_PAGES, STORE_TABS } from "../db.config";
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, filter, Observable, take } from 'rxjs';
 
@@ -23,6 +23,11 @@ export class DbService {
       if (!db.objectStoreNames.contains(STORE_PAGES)) {
         const pages = db.createObjectStore(STORE_PAGES, { keyPath: 'id', autoIncrement: true });
         pages.createIndex('tab', 'tab', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(STORE_BOOKMARKS)) {
+        const store = db.createObjectStore(STORE_BOOKMARKS, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('tab', 'tab', { unique: false });
       }
     };
 

@@ -1,11 +1,16 @@
 <reader-settings-window
   [isVisible]="showSettingsWindow" 
   (hideWindow)="onSettingsWindowHide()"
+  (saveBookmarkClicked)="saveBookmark()"
+  (goToBookmarkClicked)="goToBookmark($event)"
   (exportButtonClicked)="onExportButtonClicked($event)"
+  [bookmarks]="bookmarks"
   [(gapLevel)]="gap"
   [(mode)]="mode"
   [(zoomLevel)]="zoom"
-  [(downloadMod)]="downloadMod">
+  [(downloadMod)]="downloadMod"
+  [(selectedBookmarkId)]="selectedBookmarkId"
+>
 </reader-settings-window>
 
 <div class="reader-container-wrapper">

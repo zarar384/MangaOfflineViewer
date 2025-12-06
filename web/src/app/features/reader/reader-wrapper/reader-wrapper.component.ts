@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
@@ -11,6 +11,8 @@ import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { firstValueFrom } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
 import { LoadingService } from 'src/app/core/services/loading.service';
+import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
+import { Bookmark } from 'src/app/core/models/bookmark';
 
 @Component({
   selector: 'app-manga-reader',
@@ -28,8 +30,12 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   downloadMod: 'mhtml' | 'zip' = 'mhtml';
   zoom = 1;
   showSettingsWindow = true;
+  bookmarks: Bookmark[] = [];
+  selectedBookmarkId: number | null = null;
 
-  constructor(private pagesRepo: PagesRepository, private tabsRepo: TabsRepository,
+  @ViewChild(ReaderComponent) readerRef!: ReaderComponent;
+
+  constructor(private pagesRepo: PagesRepository, private tabsRepo: TabsRepository, private bookmarksRepo: BookmarksRepository,
     private uiState: UiStateService, private exportService: ExportService, private loading: LoadingService) { }
 
   ngOnInit(): void {
@@ -37,12 +43,15 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
+
     this.loadPages();
+    this.loadBookmarks();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['activeManga'] && !changes['activeManga'].firstChange) {
       this.loadPages();
+      this.loadBookmarks();
     }
   }
 
@@ -79,5 +88,43 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     } finally {
       this.loading.hide();
     }
+  }
+
+  // bookmark
+  saveBookmark() {
+    if (!this.activeManga || !this.readerRef) return;
+
+    const data = this.readerRef.getCurrentBookmark();
+    if (!data) return;
+
+    this.bookmarksRepo.add({
+      tab: this.activeManga,
+      page: data.pageId,
+      createdAt: Date.now()
+    }).subscribe(savedBookmarkid => {
+      this.bookmarksRepo.getByTab(this.activeManga!).subscribe(bms => {
+        this.bookmarks = bms.sort((a, b) => b.createdAt - a.createdAt);
+        this.selectedBookmarkId = Number(savedBookmarkid);
+      });
+    });
+  }
+
+  goToBookmark(bookmarkId: number) {
+    const bm = this.bookmarks.find(b => b.id === +bookmarkId);
+    if (!bm || !this.readerRef) return;
+
+    this.readerRef.scrollToBookmark(bm);
+  }
+
+  loadBookmarks(newSelectedId?: number) {
+    if (!this.activeManga) return;
+
+    this.bookmarksRepo.getByTab(this.activeManga).subscribe(bms => {
+      this.bookmarks = bms.sort((a, b) => b.createdAt - a.createdAt);
+
+      if (newSelectedId) {
+        this.selectedBookmarkId = newSelectedId;
+      }
+    });
   }
 }

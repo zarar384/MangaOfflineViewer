@@ -16,17 +16,29 @@
       <molv-switch [(checked)]="modeIsPage"></molv-switch>
     </div>
 
-    <!-- button to download tab-->
-    <div class="setting-left">
-      <div class="setting-label">
-        <molv-dropdown [(value)]="dwnldMod" [options]="[
+    <div class="setting-left-group">
+      <!-- button to download tab-->
+      <div class="setting-left">
+        <div class="setting-label">
+          <molv-dropdown [(value)]="dwnldMod" [options]="[
         { value: 'mhtml', label: 'MHTML' },
         { value: 'zip', label: 'ZIP' }
         ]">
-        </molv-dropdown>
+          </molv-dropdown>
+        </div>
+        <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
       </div>
-        <button class="molv-btn-gradient download-btn" (click)="export(dwnldMod)">  Download</button>
-    </div>
 
+      <!-- bookmarks -->
+      <div class="setting-left">
+        <div class="setting-label">
+          <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
+          </molv-dropdown>
+        </div>
+          <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
+          <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
+            (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
+      </div>
+    </div>
   </div>
 </app-window>
