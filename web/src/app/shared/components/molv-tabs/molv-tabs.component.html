@@ -1,0 +1,19 @@
+<div class="tabs-scroll">
+  <!-- Home -->
+  <div class="explorer-tab">
+    <button class="tab-btn" (click)="goHome()">Home</button>
+  </div>
+
+  <!-- Dynamic tabs -->
+  @for (t of tabs; track t.id) {
+    <div
+      class="explorer-tab"
+      [class.active]="selectedTab?.id === t.id"
+    >
+      <button class="tab-btn" (click)="select(t)">
+        {{ t.name }}
+      </button>
+      <button class="tab-close" (click)="close(t)">✕</button>
+    </div>
+  }
+</div>

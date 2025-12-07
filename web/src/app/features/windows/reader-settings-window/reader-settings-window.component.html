@@ -1,5 +1,11 @@
 <app-window [visible]="isVisible" title="Settings Mangas" [width]="'500px'" [height]="'400px'" position="bottom-right"
   [showClose]="false" [showHide]="true" [blockBackground]="false" (hide)="onWindowHide()">
+
+  <molv-tabs [tabs]="settingsTabs" [selectedTab]="activeTab === 'bookmarks' ? settingsTabs[0] : null"
+    (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
+
+  @if(activeTab === 'home')
+  {
   <div class="controls">
     <div class="setting-right">
       <span class="setting-label">Gap:</span>
@@ -35,10 +41,14 @@
           <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
           </molv-dropdown>
         </div>
-          <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
-          <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
-            (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
+        <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
+        <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
+          (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
       </div>
     </div>
   </div>
+  }
+  @else {
+  <p>bookmarks</p>
+  }
 </app-window>

@@ -1,14 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { take } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { take } from 'rxjs';
+import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
 
 @Component({
   selector: 'app-manga-navbar',
-  imports: [CommonModule],
   standalone: true,
+  imports: [CommonModule, MolvTabsComponent],
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.css'],
 })
@@ -20,7 +21,10 @@ export class NavbarComponent implements OnInit {
   selectedChapter: Tab | null = null;
   visibleTabs: Tab[] = [];
 
-  constructor(private tabsService: TabsService, private uiState: UiStateService) { }
+  constructor(
+    private tabsService: TabsService,
+    private uiState: UiStateService
+  ) {}
 
   ngOnInit() {
     this.tabsService.tabs$.subscribe(tabs => {
@@ -28,20 +32,20 @@ export class NavbarComponent implements OnInit {
     });
   }
 
-  get page(): number {
+  get page() {
     return this.uiState.getValue<number>('page') ?? 1;
   }
 
-  get perPage(): number {
+  get perPage() {
     return this.uiState.getValue<number>('perPage') ?? 10;
   }
 
-  selectTab(tab: Tab) {
+  onTabSelected(tab: Tab) {
     this.selectedChapter = tab;
     this.mangaSelected.emit(tab.id);
   }
 
-  closeTab(tab: Tab) {
+  onTabClosed(tab: Tab) {
     this.tabsService
       .removeTab(tab.id!, this.page, this.perPage)
       .pipe(take(1))
@@ -53,6 +57,7 @@ export class NavbarComponent implements OnInit {
   }
 
   goHome() {
+    this.selectedChapter = null;
     this.mangaSelected.emit(null);
   }
 
@@ -60,4 +65,3 @@ export class NavbarComponent implements OnInit {
     this.openUploadWindowClicked.emit();
   }
 }
-

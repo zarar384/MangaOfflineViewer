@@ -1,13 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, input, Input, Output } from '@angular/core';
 import { Bookmark } from 'src/app/core/models/bookmark';
+import { Tab } from 'src/app/core/models/tab.model';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvModule } from 'src/app/shared/components/molv-module.component';
+import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 
 @Component({
   selector: 'reader-settings-window',
-  imports: [CommonModule, WindowComponent, MolvModule],
+  imports: [CommonModule, WindowComponent, MolvModule, MolvTabsComponent],
   templateUrl: './reader-settings-window.component.html',
   styleUrl: './reader-settings-window.component.css',
   standalone: true
@@ -33,6 +35,7 @@ export class ReaderSettingsWindowComponent {
   @Output() saveBookmarkClicked = new EventEmitter<void>();
   @Output() goToBookmarkClicked = new EventEmitter<number>();
 
+  activeTab: 'home' | 'bookmarks' = 'home';
 
   constructor(private uiState: UiStateService) { }
 
@@ -86,18 +89,43 @@ export class ReaderSettingsWindowComponent {
   }
 
   // BOOKMARKS
-get bookmarkOptions() {
-  const options = [{ value: 0, label: 'Select' }];
-  var bookmarks = this.bookmarks.map(b => ({
-    value : b.id!,
-    label: `Page ${b.page}`
-  }));
-  
-  return options.concat(bookmarks);
-}
-  
+  get bookmarkOptions() {
+    const options = [{ value: 0, label: 'Select' }];
+    var bookmarks = this.bookmarks.map(b => ({
+      value: b.id!,
+      label: `Page ${b.page}`
+    }));
+
+    return options.concat(bookmarks);
+  }
+
   // EXPORT
   export(format: 'mhtml' | 'zip') {
     this.exportButtonClicked.emit(format);
   }
+
+  // TABS
+  get settingsTabs(): Tab[] {
+    if (this.bookmarks.length > 0) {
+      return [
+        {
+          id: 1,
+          name: 'Bookmarks'
+        } as Tab
+      ];
+    }
+
+    return [];
+  }
+
+  onHomeTab() {
+    this.activeTab = 'home';
+  }
+
+  onTabSelected(tab: Tab) {
+    if (tab.name === 'Bookmarks') {
+      this.activeTab = 'bookmarks';
+    }
+  }
+
 }

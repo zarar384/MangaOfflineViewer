@@ -1,0 +1,5 @@
+.explorer-tab {  display: flex;  align-items: center;  background: linear-gradient(180deg, #0b1220, #0e1530);  border: 1px solid rgba(255,255,255,0.06);  padding: 6px 8px 6px 12px;  border-top-left-radius: 6px;  border-top-right-radius: 6px;  box-shadow: 0 2px 4px rgba(0,0,0,0.4);  position: relative;  flex: 1 1 auto;      min-width: 60px;     max-width: 200px;     overflow: hidden;  text-overflow: ellipsis;  white-space: nowrap;     }
+.explorer-tab.active {  background: linear-gradient(180deg, #2a3d66, #233455);  color: #fff;  transform: translateY(-4px);}
+.tab-btn {  background: transparent;  border: none;  color: inherit;  font-weight: 600;  cursor: pointer;  padding-right: 8px;}
+.tab-close {  background: transparent;  border: none;  color: rgba(255,255,255,0.6);  cursor: pointer;}
+.tabs-scroll {  display: flex;  gap: 6px;  overflow-x: inherit;      padding-bottom: 4px;  -webkit-overflow-scrolling: touch; }

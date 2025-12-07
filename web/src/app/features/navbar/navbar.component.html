@@ -1,24 +1,17 @@
 <div class="tabs-row">
   <div class="tabs-left">
-    <div class="tabs-scroll">
-      <!-- home button -->
-      <div class="explorer-tab">
-        <button class="tab-btn" (click)="goHome()">Home</button>
-      </div>
-
-      <!-- tabs -->
-      @for (t of visibleTabs; track $index)
-      {
-        <div class="explorer-tab" [class.active]="selectedChapter?.id === t.id">
-          <button class="tab-btn" (click)="selectTab(t)">{{ t.name }}</button>
-          <button class="tab-close" (click)="closeTab(t)">✕</button>
-        </div>
-      }
-    </div>
+    <molv-tabs
+      [tabs]="visibleTabs"
+      [selectedTab]="selectedChapter"
+      (homeClicked)="goHome()"
+      (tabSelected)="onTabSelected($event)"
+      (tabClosed)="onTabClosed($event)"
+    />
   </div>
 
-  <!-- buttons -->
   <div class="tabs-right">
-    <button class="molv-btn-gradient" (click)="openUploadWindow()">Upload Files</button>
+    <button class="molv-btn-gradient" (click)="openUploadWindow()">
+      Upload Files
+    </button>
   </div>
 </div>
