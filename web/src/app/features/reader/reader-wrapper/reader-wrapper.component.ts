@@ -100,7 +100,8 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     this.bookmarksRepo.add({
       tab: this.activeManga,
       page: data.pageId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      title: `Page ${data.pageId}`
     }).subscribe(savedBookmarkid => {
       this.bookmarksRepo.getByTab(this.activeManga!).subscribe(bms => {
         this.bookmarks = bms.sort((a, b) => b.createdAt - a.createdAt);

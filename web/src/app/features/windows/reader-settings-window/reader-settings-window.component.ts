@@ -1,15 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, input, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Bookmark } from 'src/app/core/models/bookmark';
 import { Tab } from 'src/app/core/models/tab.model';
+import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvModule } from 'src/app/shared/components/molv-module.component';
 import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'reader-settings-window',
-  imports: [CommonModule, WindowComponent, MolvModule, MolvTabsComponent],
+  imports: [CommonModule, WindowComponent, MolvModule, MolvTabsComponent, FormsModule],
   templateUrl: './reader-settings-window.component.html',
   styleUrl: './reader-settings-window.component.css',
   standalone: true
@@ -37,7 +39,7 @@ export class ReaderSettingsWindowComponent {
 
   activeTab: 'home' | 'bookmarks' = 'home';
 
-  constructor(private uiState: UiStateService) { }
+  constructor(private uiState: UiStateService, private bookmarksRepo: BookmarksRepository) { }
 
   onWindowHide() {
     this.hideWindow.emit();
@@ -88,44 +90,58 @@ export class ReaderSettingsWindowComponent {
     this.downloadModChange.emit(value);
   }
 
-  // BOOKMARKS
-  get bookmarkOptions() {
-    const options = [{ value: 0, label: 'Select' }];
-    var bookmarks = this.bookmarks.map(b => ({
-      value: b.id!,
-      label: `Page ${b.page}`
-    }));
-
-    return options.concat(bookmarks);
-  }
-
   // EXPORT
   export(format: 'mhtml' | 'zip') {
     this.exportButtonClicked.emit(format);
   }
 
-  // TABS
   get settingsTabs(): Tab[] {
     if (this.bookmarks.length > 0) {
-      return [
-        {
-          id: 1,
-          name: 'Bookmarks'
-        } as Tab
-      ];
+      return [{ id: 1, name: 'Bookmarks' } as Tab];
     }
-
     return [];
   }
 
-  onHomeTab() {
-    this.activeTab = 'home';
+  // BOOKMARKS
+  get bookmarkOptions() {
+    const options = [{ value: 0, label: 'Select' }];
+    var bookmarks = this.bookmarks.map(b => ({
+      value: b.id!,
+      label: b.title || `Page ${b.page}`
+    }));
+
+    return options.concat(bookmarks);
   }
+
+  onHomeTab() { this.activeTab = 'home'; }
 
   onTabSelected(tab: Tab) {
-    if (tab.name === 'Bookmarks') {
-      this.activeTab = 'bookmarks';
-    }
+    this.activeTab = tab.name === 'Bookmarks' ? 'bookmarks' : 'home';
   }
 
+  // BOOKMARK EDIT / DELETE 
+  editBookmarkTitle(bookmark: Bookmark, newTitle: string | undefined) {
+    if (!bookmark.id) return;
+
+    bookmark.title = newTitle;
+    this.bookmarksRepo.add(bookmark).subscribe({ // is put
+      next: () => {
+        console.log(`Bookmark ${bookmark.id} updated in DB`);
+      },
+      error: (err) => {
+        console.error('Failed to update bookmark', err);
+      }
+    });
+  }
+
+  deleteBookmark(bookmark: Bookmark) {
+    if (bookmark.id) {
+      this.bookmarksRepo.delete(bookmark.id).subscribe(() => {
+        this.bookmarks = this.bookmarks.filter(b => b.id !== bookmark.id);
+        if (this.selectedBookmarkId === bookmark.id) {
+          this.selectedBookmarkId = null;
+        }
+      });
+    }
+  }
 }

@@ -4,51 +4,61 @@
   <molv-tabs [tabs]="settingsTabs" [selectedTab]="activeTab === 'bookmarks' ? settingsTabs[0] : null"
     (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
 
-  @if(activeTab === 'home')
-  {
-  <div class="controls">
-    <div class="setting-right">
-      <span class="setting-label">Gap:</span>
-      <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
-    </div>
-
-    <div class="setting-right">
-      <span class="setting-label">Zoom:</span>
-      <molv-slider [min]="0.5" [max]="3" [step]="0.1" [(value)]="zoom"></molv-slider>
-    </div>
-
-    <div class="setting-left">
-      <span class="setting-label">{{ mode === 'scroll' ? 'Scroll Mode' : 'Page Mode' }}:</span>
-      <molv-switch [(checked)]="modeIsPage"></molv-switch>
-    </div>
-
-    <div class="setting-left-group">
-      <!-- button to download tab-->
-      <div class="setting-left">
-        <div class="setting-label">
-          <molv-dropdown [(value)]="dwnldMod" [options]="[
-        { value: 'mhtml', label: 'MHTML' },
-        { value: 'zip', label: 'ZIP' }
-        ]">
-          </molv-dropdown>
+  <div class="tab-content">
+    @if(activeTab === 'home')
+    {
+      <div class="controls">
+        <div class="setting-right">
+          <span class="setting-label">Gap:</span>
+          <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
         </div>
-        <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
-      </div>
 
-      <!-- bookmarks -->
-      <div class="setting-left">
-        <div class="setting-label">
-          <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
-          </molv-dropdown>
+        <div class="setting-right">
+          <span class="setting-label">Zoom:</span>
+          <molv-slider [min]="0.5" [max]="3" [step]="0.1" [(value)]="zoom"></molv-slider>
         </div>
-        <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
-        <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
-          (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
+
+        <div class="setting-left">
+          <span class="setting-label">{{ mode === 'scroll' ? 'Scroll Mode' : 'Page Mode' }}:</span>
+          <molv-switch [(checked)]="modeIsPage"></molv-switch>
+        </div>
+
+        <div class="setting-left-group">
+          <!-- button to download tab-->
+          <div class="setting-left">
+            <div class="setting-label">
+              <molv-dropdown [(value)]="dwnldMod" [options]="[
+            { value: 'mhtml', label: 'MHTML' },
+            { value: 'zip', label: 'ZIP' }
+            ]">
+              </molv-dropdown>
+            </div>
+            <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
+          </div>
+
+          <!-- bookmarks -->
+          <div class="setting-left">
+            <div class="setting-label">
+              <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
+              </molv-dropdown>
+            </div>
+            <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
+            <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
+              (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
+          </div>
+        </div>
       </div>
-    </div>
+    }
+    @else {
+      <div class="controls bookmarks-list">
+        @for (bm of bookmarks; track $index) {
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <input class="molv-txtbx" [(ngModel)]="bm.title" placeholder="Bookmark Title" />
+            <button class="molv-btn-gradient" (click)="editBookmarkTitle(bm, bm.title)">Update</button>
+            <button class="molv-btn-small-remove" (click)="deleteBookmark(bm)">✕</button>
+          </div>
+        }
+      </div>
+    }
   </div>
-  }
-  @else {
-  <p>bookmarks</p>
-  }
 </app-window>
