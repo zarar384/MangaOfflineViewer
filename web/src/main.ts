@@ -2,8 +2,26 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { isDevMode } from '@angular/core';
 import { provideServiceWorker, SwUpdate } from '@angular/service-worker';
+import { provideHttpClient } from '@angular/common/http';
 
-const providers = [];
+import { provideTransloco } from '@jsverse/transloco';
+import { TranslocoLoaderService } from './app/core/services/transloco-loader.service';
+
+const providers = [
+  provideHttpClient(), // to load assets/i18n JSON files
+
+  provideTransloco({
+    config: {
+      availableLangs: ['en', 'cs', 'ru'],
+      defaultLang: 'en',
+      fallbackLang: 'en',
+      reRenderOnLangChange: true,
+      prodMode: !isDevMode()
+    },
+    loader: TranslocoLoaderService
+  })
+];
+
 if (!isDevMode()) {
   providers.push(
     provideServiceWorker('ngsw-worker.js', {

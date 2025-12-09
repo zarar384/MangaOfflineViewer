@@ -1,0 +1,35 @@
+{
+    "home": "Home",
+    "uploadFiles": "Upload Files",
+    "settingsMangas": "Settings Mangas",
+    "gap": "Gap",
+    "zoom": "Zoom",
+    "mode": "Mode",
+    "scrollMode": "Scroll Mode",
+    "pageMode": "Page Mode",
+    "download": "Download",
+    "mhtml": "MHTML",
+    "zip": "ZIP",
+    "bookmarks": "Bookmarks",
+    "bookmarkTitle": "Bookmark Title",
+    "update": "Update",
+    "save": "Save",
+    "go": "Go",
+    "delete": "Delete",
+    "importMangas": "Import Mangas",
+    "mangaName": "Manga Name",
+    "language": "Language",
+    "english": "English",
+    "czech": "Czech",
+    "russian": "Russian",
+    "toast": {
+        "saved": "Saved successfully",
+        "deleted": "Deleted successfully",
+        "updated": "Updated successfully",
+        "uploaded": "Uploaded successfully"
+    },
+    "errors": {
+        "network": "Network error",
+        "unknown": "Unknown error"
+    }
+}

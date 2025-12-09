@@ -1,0 +1,35 @@
+{
+    "home": "Главная",
+    "uploadFiles": "Загрузить файлы",
+    "settingsMangas": "Настройки манги",
+    "gap": "Отступ",
+    "zoom": "Масштаб",
+    "mode": "Режим",
+    "scrollMode": "Режим прокрутки",
+    "pageMode": "Режим страниц",
+    "download": "Скачать",
+    "mhtml": "MHTML",
+    "zip": "ZIP",
+    "bookmarks": "Закладки",
+    "bookmarkTitle": "Название закладки",
+    "update": "Обновить",
+    "save": "Сохранить",
+    "go": "Перейти",
+    "delete": "Удалить",
+    "importMangas": "Импорт манги",
+    "mangaName": "Название манги",
+    "language": "Язык",
+    "english": "Английский",
+    "czech": "Чешский",
+    "russian": "Русский",
+    "toast": {
+        "saved": "Успешно сохранено",
+        "deleted": "Успешно удалено",
+        "updated": "Успешно обновлено",
+        "uploaded": "Успешно загружено"
+    },
+    "errors": {
+        "network": "Ошибка сети",
+        "unknown": "Неизвестная ошибка"
+    }
+}

@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Tab } from 'src/app/core/models/tab.model';
 
 @Component({
   selector: 'molv-tabs',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoPipe],
   templateUrl: './molv-tabs.component.html',
   styleUrls: ['./molv-tabs.component.css'],
 })

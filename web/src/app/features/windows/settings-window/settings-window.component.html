@@ -9,9 +9,16 @@
   [blockBackground]="false"
   (hide)="onWindowHide()">
   <div>
-    <p>Settings</p>
-    <p>Settings</p>
-    <p>Settings</p>
-    <p>Settings</p>
+    <div class="controls">
+      <div class="setting-left">
+        <span class="setting-label">{{'language' | transloco}}</span>
+        <molv-dropdown [(value)]="language" (valueChange)="onLangChange($event)" [options]="[
+                        { value: 'en', label: 'ENG' },
+                        { value: 'cs', label: 'CZ' },
+                        { value: 'ru', label: 'RU' }
+                      ]">
+        </molv-dropdown>
+      </div>
+    </div>
   </div>
 </app-window>

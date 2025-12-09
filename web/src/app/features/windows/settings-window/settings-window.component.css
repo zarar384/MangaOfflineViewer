@@ -1,0 +1,6 @@
+/* TODO remove duplicates reader-settings*/
+.controls {  display: flex;  flex-direction: column;  gap: 20px;  padding: 15px;}
+
+.setting-left {  display: flex;  align-items: center;  gap: 30%;}
+.setting-right {  display: flex;  justify-content: space-between;  align-items: center;  gap: 15px;}
+.setting-label {  font-weight: 500;  min-width: 100px;}

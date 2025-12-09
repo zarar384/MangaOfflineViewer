@@ -1,0 +1,35 @@
+{
+    "home": "Domů",
+    "uploadFiles": "Nahrát soubory",
+    "settingsMangas": "Nastavení mang",
+    "gap": "Mezera",
+    "zoom": "Přiblížení",
+    "mode": "Režim",
+    "scrollMode": "Režim posouvání",
+    "pageMode": "Stránkový režim",
+    "download": "Stáhnout",
+    "mhtml": "MHTML",
+    "zip": "ZIP",
+    "bookmarks": "Záložky",
+    "bookmarkTitle": "Název záložky",
+    "update": "Upravit",
+    "save": "Uložit",
+    "go": "Přejít",
+    "delete": "Smazat",
+    "importMangas": "Import mang",
+    "mangaName": "Název mangy",
+    "language": "Jazyk",
+    "english": "Angličtina",
+    "czech": "Čeština",
+    "russian": "Ruština",
+    "toast": {
+        "saved": "Úspěšně uloženo",
+        "deleted": "Úspěšně smazáno",
+        "updated": "Úspěšně upraveno",
+        "uploaded": "Úspěšně nahráno"
+    },
+    "errors": {
+        "network": "Chyba sítě",
+        "unknown": "Neznámá chyba"
+    }
+}

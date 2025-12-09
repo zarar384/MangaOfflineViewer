@@ -3,6 +3,14 @@
   "index": "/index.html",
   "assetGroups": [
     {
+      "name": "i18n",
+      "resources": {
+        "files": [
+          "/assets/i18n/*.json"
+        ]
+      }
+    },
+    {
       "name": "app",
       "installMode": "prefetch",
       "resources": {
@@ -26,12 +34,10 @@
       }
     }
   ],
-
   "navigationUrls": [
     "/**",
     "!/**/*.*",
     "!/api/**"
   ],
-
   "dataGroups": []
 }
