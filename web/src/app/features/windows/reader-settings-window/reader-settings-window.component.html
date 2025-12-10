@@ -1,5 +1,14 @@
-<app-window [visible]="isVisible" title="Settings Mangas" [width]="'500px'" [height]="'400px'" position="bottom-right"
-  [showClose]="false" [showHide]="true" [blockBackground]="false" (hide)="onWindowHide()">
+<app-window 
+  [visible]="isVisible" 
+  title="Settings Mangas" 
+  [width]="'500px'" 
+  [height]="'400px'" 
+  position="bottom-right"
+  [showClose]="false" 
+  [showHide]="true" 
+  [blockBackground]="false" 
+  [showTransparency]="true"
+  (hide)="onWindowHide()">
 
   <molv-tabs [tabs]="settingsTabs" [selectedTab]="activeTab === 'bookmarks' ? settingsTabs[0] : null"
     (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
