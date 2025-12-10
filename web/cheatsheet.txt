@@ -8,6 +8,8 @@ ng build
 ng build --configuration production
 http-server ./dist/MangaOfflineViewerAngular -p 8080
 
+ngrok http 8080    
+
 # Run Dev
 ng serve --hmr=false 
 ng serve --open 

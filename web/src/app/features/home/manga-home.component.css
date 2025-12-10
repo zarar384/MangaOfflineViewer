@@ -1,4 +1,0 @@
-.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
-.controls select { background: rgba(255,255,255,0.04); color: #fff; border: none; padding: 6px; }
-.controls .upload { display:flex; align-items:center; gap:8px; }
-.controls input[type='file'] { display:none; }
