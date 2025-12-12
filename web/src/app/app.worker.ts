@@ -12,7 +12,13 @@ interface ProcessFileMessage {
   file: ArrayBuffer;
 }
 
-type IncomingMessage = InitMessage | ProcessFileMessage;
+interface ProcessLocalMessage {
+  type: 'processLocal';
+  id: string;
+  file: ArrayBuffer;
+}
+
+type IncomingMessage = InitMessage | ProcessFileMessage | ProcessLocalMessage;
 
 interface ProgressMessage {
   type: 'progress';
@@ -51,12 +57,18 @@ type OutgoingMessage =
   | ResultMessage;
 
 let baseUrl = '';
+const IMAGE_QUOTED_REGEX = /"data:image\/(jpg|jpeg|png|gif|bmp|webp);base64,[^"]+"/gi;
 
 self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
   const data = event.data;
 
   if (data.type === 'init') {
     baseUrl = `http://${data.host}:${data.port}`;
+    return;
+  }
+
+  if (data.type === 'processLocal') {
+    await processFileLocal(data.id, data.file);
     return;
   }
 
@@ -75,7 +87,6 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
       return;
     }
 
-   
     // upload file in chunks
     const uint8 = new Uint8Array(file);
     const chunkSize = 5 * 1024 * 1024;
@@ -149,9 +160,7 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
       chunkIndex++;
       buffer += decoder.decode(value, { stream: true });
 
-      const matches = buffer.match(
-        /"data:image\/(jpg|jpeg|png|gif|bmp|webp);base64,[^"]+"/gi
-      );
+      const matches = buffer.match(IMAGE_QUOTED_REGEX);
 
       if (matches) {
         images.push(...matches.map(s => s.slice(1, -1)));
@@ -193,3 +202,90 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
     } satisfies OutgoingMessage);
   }
 };
+
+async function processFileLocal(id: string, file: ArrayBuffer) {
+  try {
+    const { READ_CHUNK } = chooseLocalChunkSize();
+
+    const uint8 = new Uint8Array(file);
+    const decoder = new TextDecoder("utf-8");
+
+    const parts: string[] = []; // store chunks separately
+
+    for (let pos = 0; pos < uint8.length; pos += READ_CHUNK) {
+      const end = Math.min(pos + READ_CHUNK, uint8.length);
+
+      parts.push(
+        decoder.decode(uint8.subarray(pos, end), { stream: true })
+      );
+
+      postMessage({
+        type: "progress",
+        id,
+        progress: Math.min(80, (pos / uint8.length) * 80)
+      });
+    }
+
+    // join once 
+    const raw = parts.join("");
+
+    // decode whole mhtml
+    const decoded = decodeQuotedPrintable(raw);
+
+    postMessage({
+      type: "html",
+      id,
+      html: decoded
+    });
+
+    postMessage({ type: "result", id });
+
+  } catch (err: any) {
+    postMessage({
+      type: "error",
+      id,
+      error: err?.message ?? "Local parse failed"
+    });
+  }
+}
+
+// HELPERS
+function decodeQuotedPrintable(input: string): string {
+  if (!input) return input;
+
+  // delete "soft line breaks" =\r\n or =\n
+  let s = input.replace(/=\r?\n/g, '');
+
+  s = s.replace(/=([0-9A-F]{2})/gi, (_, hex) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return '';
+    }
+  });
+
+  return s;
+}
+
+function chooseLocalChunkSize() {
+  const mem = (navigator as any).deviceMemory || 4; // GB
+  // const cores = navigator.hardwareConcurrency || 2;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isIOS) return { READ_CHUNK: 100 * 1024, KEEP_TAIL: 3000 };
+
+  if (isMobile) {
+    if (mem <= 2) return { READ_CHUNK: 100 * 1024, KEEP_TAIL: 2500 };
+    if (mem <= 4) return { READ_CHUNK: 150 * 1024, KEEP_TAIL: 2000 };
+    return { READ_CHUNK: 200 * 1024, KEEP_TAIL: 2000 };
+  }
+
+  // desktop
+  if (mem >= 16) return { READ_CHUNK: 1 * 1024 * 1024, KEEP_TAIL: 1500 };
+  if (mem >= 8) return { READ_CHUNK: 600 * 1024, KEEP_TAIL: 2000 };
+
+  //weak PC with 4GB or less
+  return { READ_CHUNK: 300 * 1024, KEEP_TAIL: 2500 };
+}

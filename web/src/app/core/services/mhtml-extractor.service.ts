@@ -43,12 +43,24 @@ export class MhtmlExtractorService {
 
         if (msg.type === 'serverOff') {
           console.warn('SERVER OFF — fallback to JS parser');
-          resolve(await this.extractWithoutWorker(arrayBufferCopy));
+          this.worker!.postMessage(
+            { 
+              type: 'processLocal', 
+              id: msg.id, 
+              file: arrayBufferCopy 
+            }, 
+            [arrayBufferCopy]);
           return;
         }
 
         if (msg.type === 'progress') {
           this.progress$.next(msg.progress);
+        }
+
+        if (msg.type === "html") {
+          const images = parseHTMLForImages(msg.html);
+          allImages.push(...images);
+          return;
         }
 
         if (msg.type === 'images') {

@@ -141,7 +141,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     for (const entryName of entries) {
       const entry = zip.files[entryName];
       const blob = await entry.async('blob');
-      await this.addBlobImage(blob, `${file.name}/${entryName}`);
+      await this.addBlobImage(blob, `${file.name.slice(0, 5)}/${entryName}`);
 
       this.progress = Math.min(90, this.progress + 1);
       await sleepIfNeeded();
@@ -150,17 +150,17 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
 
   // MHTML
   private async extractMhtml(file: File) {
-    const imgs = await this.mhtmlService.extractImagesFromMhtml(file);
-
     this.mhtmlService.progress$.subscribe(p => {
       this.progress = p;
     });
+
+    const imgs = await this.mhtmlService.extractImagesFromMhtml(file);
 
     let index = 0;
     // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
-      await this.addBlobImage(blob, `mhtml-${index}`);
+      await this.addBlobImage(blob, `${file.name.slice(0, 5)}/${index}`);
       this.progress = calculateProgress(85, 100, index++, imgs.length); await sleepIfNeeded();
     }
   }
