@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
-import { calculateProgress, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
+import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
@@ -130,6 +130,11 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     return f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.name);
   }
 
+  private generateName(name:string, addition: string): string
+  {
+    return `${name.slice(0, 5)}${generateId()}/${addition}`
+  }
+
   // ZIP
   private async extractZip(file: File) {
     const zip = await JSZip.loadAsync(file);
@@ -141,7 +146,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     for (const entryName of entries) {
       const entry = zip.files[entryName];
       const blob = await entry.async('blob');
-      await this.addBlobImage(blob, `${file.name.slice(0, 5)}/${entryName}`);
+      await this.addBlobImage(blob, this.generateName(file.name, entryName));
 
       this.progress = Math.min(90, this.progress + 1);
       await sleepIfNeeded();
@@ -160,7 +165,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
-      await this.addBlobImage(blob, `${file.name.slice(0, 5)}/${index}`);
+      await this.addBlobImage(blob, this.generateName(file.name, `${index}`));
       this.progress = calculateProgress(85, 100, index++, imgs.length); await sleepIfNeeded();
     }
   }

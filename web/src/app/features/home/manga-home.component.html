@@ -9,7 +9,7 @@
 </div>
 
 <molv-pagination
-  [totalTabs]="totalCount"
+  [totalTabs]="totalCount()"
   [currentPage]="page()"
   [perPage]="perPage()"
   (pageChange)="onPageChange($event.page, $event.perPage)"

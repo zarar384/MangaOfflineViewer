@@ -3,7 +3,7 @@ import { TabsRepository } from '../repositories/tabs.repository';
 import { ObjectUrlService } from './object-url.service';
 import { Tab } from '../models/tab.model';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
-import { BehaviorSubject, catchError, EMPTY, forkJoin, from, map, of, switchMap, tap } from 'rxjs';
+import { BehaviorSubject} from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {

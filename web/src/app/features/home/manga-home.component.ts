@@ -7,6 +7,7 @@ import { Tab } from 'src/app/core/models/tab.model';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvPaginationComponent } from 'src/app/shared/components/molv-pagination/molv-pagination.component';
+import { TabsService } from 'src/app/core/services/tabs.service';
 
 @Component({
   selector: 'app-manga-home',
@@ -20,7 +21,7 @@ export class MangaHomeComponent implements OnInit, AfterViewInit {
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
 
-  totalCount = 0;
+  totalCount = signal(0);
   page = signal(1);
   perPage = signal(10);
 
@@ -29,10 +30,10 @@ export class MangaHomeComponent implements OnInit, AfterViewInit {
   showEditWindow = false;
   tab: Tab | null = null;
 
-  constructor(private uiState: UiStateService) { }
+  constructor(private uiState: UiStateService, private tabs: TabsService) { }
 
   ngOnInit(): void {
-    this.totalCount = this.uiState.getValue<number>('totalCount') ?? 0;
+    this.totalCount.set(this.uiState.getValue<number>('totalCount') ?? 0);
     this.page.set(this.uiState.getValue<number>('page') ?? 1);
     this.perPage.set(this.uiState.getValue<number>('perPage') ?? 10);
   }
@@ -59,7 +60,7 @@ export class MangaHomeComponent implements OnInit, AfterViewInit {
   }
 
   onUpdateTotalCount(total: number) {
-    this.totalCount = total;
+    this.totalCount.set(total);
     this.uiState.saveState({ totalCount: total });
   }
 

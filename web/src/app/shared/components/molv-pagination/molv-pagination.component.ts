@@ -45,21 +45,23 @@ export class MolvPaginationComponent implements OnInit, OnDestroy {
 
   private sub = new Subscription();
 
-  ngOnInit() {
-    this.sub.add(
-      combineLatest([
-        this.totalTabs$.pipe(startWith(this.totalTabs)),
-        this.perPage$.pipe(startWith(this.perPage)),
-        this.currentPage$.pipe(startWith(this.currentPage))
-      ])
-        .pipe(
-          map(([total, perPage, current]) => {
-            return this.updatePages(total, perPage, current);
-          })
-        )
-        .subscribe(pages => this.pages = pages)
-    );
-  }
+ngOnInit() {
+  this.sub.add(
+    combineLatest([
+      this.totalTabs$,
+      this.perPage$,
+      this.currentPage$
+    ])
+      .pipe(
+        map(([total, perPage, current]) => {
+          if (total === 0) return []; 
+          return this.updatePages(total, perPage, current);
+        })
+      )
+      .subscribe(pages => this.pages = pages)
+  );
+}
+
 
   goToPage(page: number) {
     if (page < 1) page = 1;
