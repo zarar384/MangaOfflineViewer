@@ -1,30 +1,24 @@
-import { Injectable } from "@angular/core";
-import { STORE_BOOKMARKS } from "../db.config";
-import { DbService } from "../database/db.service";
-import { Bookmark } from "../models/bookmark";
+import { Injectable } from '@angular/core';
+import { Bookmark } from '../models/bookmark';
+import { db } from '../database/manga-db';
 
 @Injectable({ providedIn: 'root' })
 export class BookmarksRepository {
-  constructor(private db: DbService) {}
+  constructor() {}
 
-  add(bm: Bookmark) {
-    return this.db.put(STORE_BOOKMARKS, bm);
+  async put(b: Bookmark) {
+    return db.bookmarks.put(b);
   }
 
-  delete(id: number) {
-    return this.db.run(STORE_BOOKMARKS, 'readwrite', s => s.delete(id));
+  async get(id: number) {
+    return db.bookmarks.get(id);
   }
 
-  get(id: number) {
-    return this.db.get<Bookmark>(STORE_BOOKMARKS, id);
+ async getAll(tabId: number) {
+    return db.bookmarks.where('tabId').equals(tabId).sortBy('id');
   }
 
-  getByTab(tabId: number) {
-    return this.db.run<Bookmark[]>(
-      STORE_BOOKMARKS,
-      'readonly',
-      s => (s.index('tab') as IDBIndex)
-        .getAll(IDBKeyRange.only(tabId))
-    );
+  async delete(id: number) {
+    return db.bookmarks.delete(id);
   }
 }

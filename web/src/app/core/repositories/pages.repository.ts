@@ -1,27 +1,40 @@
 import { Injectable } from '@angular/core';
-import { STORE_PAGES } from '../db.config';
 import { Page } from '../models/page.model';
-import { DbService } from '../database/db.service';
-import { from, Observable } from 'rxjs';
+import { db } from '../database/manga-db';
 
 @Injectable({ providedIn: 'root' })
 export class PagesRepository {
-  constructor(private db: DbService) { }
+  constructor() {}
 
-  // CRUD base 
-  // put() garantees transaction completion
-  // run to wait for transaction completion, and use it inside to access indexes
-  add(tab: Page) { return this.db.put(STORE_PAGES, tab); }
-  update(tab: Page) { return this.db.put(STORE_PAGES, tab); }
-  delete(id: number) { return this.db.run(STORE_PAGES, 'readwrite', s => s.delete(id)); }
-  get(id: number) { return this.db.get<Page>(STORE_PAGES, id); }
-  getAll() { return this.db.getAll<Page>(STORE_PAGES); }
+  async put(page: Page) {
+    return db.pages.put(page);
+  }
 
-  getByTab(tabId: number): Observable<Page[]> {
-    return from(
-      this.db.run(STORE_PAGES, 'readonly', store =>
-        (store.index('tab') as IDBIndex).getAll(IDBKeyRange.only(tabId))
-      )
-    );
+  async get(id: number) {
+    return db.pages.get(id);
+  }
+
+  async getAll(tabId: number) {
+    return db.pages.where('tabId').equals(tabId).sortBy('id');
+  }
+
+  async delete(id: number) {
+    return db.pages.delete(id);
+  }
+
+  async deleteByTab(tabId: number) {
+    return db.pages.where('tabId').equals(tabId).delete();
+  }
+
+  async bulkAdd(pages: Page[]) {
+    return db.pages.bulkAdd(pages);
+  }
+
+  async bulkPut(pages: Page[]) {
+    return db.pages.bulkPut(pages);
+  }
+
+  async count(tabId: number) {
+    return db.pages.where('tabId').equals(tabId).count();
   }
 }

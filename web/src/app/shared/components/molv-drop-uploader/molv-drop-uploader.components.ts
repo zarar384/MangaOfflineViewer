@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
-import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
+import { calculateProgress, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
@@ -10,7 +10,7 @@ import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
-import { finalize, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import { finalize, Subject, switchMap, takeUntil, tap, from } from 'rxjs';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -72,7 +72,9 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
 
   saveAll(tab: Tab) {
     this.loading.show();
-    return this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages).pipe(
+    return from(
+        this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
+      ).pipe(
       tap(savedTabId => {
         console.log('MolvDropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
         this.uiState.refreshTabs$.next();
@@ -158,7 +160,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
-      await this.addBlobImage(blob, `mhtml-${generateId()}`);
+      await this.addBlobImage(blob, `mhtml-${index}`);
       this.progress = calculateProgress(85, 100, index++, imgs.length); await sleepIfNeeded();
     }
   }
@@ -172,7 +174,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     const url = this.urlService.createUrl(name!, blob);
     this.pages.push({
       src: blob, name,
-      tab: 0
+      tabId: 0
     });
     this.urls.push({
       src: url, name,

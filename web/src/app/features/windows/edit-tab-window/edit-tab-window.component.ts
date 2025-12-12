@@ -35,13 +35,13 @@ export class EditTabWindowComponent implements OnChanges {
   private async loadPages() {
     if (!this.tab?.id) return;
     this.finalName = this.tab.name;
-    this.pagesRepo.getByTab(this.tab.id!)
-      .subscribe({
-        next: pages => {
+    try{
+    var pages = await  this.pagesRepo.getAll(this.tab.id!)
           this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
-        },
-        error: err => console.error('Error loading pages', err)
-      });
+    }
+      catch(err){
+        console.error('Error loading pages', err)
+      }
   }
 
   onUploadFinished() {

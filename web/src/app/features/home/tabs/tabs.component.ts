@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, WritableSignal } from '@angular/core';
-import { finalize, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
+import { Subject, switchMap, takeUntil } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
 import { LoadingService } from 'src/app/core/services/loading.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -52,18 +52,28 @@ export class TabsComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
-  doRefresh() {
-    this.loading.show();
-    return this.tabsService
-      .refreshTabs(this.page(), this.perPage())
-      .pipe(finalize(() => this.loading.hide()));
+
+  async doRefresh() {
+    try {
+      this.loading.show();
+      await this.tabsService.refreshTabs(this.page(), this.perPage());
+    } finally {
+      this.loading.hide();
+    }
   }
 
-  remove(id: number) {
-    this.loading.show();
-    this.tabsService.removeTab(id, this.page(), this.perPage())
-      .pipe(finalize(() => this.loading.hide()))
-      .subscribe();
+  async remove(id: number) {
+    try {
+      this.loading.show();
+      try{
+      await this.tabsService.removeTab(id, this.page(), this.perPage());
+      }
+      catch(err){
+        console.log('Error while deleting tab', err)
+      }
+    } finally {
+      this.loading.hide();
+    }
   }
 
   openChapterInTab(tabData: { tab: Tab; previewUrl: string }) {

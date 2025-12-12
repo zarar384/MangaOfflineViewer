@@ -15,33 +15,41 @@ export class TabsService {
 
   constructor(private repo: TabsRepository, private url: ObjectUrlService) { }
 
-  refreshTabs(page: number, perPage: number) {
-    return this.repo.getPaged(page, perPage).pipe(
-      switchMap(tabs => {
-        if (tabs.length === 0) return of([]);
-        return forkJoin(
-          tabs.map(tab =>
-            from(this.buildPreview(tab)).pipe(
-              map(previewUrl => ({ tab, previewUrl }))
-            )
-          )
-        );
-      }),
-      tap(data => this.tabsSubject.next(data)),
-      switchMap(() => this.repo.getTotalCount()),
-      tap(total => this.totalTabsSubject.next(total)),
-      catchError(() => {
+  async refreshTabs(page: number, perPage: number) {
+    try {
+      const tabs = await this.repo.getPaged(page, perPage);
+
+      if (tabs.length === 0) {
         this.tabsSubject.next([]);
-        this.totalTabsSubject.next(0);
-        return EMPTY;
-      })
-    );
+        this.totalTabsSubject.next(await this.repo.getTotalCount());
+        return;
+      }
+
+      // crate preview parallel
+      const previewData = await Promise.all(
+        tabs.map(async tab => {
+          const previewUrl = await this.buildPreview(tab);
+          return { tab, previewUrl };
+        })
+      );
+
+      // refresh state
+      this.tabsSubject.next(previewData);
+
+      // refresh total count
+      const total = await this.repo.getTotalCount();
+      this.totalTabsSubject.next(total);
+
+    } catch (err) {
+      console.error('refreshTabs failed', err);
+      this.tabsSubject.next([]);
+      this.totalTabsSubject.next(0);
+    }
   }
 
-  removeTab(id: number, page: number, perPage: number) {
-    return this.repo.delete(id).pipe(
-      switchMap(() => this.refreshTabs(page, perPage))
-    );
+  async removeTab(id: number, page: number, perPage: number) {
+    await this.repo.delete(id);
+    return this.refreshTabs(page, perPage);
   }
 
   private async buildPreview(tab: Tab): Promise<string> {

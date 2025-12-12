@@ -8,8 +8,6 @@ import { numericNameSort } from 'src/app/shared/utils/file-parsing';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { ExportService } from 'src/app/core/services/export.service';
 import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
-import { firstValueFrom } from 'rxjs';
-import { Tab } from 'src/app/core/models/tab.model';
 import { LoadingService } from 'src/app/core/services/loading.service';
 import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
 import { Bookmark } from 'src/app/core/models/bookmark';
@@ -55,16 +53,17 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     }
   }
 
-  loadPages() {
+  async loadPages() {
     if (!this.activeManga) return;
 
-    this.pagesRepo.getByTab(this.activeManga)
-      .subscribe({
-        next: pages => {
-          this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
-        },
-        error: err => console.error('Error loading pages', err)
-      });
+    try {
+      var pages = await this.pagesRepo.getAll(this.activeManga)
+      this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
+
+    }
+    catch (err) {
+      console.error('Error loading pages', err)
+    }
   }
 
   // windows
@@ -78,7 +77,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
 
     try {
       this.loading.show();
-      const tab: Tab = await firstValueFrom(this.tabsRepo.get(this.activeManga));
+      const tab = await this.tabsRepo.get(this.activeManga);
       if (!tab) return;
 
       await this.exportService.exportManga(tab, this.pages, format);
@@ -91,23 +90,27 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   }
 
   // bookmark
-  saveBookmark() {
+  async saveBookmark() {
     if (!this.activeManga || !this.readerRef) return;
 
     const data = this.readerRef.getCurrentBookmark();
     if (!data) return;
 
-    this.bookmarksRepo.add({
-      tab: this.activeManga,
-      page: data.pageId,
-      createdAt: Date.now(),
-      title: `Page ${data.pageId}`
-    }).subscribe(savedBookmarkid => {
-      this.bookmarksRepo.getByTab(this.activeManga!).subscribe(bms => {
-        this.bookmarks = bms.sort((a, b) => b.createdAt - a.createdAt);
-        this.selectedBookmarkId = Number(savedBookmarkid);
+    try {
+      var newBookmarkId = await this.bookmarksRepo.put({
+        tabId: this.activeManga,
+        pageId: data.pageId,
+        createdAt: Date.now(),
+        title: `Page ${data.pageId}`
       });
-    });
+
+      var bookmarks = await this.bookmarksRepo.getAll(this.activeManga)
+      this.bookmarks = bookmarks.sort((a, b) => numericNameSort(`${a}`, `${b}`));
+      this.selectedBookmarkId = Number(newBookmarkId);
+    }
+    catch (err) {
+      console.log(`Error while saving bookmark`, err)
+    }
   }
 
   goToBookmark(bookmarkId: number) {
@@ -117,15 +120,19 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     this.readerRef.scrollToBookmark(bm);
   }
 
-  loadBookmarks(newSelectedId?: number) {
+  async loadBookmarks(newSelectedId?: number) {
     if (!this.activeManga) return;
 
-    this.bookmarksRepo.getByTab(this.activeManga).subscribe(bms => {
-      this.bookmarks = bms.sort((a, b) => b.createdAt - a.createdAt);
+    try {
+      var bookmarks = await this.bookmarksRepo.getAll(this.activeManga)
+      this.bookmarks = bookmarks.sort((a, b) => numericNameSort(`${a}`, `${b}`));
 
       if (newSelectedId) {
         this.selectedBookmarkId = newSelectedId;
       }
-    });
+    }
+    catch (err) {
+      console.log(`Error while gettinng bookmarks by tab id ${this.activeManga}`, err)
+    }
   }
 }

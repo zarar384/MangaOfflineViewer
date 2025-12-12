@@ -1,7 +1,7 @@
 export interface Bookmark {
   id?: number;
-  tab: number;        
-  page: number;       
+  tabId: number;        
+  pageId: number;       
   createdAt: number;
   title?: string;      
 }

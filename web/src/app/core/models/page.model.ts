@@ -1,6 +1,6 @@
 export interface Page {
   id?: number;
-  tab: number;   // FK
+  tabId: number;   // FK
   src:  Blob;
   name?: string;
 }

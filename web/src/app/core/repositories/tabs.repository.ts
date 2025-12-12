@@ -1,161 +1,82 @@
 import { Injectable } from '@angular/core';
-import { STORE_TABS, STORE_PAGES, PREVIEW_MAX_SIZE } from '../db.config';
-import { Tab } from '../models/tab.model';
-import { Page } from '../models/page.model';
-import { DbService } from '../database/db.service';
 import { createPreviewFromFirstPage } from 'src/app/shared/utils/preview';
-import { from, map, Observable, switchMap } from 'rxjs';
-
+import { Tab } from '../models/tab.model';
+import { db } from '../database/manga-db';
+import { Page } from '../models/page.model';
 
 @Injectable({ providedIn: 'root' })
 export class TabsRepository {
-  constructor(private db: DbService) { }
+  constructor() { }
 
-  // CRUD base 
-  add(tab: Tab) { return this.db.put(STORE_TABS, tab); }
-  update(tab: Tab) { return this.db.put(STORE_TABS, tab); }
-  delete(id: number) { return this.db.run(STORE_TABS, 'readwrite', s => s.delete(id)); }
-  get(id: number) { return this.db.get<Tab>(STORE_TABS, id); }
-  getAll() { return this.db.getAll<Tab>(STORE_TABS); }
-
-  getTotalCount() {
-    return this.db.run(STORE_TABS, 'readonly', store => store.count());
+  async add(tab: Tab): Promise<number> {
+    tab.updatedAt = tab.updatedAt ?? Date.now();
+    const id = await db.tabs.put(tab);
+    return id as number;
   }
 
-  getPaged(page: number, perPage: number) {
-    const all$ = this.db.runCursor<Tab>(
-      STORE_TABS,
-      "readonly",
-      store => store.openCursor()
-    );
-
-    const start = (page - 1) * perPage;
-    const end = start + perPage;
-
-    return all$.pipe(
-      map(tabs => tabs.slice(start, end))
-    );
+  async update(tab: Tab): Promise<number> {
+    tab.updatedAt = Date.now();
+    const id = await db.tabs.put(tab);
+    return id as number;
   }
 
-  deleteTabWithPages(tabId: number): Observable<void> {
-    // multi-store delete transaction
-    // create transaction and wait for completion
-    // switchMap is used to wait for the db Observable and then run the transaction
-    return this.db.getDb().pipe(
-      switchMap(db => new Observable<void>(subscriber => {
-        const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
-        const tabsStore = tx.objectStore(STORE_TABS);
-        const pagesStore = tx.objectStore(STORE_PAGES);
-        const index = pagesStore.index('tab');
-
-        // delete tab
-        tabsStore.delete(tabId);
-
-        // delete associated pages  
-        const request = index.openCursor(IDBKeyRange.only(tabId));
-        request.onsuccess = (ev: Event) => {
-          const cursor = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
-          if (cursor) {
-            cursor.delete();
-            cursor.continue();
-          }
-        };
-
-        request.onerror = () => {
-          // fetch error in tx.onerror
-        };
-
-        tx.oncomplete = () => { subscriber.next(); subscriber.complete(); };
-        tx.onerror = () => subscriber.error(tx.error);
-        tx.onabort = () => subscriber.error(tx.error);
-
-        return () => { }; // unsubscribe
-      }))
-    );
+  async delete(id: number): Promise<void> {
+    await db.transaction('rw', db.tabs, db.pages, db.bookmarks, async () => {
+      await db.tabs.delete(id);
+      await db.pages.where('tabId').equals(id).delete();
+      await db.bookmarks.where('tabId').equals(id).delete();
+    });
   }
 
+  async get(id: number): Promise<Tab | undefined> {
+    return db.tabs.get(id);
+  }
 
-  // BULK SAVE OR UPDATE(tab + pages[])
-  saveOrUpdateTabWithPages(tab: Tab, pages: Page[], deleteOldPages = true): Observable<number> {
-    // generate preview
-    // from:  convert promise (preview generation) to observable
-    return from(createPreviewFromFirstPage(pages, PREVIEW_MAX_SIZE)).pipe(
-      // map: create tab object with preview and updatedAt
-      map(preview => ({
+  async getAll(): Promise<Tab[]> {
+    return db.tabs.orderBy('updatedAt').reverse().toArray();
+  }
+
+  async getTotalCount(): Promise<number> {
+    return db.tabs.count();
+  }
+
+  async getPaged(page: number, perPage: number): Promise<Tab[]> {
+    const offset = (page - 1) * perPage;
+    return db.tabs.orderBy('updatedAt').reverse().offset(offset).limit(perPage).toArray();
+  }
+
+  async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, deleteOldPages = true, previewMaxSize?: number): Promise<number> {
+    // generate preview (outside transaction because it may use DOM)
+    const preview = await createPreviewFromFirstPage(pages, previewMaxSize || 200);
+
+    // transaction to save tab and pages
+    const tabId = await db.transaction('rw', db.tabs, db.pages, async () => {
+      const tabToSave = {
         ...tab,
-        preview: preview || tab.preview,
-        updatedAt: tab.updatedAt ?? Date.now()
-      })),
-      // switchMap: take tabWithPreview and switch to db observable
-      switchMap(tabWithPreview =>
-        this.db.getDb().pipe(
-          switchMap(db => new Observable<number>(subscriber => {
-            const tx = db.transaction([STORE_TABS, STORE_PAGES], 'readwrite');
-            const tabStore = tx.objectStore(STORE_TABS);
-            const pagesStore = tx.objectStore(STORE_PAGES);
-            const pagesIndex = pagesStore.index('tab');
+        preview: preview ?? tab.preview,
+        updatedAt: Date.now(),
+      };
 
-            // save tab
-            const tabReq = tabStore.put(tabWithPreview);
+      // save tab (if id present, put will update)
+      const savedId = await db.tabs.put(tabToSave);
 
-            tabReq.onsuccess = async (event: Event) => {
-              const tabId = (event.target as IDBRequest).result as number;
+      if (deleteOldPages) {
+        await db.pages.where('tabId').equals(savedId as number).delete();
+      }
 
-              // save all pages as observable using from
-              const savePages = () => from(Promise.all(
-                pages.map(page => new Promise<void>((res, rej) => {
-                  const p = { ...page };
-                  delete p.id; // to create new record
-                  p.tab = tabId;
-                  const req = pagesStore.put(p);
-                  req.onsuccess = () => res();
-                  req.onerror = () => rej(req.error);
-                }))
-              ));
+      // prepare pages and bulk put
+      const normalized: Page[] = pages.map((p: any, idx: number) => ({
+        id: undefined,          // Dexie create ++id if undefined
+        tabId: savedId as number,
+        src: p.src ?? p.blob,
+        name: p.name ?? null
+      }));
 
-              const deleteOld$ = new Observable<void>(sub => {
-                if (!deleteOldPages) {
-                  // simply save new pages
-                  savePages().subscribe({ complete: () => sub.next() });
-                  return;
-                }
+      if (normalized.length) await db.pages.bulkPut(normalized);
 
-                // delete old pages first
-                const getKeysReq = pagesIndex.getAllKeys(IDBKeyRange.only(tabId));
-                getKeysReq.onsuccess = async () => {
-                  const keys: IDBValidKey[] = getKeysReq.result || [];
-                  await Promise.all(
-                    keys.map(k => new Promise<void>((res, rej) => {
-                      const req = pagesStore.delete(k);
-                      req.onsuccess = () => res();
-                      req.onerror = () => rej(req.error);
-                    }))
-                  );
-                  // then save new pages
-                  savePages().subscribe({ complete: () => sub.next() });
-                };
-                getKeysReq.onerror = () => sub.error(getKeysReq.error);
-              });
+      return savedId as number;
+    });
 
-              // subscribe: wait for all deletes
-              deleteOld$.subscribe({
-                complete: () => { /* done */ },
-                error: err => subscriber.error(err)
-              });
-            };
-
-            tabReq.onerror = () => subscriber.error(tabReq.error);
-
-            // resolve observable when transaction fully completed
-            tx.oncomplete = () => {
-              subscriber.next(tabReq.result as number || 0);
-              subscriber.complete();
-            };
-            tx.onerror = () => subscriber.error(tx.error);
-            tx.onabort = () => subscriber.error(tx.error);
-          }))
-        )
-      )
-    );
+    return tabId;
   }
 }

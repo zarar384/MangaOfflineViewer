@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { take } from 'rxjs';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
@@ -45,16 +44,13 @@ export class NavbarComponent implements OnInit {
     this.mangaSelected.emit(tab.id);
   }
 
-  onTabClosed(tab: Tab) {
-    this.tabsService
-      .removeTab(tab.id!, this.page, this.perPage)
-      .pipe(take(1))
-      .subscribe();
+async onTabClosed(tab: Tab) {
+  await this.tabsService.removeTab(tab.id!, this.page, this.perPage);
 
-    if (this.selectedChapter?.id === tab.id) {
-      this.selectedChapter = null;
-    }
+  if (this.selectedChapter?.id === tab.id) {
+    this.selectedChapter = null;
   }
+}
 
   goHome() {
     this.selectedChapter = null;

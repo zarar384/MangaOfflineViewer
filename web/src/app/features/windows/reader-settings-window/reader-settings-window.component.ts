@@ -107,7 +107,7 @@ export class ReaderSettingsWindowComponent {
     const options = [{ value: 0, label: 'Select' }];
     var bookmarks = this.bookmarks.map(b => ({
       value: b.id!,
-      label: b.title || `Page ${b.page}`
+      label: b.title || `Page ${b.pageId}`
     }));
 
     return options.concat(bookmarks);
@@ -120,28 +120,32 @@ export class ReaderSettingsWindowComponent {
   }
 
   // BOOKMARK EDIT / DELETE 
-  editBookmarkTitle(bookmark: Bookmark, newTitle: string | undefined) {
+  async editBookmarkTitle(bookmark: Bookmark, newTitle?: string) {
     if (!bookmark.id) return;
 
-    bookmark.title = newTitle;
-    this.bookmarksRepo.add(bookmark).subscribe({ // is put
-      next: () => {
-        console.log(`Bookmark ${bookmark.id} updated in DB`);
-      },
-      error: (err) => {
-        console.error('Failed to update bookmark', err);
-      }
-    });
+    try {
+      bookmark.title = newTitle;
+      await this.bookmarksRepo.put(bookmark);
+      console.log(`Bookmark ${bookmark.id} updated in DB`);
+    } catch (err) {
+      console.error('Failed to update bookmark', err);
+    }
   }
 
-  deleteBookmark(bookmark: Bookmark) {
-    if (bookmark.id) {
-      this.bookmarksRepo.delete(bookmark.id).subscribe(() => {
-        this.bookmarks = this.bookmarks.filter(b => b.id !== bookmark.id);
-        if (this.selectedBookmarkId === bookmark.id) {
-          this.selectedBookmarkId = null;
-        }
-      });
+  async deleteBookmark(bookmark: Bookmark) {
+    if (!bookmark.id) return;
+
+    try {
+      await this.bookmarksRepo.delete(bookmark.id);
+
+      this.bookmarks = this.bookmarks.filter(b => b.id !== bookmark.id);
+
+      if (this.selectedBookmarkId === bookmark.id) {
+        this.selectedBookmarkId = null;
+      }
+
+    } catch (err) {
+      console.error('Failed to delete bookmark', err);
     }
   }
 }
