@@ -1,23 +1,14 @@
 {
-  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
   "assetGroups": [
     {
-      "name": "i18n",
-      "resources": {
-        "files": [
-          "/assets/i18n/*.json"
-        ]
-      }
-    },
-    {
       "name": "app",
       "installMode": "prefetch",
+      "updateMode": "prefetch",
       "resources": {
         "files": [
           "/favicon.ico",
           "/index.html",
-          "/manifest.webmanifest",
           "/*.css",
           "/*.js"
         ]
@@ -29,15 +20,32 @@
       "updateMode": "prefetch",
       "resources": {
         "files": [
-          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+          "/assets/**",
+          "/*.woff2"
         ]
       }
     }
   ],
-  "navigationUrls": [
-    "/**",
-    "!/**/*.*",
-    "!/api/**"
-  ],
-  "dataGroups": []
+
+  "dataGroups": [
+    {
+      "name": "manga-previews",
+      "urls": ["/previews/**"],
+      "cacheConfig": {
+        "maxSize": 200,
+        "maxAge": "30d",
+        "strategy": "performance"
+      }
+    },
+
+    {
+      "name": "manga-images",
+      "urls": ["/manga/**"],
+      "cacheConfig": {
+        "maxSize": 500,
+        "maxAge": "30d",
+        "strategy": "performance"
+      }
+    }
+  ]
 }

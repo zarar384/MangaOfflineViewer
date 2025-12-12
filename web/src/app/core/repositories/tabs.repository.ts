@@ -42,7 +42,7 @@ export class TabsRepository {
 
   async getPaged(page: number, perPage: number): Promise<Tab[]> {
     const offset = (page - 1) * perPage;
-    return db.tabs.orderBy('updatedAt').reverse().offset(offset).limit(perPage).toArray();
+    return db.tabs.orderBy('id').offset(offset).limit(perPage).toArray();
   }
 
   async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, deleteOldPages = true, previewMaxSize?: number): Promise<number> {
