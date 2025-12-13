@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, WritableSignal, effect, inject } from '@angular/core';
+import { Component, EventEmitter,  Output,  inject } from '@angular/core';
 import { Tab } from 'src/app/core/models/tab.model';
 import { LoadingService } from 'src/app/core/services/loading.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -16,24 +16,10 @@ export class TabsComponent {
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
 
-  @Input() page!: WritableSignal<number>;
-  @Input() perPage!: WritableSignal<number>;
-
   @Output() mangaSelected = new EventEmitter<number>();
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
 
   tabs = this.tabsService.tabsState;
-
-  constructor() {
-    effect(() => {
-      const page = this.page?.();
-      const perPage = this.perPage?.();
-
-      if (page == null || perPage == null) return;
-
-      this.tabsService.hydrate(page, perPage);
-    });
-  }
 
   async remove(id: number) {
     try {
