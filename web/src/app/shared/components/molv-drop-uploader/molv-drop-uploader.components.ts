@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal, inject, OnChanges, SimpleChanges, OnInit, OnDestroy } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
 import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
@@ -8,9 +8,9 @@ import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
 import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
-import { finalize, Subject, switchMap, takeUntil, tap, from } from 'rxjs';
+import { Subject,  tap, finalize, from, Subscription } from 'rxjs';
+import { TabsService } from 'src/app/core/services/tabs.service';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -19,84 +19,87 @@ import { finalize, Subject, switchMap, takeUntil, tap, from } from 'rxjs';
   styleUrls: ['./molv-drop-uploader.components.css'],
   standalone: true
 })
-export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy {
+export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges {
   @Input() pages: Page[] = [];
   @Input() visible = true;
-  @Input() saveAll$!: Subject<Tab>;  
+  @Input() saveAll$!: Subject<Tab>;
   @Input() clearAll$!: Subject<void>;
+
   @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
 
-  filesProcessing = false;
-  progress = 0;
-  urls: { name?: string; src: string }[] = [];
+  private tabsRepo = inject(TabsRepository);
+  private urlService = inject(ObjectUrlService);
+  private mhtmlService = inject(MhtmlExtractorService);
+  private tabsService = inject(TabsService);
+  private loading = inject(LoadingService);
 
-  private destroy$ = new Subject<void>();
+  filesProcessing = signal(false);
+  progress = signal(0);
+  urls = signal<{ name?: string; src: string }[]>([]);
 
-  constructor(private tabsRepo: TabsRepository, private urlService: ObjectUrlService,
-    private mhtmlService: MhtmlExtractorService, private loading: LoadingService,
-    private uiState: UiStateService) { }
+  private sub = new Subscription();
 
+  ngOnInit() {
+    // save command
+    this.sub.add(
+      this.saveAll$.subscribe(tab => {
+        this.saveAll(tab).subscribe();
+      })
+    );
 
-  ngOnInit(): void {
-    this.saveAll$
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(tab => this.saveAll(tab))
-      )
-      .subscribe();
-
-    this.clearAll$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.clearAll());
+    // clear command
+    this.sub.add(
+      this.clearAll$.subscribe(() => this.clearAll())
+    );
   }
 
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['pages'] && this.pages?.length > 0) {
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['pages']) {
       this.rebuildUrls();
     }
   }
 
+  ngOnDestroy() {
+    this.sub.unsubscribe();
+  }
+
   private rebuildUrls() {
-    this.urls = this.pages.map(p => {
-      const url = this.urlService.createUrl(p.name ?? 'page', p.src);
-      return { name: p.name, src: url };
-    });
+    this.urls.set(
+      this.pages.map(p => ({
+        name: p.name,
+        src: this.urlService.createUrl(p.name ?? 'page', p.src)
+      }))
+    );
   }
 
   saveAll(tab: Tab) {
     this.loading.show();
+
     return from(
-        this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
-      ).pipe(
-      tap(savedTabId => {
-        console.log('MolvDropUploaderComponents.saveAll - saved', tab, this.pages, 'tabId=', savedTabId);
-        this.uiState.refreshTabs$.next();
+      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
+    ).pipe(
+      tap(() => {
+        this.tabsService.refresh();
       }),
-      finalize(() => 
-      {
+      finalize(() => {
         this.loading.hide();
         this.clearAll();
-      }
-    )
+      })
     );
   }
 
+
   clearAll() {
     this.pages = [];
-    this.urls = [];
+    this.urls.set([]);
   }
 
   async onFilesDropped(files: FileList | File[]) {
-    if (this.filesProcessing) return;
-    this.filesProcessing = true;
-    this.progress = 0;
+    if (this.filesProcessing()) return;
+
+    this.filesProcessing.set(true);
+    this.progress.set(0);
 
     try {
       for (const f of Array.from(files)) {
@@ -104,25 +107,22 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
       }
       this.onDropFinished.emit();
       this.fileSelected.emit(files[0]?.name);
-    } catch (err) {
-      console.error('Upload error', err);
     } finally {
-      this.filesProcessing = false;
-      this.progress = 100;
+      this.filesProcessing.set(false);
+      this.progress.set(100);
       await sleepIfNeeded();
     }
   }
 
   private async processFile(file: File) {
     const name = file.name.toLowerCase();
+
     if (name.endsWith('.zip') || name.endsWith('.cbz')) {
       await this.extractZip(file);
     } else if (name.endsWith('.mhtml') || name.endsWith('.mht')) {
       await this.extractMhtml(file);
     } else if (this.isImageFile(file)) {
       await this.addImageFile(file);
-    } else {
-      console.warn('Unsupported file', file.name);
     }
   }
 
@@ -130,85 +130,71 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
     return f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.name);
   }
 
-  private generateName(name:string, addition: string): string
-  {
-    return `${name.slice(0, 5)}${generateId()}/${addition}`
+  private generateName(name: string, addition: string): string {
+    return `${name.slice(0, 5)}${generateId()}/${addition}`;
   }
 
   // ZIP
   private async extractZip(file: File) {
     const zip = await JSZip.loadAsync(file);
-    // filter images only
     const entries = Object.keys(zip.files)
       .filter(k => !zip.files[k].dir && /\.(jpe?g|png|gif|webp|bmp)$/i.test(k))
-      .sort((a, b) => numericNameSort(a, b));
-    // read in batches
-    for (const entryName of entries) {
-      const entry = zip.files[entryName];
-      const blob = await entry.async('blob');
-      await this.addBlobImage(blob, this.generateName(file.name, entryName));
+      .sort(numericNameSort);
 
-      this.progress = Math.min(90, this.progress + 1);
+    for (const entryName of entries) {
+      const blob = await zip.files[entryName].async('blob');
+      await this.addBlobImage(blob, this.generateName(file.name, entryName));
+      this.progress.update(p => Math.min(90, p + 1));
       await sleepIfNeeded();
     }
   }
 
   // MHTML
   private async extractMhtml(file: File) {
-    this.mhtmlService.progress$.subscribe(p => {
-      this.progress = p;
-    });
-
     const imgs = await this.mhtmlService.extractImagesFromMhtml(file);
 
     let index = 0;
-    // add images
     for (const src of imgs) {
       const blob = await fetch(src).then(r => r.blob());
       await this.addBlobImage(blob, this.generateName(file.name, `${index}`));
-      this.progress = calculateProgress(85, 100, index++, imgs.length); await sleepIfNeeded();
+      this.progress.set(calculateProgress(85, 100, index++, imgs.length));
+      await sleepIfNeeded();
     }
   }
 
-  // File image
   private async addImageFile(file: File) {
     await this.addBlobImage(file, file.name);
   }
 
   private async addBlobImage(blob: Blob, name?: string) {
     const url = this.urlService.createUrl(name!, blob);
-    this.pages.push({
-      src: blob, name,
-      tabId: 0
-    });
-    this.urls.push({
-      src: url, name,
-    });
+
+    this.pages.push({ src: blob, name, tabId: 0 });
+    this.urls.update(u => [...u, { src: url, name }]);
   }
 
   remove(index: number) {
-    const it = this.pages[index];
-    const itUrl = this.urls[index];
-    if (itUrl?.src?.startsWith('blob:')) this.urlService.revokeUrl(itUrl.src);
+    const itUrl = this.urls()[index];
+    if (itUrl?.src.startsWith('blob:')) {
+      this.urlService.revokeUrl(itUrl.src);
+    }
+
     this.pages.splice(index, 1);
-    this.urls.splice(index, 1);
+    this.urls.update(u => u.filter((_, i) => i !== index));
   }
 
   drop(event: CdkDragDrop<any[]>) {
     moveItemInArray(this.pages, event.previousIndex, event.currentIndex);
-    moveItemInArray(this.urls, event.previousIndex, event.currentIndex);
-
-    this.pages = [...this.pages];
-    this.urls = [...this.urls];
+    moveItemInArray(this.urls(), event.previousIndex, event.currentIndex);
+    this.urls.set([...this.urls()]);
   }
 
-  // Drop handling
   onDrop(event: DragEvent) {
     event.preventDefault();
     event.stopPropagation();
 
     const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
+    if (files?.length) {
       this.onFilesDropped(files);
     }
   }
@@ -219,7 +205,7 @@ export class MolvDropUploaderComponents implements OnChanges, OnInit, OnDestroy 
 
   onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
+    if (input.files?.length) {
       this.onFilesDropped(input.files);
     }
   }

@@ -5,6 +5,7 @@ import { Tab } from 'src/app/core/models/tab.model';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
+import { TabsService } from 'src/app/core/services/tabs.service';
 
 @Component({
   selector: 'upload-file-window',
@@ -22,6 +23,8 @@ export class UploadFileWindowComponent {
 
   saveAll$ = new Subject<Tab>();
   clearAll$ = new Subject<void>();
+
+  constructor(private tabsService:TabsService){}
 
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');

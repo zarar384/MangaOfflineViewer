@@ -1,7 +1,7 @@
 <div class="tabs-row">
   <div class="tabs-left">
     <molv-tabs
-      [tabs]="visibleTabs"
+      [tabs]="visibleTabs()"
       [selectedTab]="selectedChapter"
       (homeClicked)="goHome()"
       (tabSelected)="onTabSelected($event)"

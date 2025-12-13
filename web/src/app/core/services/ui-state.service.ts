@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { computed, Injectable, signal } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class UiStateService {
   private storageKey = 'ui-state';
+
+  // signal-trigger instead of Subject
+  private refreshTabsSignal = signal(0);
 
   getState(): any {
     const state = localStorage.getItem(this.storageKey);
@@ -21,5 +23,10 @@ export class UiStateService {
     return state[key] ?? null;
   }
 
-  public refreshTabs$ = new Subject<void>();
+  // expose readonly signal
+  refreshTabs = computed(() => this.refreshTabsSignal());
+
+  triggerRefreshTabs() {
+    this.refreshTabsSignal.update(v => v + 1);
+  }
 }

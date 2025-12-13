@@ -1,12 +1,12 @@
-<div class="drop-area" [class.disabled]="filesProcessing" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
-  @if(!filesProcessing){<p>Drag & drop files here or click to select</p>}
-  @else{<p>Processing... {{progress | number:'1.0-0'}}%</p>}
+<div class="drop-area" [class.disabled]="filesProcessing()" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
+  @if(!filesProcessing()){<p>Drag & drop files here or click to select</p>}
+  @else{<p>Processing... {{progress() | number:'1.0-0'}}%</p>}
 
   <input type="file" multiple (change)="onFilesSelected($event)" style="display:none" #fileInput>
-  <button class="molv-btn-gradient" (click)="fileInput.click()" [disabled]="filesProcessing">Select files</button>
+  <button class="molv-btn-gradient" (click)="fileInput.click()" [disabled]="filesProcessing()">Select files</button>
 
   <div cdkDropList class="thumbs-list" cdkDrag cdkDragBoundary=".thumbs-list" (cdkDropListDropped)="drop($event)" >
-    @for (t of urls; track $index; let i = $index;)
+    @for (t of urls(); track $index; let i = $index;)
     {
     <div class="thumb" cdkDrag>
       <div class="header">

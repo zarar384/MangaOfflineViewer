@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, OnChanges, Output } from "@angular/core";
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Page } from "src/app/core/models/page.model";
 import { Tab } from "src/app/core/models/tab.model";
@@ -28,20 +28,20 @@ export class EditTabWindowComponent implements OnChanges {
   clearAll$ = new Subject<void>();
 
   constructor(private pagesRepo: PagesRepository) { }
-  async ngOnChanges(): Promise<void> {
-    await this.loadPages();
+  async ngOnChanges(changes: SimpleChanges) {
+      await this.loadPages();
   }
 
   private async loadPages() {
     if (!this.tab?.id) return;
     this.finalName = this.tab.name;
-    try{
-    var pages = await  this.pagesRepo.getAll(this.tab.id!)
-          this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
+    try {
+      var pages = await this.pagesRepo.getAll(this.tab.id!)
+      this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
     }
-      catch(err){
-        console.error('Error loading pages', err)
-      }
+    catch (err) {
+      console.error('Error loading pages', err)
+    }
   }
 
   onUploadFinished() {

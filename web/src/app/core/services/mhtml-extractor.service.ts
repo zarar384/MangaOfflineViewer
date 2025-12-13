@@ -1,12 +1,12 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, signal } from '@angular/core';
 import { decodeQuotedPrintable, parseHTMLForImages } from 'src/app/shared/utils/file-parsing';
 
 @Injectable({ providedIn: 'root' })
 export class MhtmlExtractorService {
   private worker: Worker | null = null;
 
-  public progress$ = new BehaviorSubject<number>(0);
+  private progressSignal = signal<number>(0);
+  readonly progress = this.progressSignal.asReadonly();
 
   constructor() {
     try {
@@ -21,7 +21,7 @@ export class MhtmlExtractorService {
 
   // extract images from MHTML file (using worker if available)
   public async extractImagesFromMhtml(file: File): Promise<string[]> {
-    this.progress$.next(0);
+    this.progressSignal.set(0);
     const arrayBuffer = await file.arrayBuffer();
 
     if (this.worker) {
@@ -44,20 +44,21 @@ export class MhtmlExtractorService {
         if (msg.type === 'serverOff') {
           console.warn('SERVER OFF — fallback to JS parser');
           this.worker!.postMessage(
-            { 
-              type: 'processLocal', 
-              id: msg.id, 
-              file: arrayBufferCopy 
-            }, 
-            [arrayBufferCopy]);
+            {
+              type: 'processLocal',
+              id: msg.id,
+              file: arrayBufferCopy
+            },
+            [arrayBufferCopy]
+          );
           return;
         }
 
         if (msg.type === 'progress') {
-          this.progress$.next(msg.progress);
+          this.progressSignal.set(msg.progress);
         }
 
-        if (msg.type === "html") {
+        if (msg.type === 'html') {
           const images = parseHTMLForImages(msg.html);
           allImages.push(...images);
           return;
@@ -69,7 +70,7 @@ export class MhtmlExtractorService {
         }
 
         if (msg.type === 'result') {
-          this.progress$.next(85);
+          this.progressSignal.set(85);
           resolve(allImages);
         }
 
@@ -97,7 +98,7 @@ export class MhtmlExtractorService {
       const decoded = decodeQuotedPrintable(text);
       const imgs = parseHTMLForImages(decoded);
 
-      this.progress$.next(85);
+      this.progressSignal.set(85);
       return imgs;
     } catch (err) {
       console.error(err);

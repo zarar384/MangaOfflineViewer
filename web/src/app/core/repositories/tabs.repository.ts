@@ -3,6 +3,7 @@ import { createPreviewFromFirstPage } from 'src/app/shared/utils/preview';
 import { Tab } from '../models/tab.model';
 import { db } from '../database/manga-db';
 import { Page } from '../models/page.model';
+import { PREVIEW_MAX_SIZE } from '../db.config';
 
 @Injectable({ providedIn: 'root' })
 export class TabsRepository {
@@ -46,8 +47,7 @@ export class TabsRepository {
   }
 
   async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, deleteOldPages = true, previewMaxSize?: number): Promise<number> {
-    // generate preview (outside transaction because it may use DOM)
-    const preview = await createPreviewFromFirstPage(pages, previewMaxSize || 200);
+    const preview = await createPreviewFromFirstPage(pages, previewMaxSize || PREVIEW_MAX_SIZE);
 
     // transaction to save tab and pages
     const tabId = await db.transaction('rw', db.tabs, db.pages, async () => {
@@ -57,7 +57,7 @@ export class TabsRepository {
         updatedAt: Date.now(),
       };
 
-      // save tab (if id present, put will update)
+      // save tab or update
       const savedId = await db.tabs.put(tabToSave);
 
       if (deleteOldPages) {
