@@ -1,6 +1,6 @@
 <div class="tabs-scroll">
   <!-- Home -->
-  <div class="explorer-tab">
+  <div class="explorer-tab home-tab"[class.active]="tabsService.activeTabIdState() === null">
     <button class="tab-btn" (click)="goHome()"> {{ 'home' | transloco }}</button>
   </div>
 
@@ -8,12 +8,13 @@
   @for (t of tabs; track t.id) {
     <div
       class="explorer-tab"
-      [class.active]="selectedTab?.id === t.id"
+      [class.active]="tabsService.activeTabIdState() === t.id"
+      [attr.title]="t.name"
     >
       <button class="tab-btn" (click)="select(t)">
         {{ t.name }}
       </button>
-      <button class="tab-close" (click)="close(t)">✕</button>
+      <button class="tab-close" (click)="close(t); $event.stopPropagation()">✕</button>
     </div>
   }
 </div>

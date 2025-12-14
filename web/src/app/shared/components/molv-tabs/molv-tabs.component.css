@@ -1,5 +1,18 @@
-.explorer-tab {  display: flex;  align-items: center;  background: linear-gradient(180deg, #0b1220, #0e1530);  border: 1px solid rgba(255,255,255,0.06);  padding: 6px 8px 6px 12px;  border-top-left-radius: 6px;  border-top-right-radius: 6px;  box-shadow: 0 2px 4px rgba(0,0,0,0.4);  position: relative;  flex: 1 1 auto;      min-width: 60px;     max-width: 200px;     overflow: hidden;  text-overflow: ellipsis;  white-space: nowrap;     }
-.explorer-tab.active {  background: linear-gradient(180deg, #2a3d66, #233455);  color: #fff;  transform: translateY(-4px);}
-.tab-btn {  background: transparent;  border: none;  color: inherit;  font-weight: 600;  cursor: pointer;  padding-right: 8px;}
-.tab-close {  background: transparent;  border: none;  color: rgba(255,255,255,0.6);  cursor: pointer;}
-.tabs-scroll {  display: flex;  gap: 6px;  overflow-x: inherit;      padding-bottom: 4px;  -webkit-overflow-scrolling: touch; }
+.explorer-tab { flex: 1 1 0; display: flex; align-items: center; background: linear-gradient(180deg, #111a2e, #0c1326); border: 1px solid rgba(160, 200, 255, 0.12); padding: 6px 8px 6px 12px; border-top-left-radius: 10px; border-top-right-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); position: relative; min-width: 0px; max-width: clamp(40px, 14vw, 160px); overflow: hidden; color: #cfd9ff; font-weight: 500; transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.explorer-tab:hover { background: linear-gradient(180deg, #18254a, #121d3a); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(120, 180, 255, 0.15); }
+.explorer-tab.active { background: linear-gradient(180deg, #2d4cff, #1e2fa8); color: #ffffff; transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(140, 180, 255, 0.35); }
+.explorer-tab.active::after { content: ""; position: absolute; left: 10%; right: 10%; bottom: 2px; height: 2px; box-shadow: 0 0 8px rgba(160, 200, 255, 0.6); border-radius: 2px; }
+
+.tab-btn {flex: 1 1 0; background: transparent; border: none; color: inherit; font-weight: 600; cursor: pointer;  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
+.tab-close { background: transparent; border: none; color: rgba(255,255,255,0.6); cursor: pointer; flex: 0 0 auto; width: 18px; text-align: center; }
+.tabs-scroll { display: flex; gap: 6px; padding-bottom: 4px; overflow: hidden; width: 100%; min-width: 0; }
+
+.explorer-tab.home-tab { flex: 0 0 auto; white-space: nowrap; background: linear-gradient( 180deg, #2a1730, #1c1022 ); border-color: rgba(255, 170, 210, 0.25); color: #ffd6ea; }
+.explorer-tab.home-tab .tab-btn { flex: 0 0 auto; min-width: unset; overflow: visible; text-overflow: unset; white-space: nowrap; }
+.explorer-tab.home-tab:hover { background: linear-gradient( 180deg, #3a1f44, #24142c ); }
+.explorer-tab.home-tab.active { background: linear-gradient( 180deg, #ff8ac9, #d95aa6 ); color: #ffffff; }
+
+/* ADAPT */
+@media (max-width: 520px) { .tab-btn { font-size: 11px; padding-right: 2px; } }
+@media (max-width: 360px) { .tabs-scroll .explorer-tab:not(.home-tab) { display: none; } }
+@media (max-width: 360px) { .explorer-tab.home-tab { flex: 0 0 auto; padding: 0; background: none; border: none; box-shadow: none; } .explorer-tab.home-tab .tab-btn { width: 100%; height: 40px; padding: 0 16px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; line-height: 1; border-radius: 10px; background: linear-gradient( 180deg, #ff8ac9, #d95aa6 ); color: #ffffff; box-shadow: 0 6px 14px rgba(255, 140, 200, 0.45); } }

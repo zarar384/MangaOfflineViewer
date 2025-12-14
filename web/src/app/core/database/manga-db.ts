@@ -2,7 +2,7 @@ import Dexie, { Table } from "dexie";
 import { Page } from "../models/page.model";
 import { Tab } from "../models/tab.model";
 import { Bookmark } from "../models/bookmark";
-import { DB_NAME } from "../db.config";
+import { DB_NAME, STORE_BOOKMARKS, STORE_PAGES } from "../db.config";
 
 export class MangaDB extends Dexie {
   pages!: Table<Page, number>;
@@ -26,13 +26,13 @@ export class MangaDB extends Dexie {
     }).upgrade(async tx => {
 
       // migrate pages
-      await tx.table('pages').toCollection().modify((p: any) => {
+      await tx.table(STORE_PAGES).toCollection().modify((p: any) => {
         p.tabId = p.tab;
         delete p.tab;
       });
 
       // migrate bookmarks
-      await tx.table('bookmarks').toCollection().modify((b: any) => {
+      await tx.table(STORE_BOOKMARKS).toCollection().modify((b: any) => {
         b.tabId = b.tab;
         b.pageId = b.page;
 

@@ -3,6 +3,7 @@ import { TabsRepository } from '../repositories/tabs.repository';
 import { ObjectUrlService } from './object-url.service';
 import { Tab } from '../models/tab.model';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
+import { UiStateService } from './ui-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -17,10 +18,24 @@ export class TabsService {
   private totalTabs = signal(0);
   readonly totalTabsState = this.totalTabs.asReadonly();
 
+  private activeTabId = signal<number | null>(null);
+  readonly activeTabIdState = this.activeTabId.asReadonly();
+
   constructor(
     private repo: TabsRepository,
-    private url: ObjectUrlService
+    private url: ObjectUrlService,
+    private uiState: UiStateService
   ) {
+    const savedActive = this.uiState.getValue<number>('activeTabId');
+    if (savedActive !== null) {
+      this.activeTabId.set(savedActive);
+    }
+
+    effect(() => {
+      const active = this.activeTabId();
+      this.uiState.saveState({ activeTabId: active });
+    });
+
     effect(() => {
       if (!this.hydrated()) return;
       this.load(this.page(), this.perPage());
@@ -36,6 +51,14 @@ export class TabsService {
   setPaging(page: number, perPage: number) {
     this.page.set(page);
     this.perPage.set(perPage);
+  }
+
+  setActiveTab(id: number | null) {
+    this.activeTabId.set(id);
+  }
+
+  getActiveTabId() {
+    return this.activeTabId();
   }
 
   private async load(page: number, perPage: number) {

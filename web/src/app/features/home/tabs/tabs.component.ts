@@ -32,6 +32,7 @@ export class TabsComponent {
 
   openChapterInTab(tabData: { tab: Tab; previewUrl: string }) {
     if (tabData.tab.id) {
+      this.tabsService.setActiveTab(tabData.tab.id);
       this.mangaSelected.emit(tabData.tab.id);
     }
   }

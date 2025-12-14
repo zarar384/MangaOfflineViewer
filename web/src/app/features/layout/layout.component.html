@@ -5,8 +5,8 @@
   @if(!selectedMangaId)
   {
     <div class="content">
-    <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
-    </app-manga-home>
+      <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
+      </app-manga-home>
     </div>
   }
   @else{

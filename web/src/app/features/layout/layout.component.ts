@@ -4,6 +4,7 @@ import { MangaHomeComponent } from '../home/manga-home.component';
 import { CommonModule } from '@angular/common';
 import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper.component';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { TabsService } from 'src/app/core/services/tabs.service';
 
 @Component({
   selector: 'app-manga-layout',
@@ -22,9 +23,14 @@ export class LayoutComponent implements OnInit {
 
   selectedMangaId: number | null = null;
 
-  constructor(private uiState: UiStateService) { }
+  constructor(private uiState: UiStateService, private tabsService: TabsService) { }
   ngOnInit(): void {
     this.selectedMangaId = this.uiState.getValue<number>('selectedMangaId');
+
+    const page = this.uiState.getValue<number>('page') ?? 1;
+    const perPage = this.uiState.getValue<number>('perPage') ?? 10;
+
+    this.tabsService.hydrate(page, perPage);
   }
 
   onMangaSelected(mangaId: number | null) {

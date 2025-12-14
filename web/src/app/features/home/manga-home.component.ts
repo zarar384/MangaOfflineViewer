@@ -47,8 +47,6 @@ export class MangaHomeComponent implements OnInit {
 
     this.page.set(page);
     this.perPage.set(perPage);
-
-    this.tabsService.hydrate(page, perPage);
   }
 
   onPageChange(event: { page: number; perPage: number }) {
