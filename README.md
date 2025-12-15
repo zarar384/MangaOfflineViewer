@@ -5,11 +5,13 @@
 Offline-first PWA for reading manga.  
 Primary focus: deterministic client-side behavior, local persistence, and minimal backend dependency.
 
+[Watch the demo](https://youtu.be/o-2V6XBIo6I)
+
 ---
 
 ## Quick Overview
 
-TODO
+![hippo](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExa3RrNXRjbHJlM3BlMHY5NW1qZmxsZmFnbHlrNjh6bzJsdm02bGFjdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JJwjA1Hsade86fgas4/giphy.gif)
 
 ---
 
@@ -52,7 +54,7 @@ Optional Helper Server
 
 ## Main Page
 
-TODO
+![hippo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExanFrbmh1aHpuZjRpdnFrMHI2MG8xbjd6aG43MWVsZ3cwd3JxNmF0eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dcwCa6Rgkd9EV1hCs9/giphy.gif)
 
 ---
 
@@ -132,7 +134,7 @@ Characteristics:
 
 ## Reader Page
 
-TODO
+![hippo](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWhqOGZ3bjJ0M3hwaW9sMjByYnlhNXZkdnN2OXdkYXVoYWg3ZW83YiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5L8LeeaEhj4iPVZWJe/giphy.gif)
 
 ---
 
