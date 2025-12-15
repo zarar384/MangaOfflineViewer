@@ -57,7 +57,8 @@ type OutgoingMessage =
   | ResultMessage;
 
 let baseUrl = '';
-const IMAGE_QUOTED_REGEX = /"data:image\/(jpg|jpeg|png|gif|bmp|webp);base64,[^"]+"/gi;
+const IMAGE_QUOTED_REGEX =
+  /"data:image\/(jpg|jpeg|png|gif|bmp|webp);base64,[^"]+"/gi;
 
 self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
   const data = event.data;
@@ -77,13 +78,13 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
 
     // check if server is available 
     try {
-      const ping = await fetch(`${baseUrl}/ping`, { method: 'GET' });
+      const ping = await fetch(`${baseUrl}/ping`);
       if (!ping.ok) {
-        postMessage({ type: 'serverOff', id, file } satisfies OutgoingMessage);
+        postMessage({ type: 'serverOff', id, file });
         return;
       }
     } catch {
-      postMessage({ type: 'serverOff', id, file } satisfies OutgoingMessage);
+      postMessage({ type: 'serverOff', id, file });
       return;
     }
 
@@ -94,7 +95,9 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
 
     for (let i = 0; i < totalChunks; i++) {
       const start = i * chunkSize;
-      const end = Math.max(start + chunkSize, uint8.length);
+
+      const end = Math.min(start + chunkSize, uint8.length);
+
       const chunk = uint8.slice(start, end);
 
       try {
@@ -102,8 +105,9 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/octet-stream',
-            'X-Chunk-Index': i.toString(),
-            'X-Total-Chunks': totalChunks.toString(),
+
+            'X-Chunk-Index': i as any,
+            'X-Total-Chunks': totalChunks as any,
             'X-File-Id': id
           },
           body: chunk
@@ -112,8 +116,8 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
         postMessage({
           type: 'error',
           id,
-          error: err?.message ?? 'Unknown upload error'
-        } satisfies OutgoingMessage);
+          error: err?.message ?? 'Upload failed'
+        });
         return;
       }
 
@@ -121,7 +125,7 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
         type: 'progress',
         id,
         progress: ((i + 1) / totalChunks) * 80
-      } satisfies OutgoingMessage);
+      });
     }
 
     // merge chunks
@@ -136,15 +140,11 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
         type: 'error',
         id,
         error: `Merge failed: ${mergeResponse.status}`
-      } satisfies OutgoingMessage);
+      });
       return;
     }
 
-    postMessage({
-      type: 'progress',
-      id,
-      progress: 81
-    } satisfies OutgoingMessage);
+    postMessage({ type: 'progress', id, progress: 81 });
 
     // stream response and extract images
     const reader = mergeResponse.body!.getReader();
@@ -161,48 +161,35 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
       buffer += decoder.decode(value, { stream: true });
 
       const matches = buffer.match(IMAGE_QUOTED_REGEX);
-
       if (matches) {
         images.push(...matches.map(s => s.slice(1, -1)));
 
         while (images.length >= 5) {
           const batch = images.splice(0, 5);
 
-          postMessage({
-            type: 'images',
-            id,
-            images: batch
-          } satisfies OutgoingMessage);
-
+          postMessage({ type: 'images', id, images: batch });
           postMessage({
             type: 'progress',
             id,
             progress: 81 + Math.min(9, chunkIndex * 0.2)
-          } satisfies OutgoingMessage);
+          });
         }
 
         const lastMatch = matches[matches.length - 1];
-        const lastIndex = buffer.lastIndexOf(lastMatch) + lastMatch.length;
+        const lastIndex =
+          buffer.lastIndexOf(lastMatch) + lastMatch.length;
         buffer = buffer.slice(lastIndex);
       }
     }
 
     // send any remaining images
     if (images.length > 0) {
-      postMessage({
-        type: 'images',
-        id,
-        images
-      } satisfies OutgoingMessage);
+      postMessage({ type: 'images', id, images });
     }
 
-    postMessage({
-      type: 'result',
-      id
-    } satisfies OutgoingMessage);
+    postMessage({ type: 'result', id });
   }
 };
-
 async function processFileLocal(id: string, file: ArrayBuffer) {
   try {
     const { READ_CHUNK } = chooseLocalChunkSize();

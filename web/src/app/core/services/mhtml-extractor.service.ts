@@ -14,6 +14,12 @@ export class MhtmlExtractorService {
         new URL('../../app.worker', import.meta.url),
         { type: 'module' }
       );
+
+      this.worker.postMessage({
+        type: 'init',
+        host: 'localhost',
+        port: 3000
+      });
     } catch {
       this.worker = null;
     }

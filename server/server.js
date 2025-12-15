@@ -6,7 +6,7 @@ import { join } from 'path';
 import { MHTMLProcessor } from './mhtmlParser.js';
 import path from 'path';
 
-const PORT = 51235;
+const PORT = 3000;
 
 const app = express();
 app.use(cors());

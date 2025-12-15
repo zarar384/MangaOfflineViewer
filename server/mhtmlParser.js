@@ -1,4 +1,4 @@
-import {  parseHTMLForImages, decodeQuotedPrintable } from '../src/js/utils.js';
+import {  parseHTMLForImages, decodeQuotedPrintable } from '../server/utils.js'
 
 // mhtmlProcessor.js
 export class MHTMLProcessor {
