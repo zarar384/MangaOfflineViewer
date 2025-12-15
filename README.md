@@ -5,7 +5,7 @@
 Offline-first PWA for reading manga.  
 Primary focus: deterministic client-side behavior, local persistence, and minimal backend dependency.
 
-[Watch the demo](https://youtu.be/o-2V6XBIo6I)
+[Watch the demo](https://youtu.be/-3GngfbSlKk)
 
 ---
 
