@@ -55,6 +55,15 @@
             <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
               (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
           </div>
+
+          <div class="setting-left">
+            <div class="setting-label">
+              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId">
+              </molv-dropdown>
+            </div>
+            <button class="molv-btn-gradient" [disabled]="!selectedPageId"
+              (click)="goToPageClicked.emit(selectedPageId!)">Go</button>
+          </div>
         </div>
       </div>
     }

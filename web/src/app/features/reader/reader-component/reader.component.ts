@@ -178,7 +178,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
   private scrollInProgress = false;
 
-  async scrollToBookmark(bm: Bookmark) {
+  async scrollToBookmark(pageId: number) {
     if (this.scrollInProgress) return;
     this.scrollInProgress = true;
     this.loading.show();
@@ -186,14 +186,14 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     // check if already at the bookmark
     const container = document.querySelector<HTMLElement>('.reader-container');
     const currentBookmark = this.getCurrentBookmark();
-    if (!container || currentBookmark?.pageId === bm.pageId) {
+    if (!container || currentBookmark?.pageId === pageId) {
       this.loading.hide();
       this.scrollInProgress = false;
       return null;
     }
 
     // find the index of the target page
-    const pageIndex = this.pages.findIndex(p => p.id === bm.pageId);
+    const pageIndex = this.pages.findIndex(p => p.id === pageId);
     if (pageIndex === -1) {
       this.loading.hide();
       this.scrollInProgress = false;
@@ -210,7 +210,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     await new Promise(resolve => setTimeout(resolve, 50));
 
     // find the target image
-    const targetImg = this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === bm.pageId)?.nativeElement;
+    const targetImg = this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === pageId)?.nativeElement;
     if (!targetImg) {
       this.loading.hide();
       this.scrollInProgress = false;

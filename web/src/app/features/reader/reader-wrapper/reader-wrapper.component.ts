@@ -66,6 +66,13 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     }
   }
 
+  // pageIds
+  get pageIds(): number[] {
+    return (this.pages ?? [])
+      .map(p => p.id)
+      .filter((id): id is number => id !== undefined);
+  }
+
   // windows
   onSettingsWindowHide() {
     this.showSettingsWindow = false;
@@ -117,7 +124,11 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     const bm = this.bookmarks.find(b => b.id === +bookmarkId);
     if (!bm || !this.readerRef) return;
 
-    this.readerRef.scrollToBookmark(bm);
+    this.readerRef.scrollToBookmark(bm.pageId);
+  }
+
+    goToPage(pageId: number) {
+    this.readerRef.scrollToBookmark(pageId);
   }
 
   async loadBookmarks(newSelectedId?: number) {

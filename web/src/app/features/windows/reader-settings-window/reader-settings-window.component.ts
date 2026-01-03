@@ -23,7 +23,9 @@ export class ReaderSettingsWindowComponent {
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
   @Input() bookmarks: Bookmark[] = [];
+  @Input() pages: number[] = [];
   @Input() selectedBookmarkId: number | null = null;
+  @Input() selectedPageId: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
@@ -36,6 +38,7 @@ export class ReaderSettingsWindowComponent {
   @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
   @Output() saveBookmarkClicked = new EventEmitter<void>();
   @Output() goToBookmarkClicked = new EventEmitter<number>();
+  @Output() goToPageClicked = new EventEmitter<number>();
 
   activeTab: 'home' | 'bookmarks' = 'home';
 
@@ -100,6 +103,16 @@ export class ReaderSettingsWindowComponent {
       return [{ id: 1, name: 'Bookmarks' } as Tab];
     }
     return [];
+  }
+
+  get pageOptions() {
+    const options = [{ value: 0, label: 'Select' }];
+    var pages = (this.pages).map(i => ({
+      value: i!,
+      label: `${i}`
+    }));
+
+    return options.concat(pages);
   }
 
   // BOOKMARKS
