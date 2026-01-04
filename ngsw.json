@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1767549366216,
+  "timestamp": 1767549683157,
   "index": "/MangaOfflineViewer/index.html",
   "assetGroups": [
     {
@@ -15,7 +15,7 @@
         "/MangaOfflineViewer/index.html",
         "/MangaOfflineViewer/main.94e5975522cb8228.js",
         "/MangaOfflineViewer/polyfills.06f800354cdbc653.js",
-        "/MangaOfflineViewer/runtime.a6e9053ca489145d.js",
+        "/MangaOfflineViewer/runtime.a149c134733948d9.js",
         "/MangaOfflineViewer/styles.91293012515555c6.css"
       ],
       "patterns": []
@@ -82,10 +82,10 @@
     "/MangaOfflineViewer/assets/images/default-tabs-preview.png": "a5b25b0ff55104db53ce4db474fa906bcfc2e902",
     "/MangaOfflineViewer/assets/manifest.webmanifest": "23ac3585bc6502d9befe9dc62e000ba8da57ba3d",
     "/MangaOfflineViewer/assets/sample-cover.svg": "0cbb188a59d0155bda72909cdb10cd74554c7b80",
-    "/MangaOfflineViewer/index.html": "2980121318cd6ea85361c4793ced41c65ba19607",
+    "/MangaOfflineViewer/index.html": "f737face85a7a0ca50923fd104f2b87fae91abb6",
     "/MangaOfflineViewer/main.94e5975522cb8228.js": "1ee8b8431751ea24049c02eecdf026af6535dc2f",
     "/MangaOfflineViewer/polyfills.06f800354cdbc653.js": "3d00c67f9c4576c5eb66a586b97b74204a7437bc",
-    "/MangaOfflineViewer/runtime.a6e9053ca489145d.js": "086acf62bc5fbbc0e5d70d98a66f22e85a73fcb6",
+    "/MangaOfflineViewer/runtime.a149c134733948d9.js": "8fb1b8b6982038983063ebe9e456b129b61b073e",
     "/MangaOfflineViewer/styles.91293012515555c6.css": "22ed73be9ffd439f8cf445a743b0fc7989f15b6d"
   },
   "navigationUrls": [
