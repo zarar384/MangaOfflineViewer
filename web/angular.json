@@ -53,7 +53,7 @@
         "deploy": {
           "builder": "angular-cli-ghpages:deploy",
           "options": {
-            "dir": "dist/MangaOfflineViewerAngular",
+            "dir": "dist/MangaOfflineViewerAngular/MangaOfflineViewer",
             "buildConfiguration": "production"
           }
         }

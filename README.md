@@ -5,6 +5,7 @@
 Offline-first PWA for reading manga.  
 Primary focus: deterministic client-side behavior, local persistence, and minimal backend dependency.
 
+[Open Live App](https://zarar384.github.io/MangaOfflineViewer/)
 [Watch the demo](https://youtu.be/-3GngfbSlKk)
 
 ---
