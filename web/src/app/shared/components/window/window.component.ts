@@ -43,7 +43,7 @@ export class WindowComponent implements OnInit {
       return {
         width: '100vw',
         maxWidth: '100%',        
-        height: 'min(60vh, 220px)', // vh - portable on iOS Safari 
+        height: `min(60vh, ${this.height})`, // vh - portable on iOS Safari 
         ...this.getPositionStyle()
       };
     }
