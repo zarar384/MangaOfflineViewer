@@ -1,6 +1,6 @@
 export interface Tab {
   id?: number;
   name: string;
-  preview?: Blob;
+  preview?: Blob | string;
   updatedAt?: number;
 }

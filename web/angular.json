@@ -15,7 +15,9 @@
               "styles": true,
               "vendor": true
             },
-            "outputPath": "dist/MangaOfflineViewerAngular",
+            "outputPath": "dist/MangaOfflineViewerAngular/MangaOfflineViewer",
+            "baseHref": "/MangaOfflineViewer/",
+            "deployUrl": "/MangaOfflineViewer/",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -46,6 +48,13 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "MangaOfflineViewerAngular:build"
+          }
+        },
+        "deploy": {
+          "builder": "angular-cli-ghpages:deploy",
+          "options": {
+            "dir": "dist/MangaOfflineViewerAngular",
+            "buildConfiguration": "production"
           }
         }
       }

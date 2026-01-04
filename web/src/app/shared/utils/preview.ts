@@ -1,6 +1,7 @@
 import { Page } from "src/app/core/models/page.model";
+import { isIOS } from "./constants";
 
-export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: number): Promise<Blob | null> {
+export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: number): Promise<Blob | string | null> {
     if (!pages.length) return null;
 
     try {
@@ -12,13 +13,15 @@ export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: 
     }
 }
 
-async function createPreview(imageBlob: Blob, preivewMaxSize: number): Promise<Blob> {
+async function createPreview(imageSrc: Blob | string, preivewMaxSize: number): Promise<Blob | string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        const url = URL.createObjectURL(imageBlob);
+        let objectUrl: string | null = null;
 
         img.onload = () => {
-            URL.revokeObjectURL(url);
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
 
             const { width, height } = calculatePreviewSize(img.width, img.height, preivewMaxSize);
 
@@ -37,26 +40,46 @@ async function createPreview(imageBlob: Blob, preivewMaxSize: number): Promise<B
             context.imageSmoothingQuality = 'high';
             context.drawImage(img, 0, 0, width, height);
 
-            // export as JPEG blob
-            canvas.toBlob(
-                (blob) => {
-                    if (blob) {
-                        resolve(blob);
-                    } else {
-                        reject(new Error('Failed to create blob from canvas'));
-                    }
-                },
-                'image/jpeg',
-                0.85 // quality 85%
-            );
+            if (isIOS) {
+                //  iOS to data URL
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                resolve(dataUrl);
+            } else {
+                // export as JPEG blob
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Failed to create blob from canvas'));
+                        }
+                    },
+                    'image/jpeg',
+                    0.85 // quality 85%
+                );
+            }
         };
 
+
         img.onerror = () => {
-            URL.revokeObjectURL(url);
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
             reject(new Error('Failed to load image for preview'));
         };
 
-        img.src = url;
+        if (isIOS && typeof imageSrc === 'string') {
+            // iOS / base64
+            img.src = imageSrc;
+        } 
+        else if (imageSrc instanceof Blob) {
+            // Blob
+            objectUrl = URL.createObjectURL(imageSrc);
+            img.src = objectUrl;
+        }
+        else {
+            reject(new Error('Unsupported image source type'));
+        }
     });
 }
 

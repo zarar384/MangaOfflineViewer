@@ -11,6 +11,9 @@ export class LanguageService {
   }
 
   setLang(lang: 'en' | 'cs' | 'ru') {
+    if(!lang){
+      lang = 'en';
+    }
     this.transloco.setActiveLang(lang);
     localStorage.setItem('lang', lang);
   }

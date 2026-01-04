@@ -9,8 +9,9 @@ import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
-import { Subject,  tap, finalize, from, Subscription } from 'rxjs';
+import { Subject, tap, finalize, from, Subscription } from 'rxjs';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { isIOS } from '../../utils/constants';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -64,13 +65,15 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
     this.sub.unsubscribe();
   }
 
-  private rebuildUrls() {
-    this.urls.set(
-      this.pages.map(p => ({
+  private async rebuildUrls() {
+    const urls = await Promise.all(
+      this.pages.map(async p => ({
         name: p.name,
-        src: this.urlService.createUrl(p.name ?? 'page', p.src)
+        src: await this.urlService.createUrl(p.name ?? 'page', p.src)
       }))
     );
+
+    this.urls.set(urls);
   }
 
   saveAll(tab: Tab) {
@@ -165,11 +168,30 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
     await this.addBlobImage(file, file.name);
   }
 
-  private async addBlobImage(blob: Blob, name?: string, pageNumber?: number) {
-    const url = this.urlService.createUrl(name!, blob);
+  private async addBlobImage(blob: Blob, name?: string) {
+    let pageSrc: Blob | string;
+    let previewSrc: string;
 
-    this.pages.push({ src: blob, name, tabId: 0 });
-    this.urls.update(u => [...u, { src: url, name }]);
+    if (isIOS) {
+      const reader = new FileReader();
+      pageSrc = await new Promise<string>(resolve => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+
+      previewSrc = pageSrc; // data URL
+    } else {
+      pageSrc = blob;
+      previewSrc = await this.urlService.createUrl(name!, blob);
+    }
+
+    this.pages.push({
+      src: pageSrc,
+      name,
+      tabId: 0
+    });
+
+    this.urls.update(u => [...u, { src: previewSrc, name }]);
   }
 
   remove(index: number) {

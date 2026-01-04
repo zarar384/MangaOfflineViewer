@@ -4,6 +4,7 @@ import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { Bookmark } from 'src/app/core/models/bookmark';
 import { LoadingService } from 'src/app/core/services/loading.service';
+import { isIOS } from 'src/app/shared/utils/constants';
 
 @Component({
   selector: 'manga-reader',
@@ -124,16 +125,32 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     }
   }
 
-  private createPageUrls(pages: Page[]) {
-    pages.forEach(page => {
-      if (page.src instanceof Blob && page.id !== undefined && !this.pageUrls.has(page.id)) {
-        const blobUrl = this.urlService.createUrl(`${page.id}`, page.src);
+  private async createPageUrls(pages: Page[]) {
+    if (isIOS) {
+      return;
+    }
+
+    for (const page of pages) {
+      if (
+        page.src instanceof Blob &&
+        page.id !== undefined &&
+        !this.pageUrls.has(page.id)
+      ) {
+        const blobUrl = await this.urlService.createUrl(
+          `${page.id}`,
+          page.src
+        );
         this.pageUrls.set(page.id, blobUrl);
       }
-    });
+    }
   }
 
   private cleanupUnusedUrls(newPages: Page[]) {
+    if (isIOS) {
+      this.pageUrls.clear();
+      return;
+    }
+
     const newPageIds = new Set(newPages.map(p => p.id).filter(Boolean));
 
     this.pageUrls.forEach((url, pageId) => {
@@ -146,6 +163,19 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
 
   getPageUrl(page: Page): string {
+    if (isIOS) {
+    if (typeof page.src === 'string') {
+      return page.src; // data URL
+    }
+
+    // IOS fallback for Blob src
+    if (page.src instanceof Blob) {
+      return URL.createObjectURL(page.src);
+    }
+
+    return '';
+  }
+
     if (page.src instanceof Blob && page.id !== undefined) {
       return this.pageUrls.get(page.id) || '';
     }

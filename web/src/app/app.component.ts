@@ -14,7 +14,7 @@ import { SwUpdate } from '@angular/service-worker';
   imports: [LayoutComponent, MolvLoaderComponent]
 })
 export class AppComponent {
-  constructor(langService: LanguageService, updates: SwUpdate) {
+  constructor(updates: SwUpdate) {
     updates.versionUpdates.subscribe(event => {
       if (event.type === 'VERSION_READY') {
         updates.activateUpdate().then(() => {
@@ -22,7 +22,5 @@ export class AppComponent {
         });
       }
     });
-
-    langService.init();
   }
 }

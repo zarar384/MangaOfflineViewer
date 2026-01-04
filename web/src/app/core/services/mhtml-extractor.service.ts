@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { isIOS } from 'src/app/shared/utils/constants';
 import { decodeQuotedPrintable, parseHTMLForImages } from 'src/app/shared/utils/file-parsing';
 
 @Injectable({ providedIn: 'root' })
@@ -115,7 +116,7 @@ export class MhtmlExtractorService {
   // for iOS devices, we need to wait a bit to avoid issues with Blob URLs
   private sleepIfIOS(): Promise<void> {
     return new Promise(resolve => {
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      if (isIOS) {
         setTimeout(resolve, 0);
       } else {
         resolve();

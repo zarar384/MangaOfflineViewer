@@ -14,9 +14,9 @@
       <div class="setting-left">
         <span class="setting-label">{{'language' | transloco}}</span>
         <molv-dropdown [(value)]="language" (valueChange)="onLangChange($event)" [options]="[
-                        { value: 'en', label: 'ENG' },
-                        { value: 'cs', label: 'CZ' },
-                        { value: 'ru', label: 'RU' }
+                        { value: 1, label: 'ENG' },
+                        { value: 2, label: 'CZ' },
+                        { value: 3, label: 'RU' }
                       ]">
         </molv-dropdown>
       </div>

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { isIOS } from '../../utils/constants';
 
 @Component({
   selector: 'app-window',
@@ -28,7 +29,7 @@ export class WindowComponent implements OnInit {
     // only restore collapsed state if showHide is true
     this.isCollapsed = this.showHide ? this.uiState.getValue<boolean>('windowSettingCollapsed') ?? false : false;
     this.isTransparent = this.showTransparency ? this.uiState.getValue<boolean>('windowSettingTransparent') ?? false : false;
-  
+
   }
 
   onClose() { this.close.emit(); }
@@ -38,6 +39,15 @@ export class WindowComponent implements OnInit {
   isTransparent = false;
 
   get styles() {
+    if (isIOS) {
+      return {
+        width: '100vw',
+        maxWidth: '100%',        
+        height: 'min(60vh, 220px)', // vh - portable on iOS Safari 
+        ...this.getPositionStyle()
+      };
+    }
+
     return {
       width: this.width,
       height: this.height,

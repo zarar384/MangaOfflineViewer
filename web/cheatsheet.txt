@@ -3,12 +3,15 @@ rm -rf node_modules package-lock.json
 Remove-Item -Recurse -Force node_modules
 npm cache clean --force    
 
-# Build & Run Prod
+# Build & Run Prod 
+# http://localhost:8080/MangaOfflineViewer/
 ng build 
 ng build --configuration production
 http-server ./dist/MangaOfflineViewerAngular -p 8080
 
-ngrok http 8080    
+# GitHub Page
+ng deploy --base-href=/MangaOfflineViewer/
+ng build --configuration production
 
 # Run Dev
 ng serve --hmr=false 

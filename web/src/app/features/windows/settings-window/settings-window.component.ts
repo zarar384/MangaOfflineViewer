@@ -28,9 +28,21 @@ export class SettingsWindowComponent {
   }
 
   // LANGUAGE SETTINGS
+  onLangChange(value: number) {
+    // TODO: refactor with enum
+    const map: Record<typeof value, 'en' | 'cs' | 'ru'> = {
+      1: 'en',
+      2: 'cs',
+      3: 'ru'
+    };
+    const lang = map[value];
 
-  onLangChange(lang: 'en' | 'cs' | 'ru') {
+    if (!lang) {
+      return;
+    }
+
+    this.language = lang;
     this.langService.setLang(lang);
-    this.uiState.saveState({ language: this.language });
+    this.uiState.saveState({ language: lang });
   }
 }

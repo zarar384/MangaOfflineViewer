@@ -3,6 +3,7 @@ import * as JSZip from 'jszip';
 import { Tab } from '../models/tab.model';
 import { Page } from '../models/page.model';
 import { blobToDataURL, downloadBlob, encodeQuotedPrintable, getImageExtension } from 'src/app/shared/utils/file-parsing';
+import { isIOS } from 'src/app/shared/utils/constants';
 
 @Injectable({
     providedIn: 'root'
@@ -36,7 +37,17 @@ export class ExportService {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let dataUrl = await blobToDataURL(page.src);
+                let dataUrl = '';
+                if (page.src instanceof Blob) {
+                    dataUrl = await blobToDataURL(page.src);
+                }
+                else if (isIOS && typeof page.src === 'string') {
+                    dataUrl = page.src;
+                }
+                else{
+                    console.warn(`Unsupported page source for page ${i + 1}`);
+                    continue;
+                }
 
                 if (!dataUrl.startsWith('data:image')) {
                     const base64Data = dataUrl.split(',')[1];
@@ -77,8 +88,24 @@ export class ExportService {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const arrayBuffer = await page.src.arrayBuffer();
-                const ext = getImageExtension(page.src.type);
+                let arrayBuffer: ArrayBuffer;
+                let ext: string;
+
+                if (page.src instanceof Blob) {
+                    arrayBuffer = await page.src.arrayBuffer();
+                    ext = getImageExtension(page.src.type);
+                } 
+                else if (isIOS && typeof page.src === 'string') {
+                    const response = await fetch(page.src);
+                    arrayBuffer = await response.arrayBuffer();
+                    const match = page.src.match(/^data:image\/([a-zA-Z0-9+]+);/);
+                    ext = match ? match[1] : 'jpeg';
+                }
+                else {
+                    console.warn(`Unsupported page source for page ${i + 1}`);
+                    continue;
+                }
+
                 zip.file(`${i + 1}.${ext}`, arrayBuffer);
             }
 
