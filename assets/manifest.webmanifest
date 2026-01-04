@@ -26,7 +26,7 @@
       "name": "Continue Reading",
       "short_name": "Continue",
       "description": "Open last manga",
-      "url": "/reader",
+      "url": "/MangaOfflineViewer/reader",
       "icons": [
         { "src": "icons/maskable_icon_x192.png", "sizes": "192x192" }
       ]
