@@ -1,0 +1,35 @@
+{
+  "name": "Manga Offline Viewer",
+  "short_name": "MangaViewer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "description": "Offline manga reader PWA",
+  "icons": [
+    {
+      "src": "icons/maskable_icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/maskable_icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Continue Reading",
+      "short_name": "Continue",
+      "description": "Open last manga",
+      "url": "/reader",
+      "icons": [
+        { "src": "icons/maskable_icon_x192.png", "sizes": "192x192" }
+      ]
+    }
+  ]
+}

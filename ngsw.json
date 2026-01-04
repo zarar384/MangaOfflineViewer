@@ -1,0 +1,110 @@
+{
+  "configVersion": 1,
+  "timestamp": 1767549090969,
+  "index": "/MangaOfflineViewer/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MangaOfflineViewer/793.7d844b3de8ccf8c1.js",
+        "/MangaOfflineViewer/index.html",
+        "/MangaOfflineViewer/main.94e5975522cb8228.js",
+        "/MangaOfflineViewer/polyfills.06f800354cdbc653.js",
+        "/MangaOfflineViewer/runtime.a6e9053ca489145d.js",
+        "/MangaOfflineViewer/styles.91293012515555c6.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MangaOfflineViewer/assets/assets.config.ts",
+        "/MangaOfflineViewer/assets/favicon.ico",
+        "/MangaOfflineViewer/assets/i18n/cs.json",
+        "/MangaOfflineViewer/assets/i18n/en.json",
+        "/MangaOfflineViewer/assets/i18n/ru.json",
+        "/MangaOfflineViewer/assets/icons/maskable_icon_x192.png",
+        "/MangaOfflineViewer/assets/icons/maskable_icon_x512.png",
+        "/MangaOfflineViewer/assets/images/default-tabs-preview.png",
+        "/MangaOfflineViewer/assets/manifest.webmanifest",
+        "/MangaOfflineViewer/assets/sample-cover.svg"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "manga-previews",
+      "patterns": [
+        "\\/previews\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 200,
+      "maxAge": 2592000000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    },
+    {
+      "name": "manga-images",
+      "patterns": [
+        "\\/manga\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 500,
+      "maxAge": 2592000000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
+  "hashTable": {
+    "/MangaOfflineViewer/793.7d844b3de8ccf8c1.js": "42a6533744b51160f6e7e6a2ffb89541eb8b8f5f",
+    "/MangaOfflineViewer/assets/assets.config.ts": "cd946ec635e94479085eb1db9bef0c366459c76c",
+    "/MangaOfflineViewer/assets/favicon.ico": "716e7cbfd39b3499dc14be167d927824152df14c",
+    "/MangaOfflineViewer/assets/i18n/cs.json": "b18a5d08f4949f911fd93c8add43de0367921542",
+    "/MangaOfflineViewer/assets/i18n/en.json": "0f3e6172b68a159cbf236c2fe4c1f3b476d8138f",
+    "/MangaOfflineViewer/assets/i18n/ru.json": "9452b524f64e8c186e1924fb4c0ea3a52dc88a61",
+    "/MangaOfflineViewer/assets/icons/maskable_icon_x192.png": "1bc10a4a9d269145adf10817c5223db8d6351085",
+    "/MangaOfflineViewer/assets/icons/maskable_icon_x512.png": "2c89284178e42d88598c0cb3f456dceb996ebbe9",
+    "/MangaOfflineViewer/assets/images/default-tabs-preview.png": "a5b25b0ff55104db53ce4db474fa906bcfc2e902",
+    "/MangaOfflineViewer/assets/manifest.webmanifest": "23ac3585bc6502d9befe9dc62e000ba8da57ba3d",
+    "/MangaOfflineViewer/assets/sample-cover.svg": "0cbb188a59d0155bda72909cdb10cd74554c7b80",
+    "/MangaOfflineViewer/index.html": "2980121318cd6ea85361c4793ced41c65ba19607",
+    "/MangaOfflineViewer/main.94e5975522cb8228.js": "1ee8b8431751ea24049c02eecdf026af6535dc2f",
+    "/MangaOfflineViewer/polyfills.06f800354cdbc653.js": "3d00c67f9c4576c5eb66a586b97b74204a7437bc",
+    "/MangaOfflineViewer/runtime.a6e9053ca489145d.js": "086acf62bc5fbbc0e5d70d98a66f22e85a73fcb6",
+    "/MangaOfflineViewer/styles.91293012515555c6.css": "22ed73be9ffd439f8cf445a743b0fc7989f15b6d"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}
