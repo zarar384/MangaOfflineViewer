@@ -23,7 +23,7 @@ export class ReaderSettingsWindowComponent {
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
   @Input() bookmarks: Bookmark[] = [];
-  @Input() pages: number[] = [];
+  @Input() pages: { id: number, number: number }[] = [];
   @Input() selectedBookmarkId: number | null = null;
   @Input() selectedPageId: number | null = null;
 
@@ -107,12 +107,21 @@ export class ReaderSettingsWindowComponent {
 
   get pageOptions() {
     const options = [{ value: 0, label: 'Select' }];
-    var pages = (this.pages).map(i => ({
-      value: i!,
-      label: `${i}`
+    var pages = (this.pages).map(n => ({
+      value: n.number!,
+      label: `${n.number}`
     }));
 
     return options.concat(pages);
+  }
+
+  // PAGE
+  goToPage() {
+    var bookmark = this.bookmarks.find(b => b.pageId === this.selectedPageId);
+    if (bookmark)
+      this.selectedBookmarkId = bookmark.id!;
+
+    this.goToPageClicked.emit(+this.selectedPageId!)
   }
 
   // BOOKMARKS
@@ -124,6 +133,13 @@ export class ReaderSettingsWindowComponent {
     }));
 
     return options.concat(bookmarks);
+  }
+
+  goToBookmark() {
+    var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
+    var page = this.pages.find(p => p.id === bookmark?.pageId);
+    this.selectedPageId = page ? page?.number! : null;
+    this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
 
   onHomeTab() { this.activeTab = 'home'; }

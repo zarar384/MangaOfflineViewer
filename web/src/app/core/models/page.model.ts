@@ -3,4 +3,5 @@ export interface Page {
   tabId: number;   // FK
   src:  Blob;
   name?: string;
+  pageNumber?: number;
 }

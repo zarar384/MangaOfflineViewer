@@ -152,8 +152,8 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     return typeof page.src === 'string' ? page.src : '';
   }
 
-  // bookmark 
-  public getCurrentBookmark(): { pageId: number } | null {
+  // page navigation logic 
+  public getCurrentPage(): { pageId: number } | null {
     const container = document.querySelector<HTMLElement>('.reader-container');
     if (!container) return null;
 
@@ -178,15 +178,15 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
   private scrollInProgress = false;
 
-  async scrollToBookmark(pageId: number) {
+  async scrollToPage(pageId: number) {
     if (this.scrollInProgress) return;
     this.scrollInProgress = true;
     this.loading.show();
 
-    // check if already at the bookmark
+    // check if already at the page
     const container = document.querySelector<HTMLElement>('.reader-container');
-    const currentBookmark = this.getCurrentBookmark();
-    if (!container || currentBookmark?.pageId === pageId) {
+    const currentPage = this.getCurrentPage();
+    if (!container || currentPage?.pageId === pageId) {
       this.loading.hide();
       this.scrollInProgress = false;
       return null;

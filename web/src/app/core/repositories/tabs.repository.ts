@@ -65,11 +65,12 @@ export class TabsRepository {
       }
 
       // prepare pages and bulk put
-      const normalized: Page[] = pages.map((p: any, idx: number) => ({
+      const normalized: Page[] = pages.map((p: any, indx: number) => ({
         id: undefined,          // Dexie create ++id if undefined
         tabId: savedId as number,
         src: p.src ?? p.blob,
-        name: p.name ?? null
+        name: p.name ?? null,
+        pageNumber: indx + 1,
       }));
 
       if (normalized.length) await db.pages.bulkPut(normalized);

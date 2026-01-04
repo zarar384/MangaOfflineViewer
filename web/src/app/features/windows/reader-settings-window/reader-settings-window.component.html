@@ -33,16 +33,14 @@
         </div>
 
         <div class="setting-left-group">
-          <!-- button to download tab-->
-          <div class="setting-left">
+          <!-- go to page -->
+         <div class="setting-left">
             <div class="setting-label">
-              <molv-dropdown [(value)]="dwnldMod" [options]="[
-            { value: 'mhtml', label: 'MHTML' },
-            { value: 'zip', label: 'ZIP' }
-            ]">
+              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId">
               </molv-dropdown>
             </div>
-            <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
+            <button class="molv-btn-gradient" [disabled]="!selectedPageId"
+              (click)="goToPage()">Go</button>
           </div>
 
           <!-- bookmarks -->
@@ -53,16 +51,19 @@
             </div>
             <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
             <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
-              (click)="goToBookmarkClicked.emit(selectedBookmarkId!)">Go</button>
+              (click)="goToBookmark()">Go</button>
           </div>
-
+          
+          <!-- button to download tab-->
           <div class="setting-left">
             <div class="setting-label">
-              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId">
+              <molv-dropdown [(value)]="dwnldMod" [options]="[
+            { value: 'mhtml', label: 'MHTML' },
+            { value: 'zip', label: 'ZIP' }
+            ]">
               </molv-dropdown>
             </div>
-            <button class="molv-btn-gradient" [disabled]="!selectedPageId"
-              (click)="goToPageClicked.emit(selectedPageId!)">Go</button>
+            <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
           </div>
         </div>
       </div>

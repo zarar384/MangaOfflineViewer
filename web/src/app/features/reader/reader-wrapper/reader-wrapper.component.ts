@@ -66,11 +66,17 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     }
   }
 
-  // pageIds
-  get pageIds(): number[] {
+  // pageNumbers
+  get pageNumbers(): { id: number, number: number }[] {
     return (this.pages ?? [])
-      .map(p => p.id)
-      .filter((id): id is number => id !== undefined);
+      .map(p => ({ id: p.id, number: p.pageNumber }))
+      .filter((id): id is { id: number, number: number } => id !== undefined);
+  }
+
+  goToPage(pageNumber: number) {
+    var pageId = this.pages.find(p => p.pageNumber === pageNumber)?.id;
+    if (!pageId || !this.readerRef) return;
+    this.readerRef.scrollToPage(pageId);
   }
 
   // windows
@@ -100,15 +106,18 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   async saveBookmark() {
     if (!this.activeManga || !this.readerRef) return;
 
-    const data = this.readerRef.getCurrentBookmark();
+    const data = this.readerRef.getCurrentPage();
     if (!data) return;
 
     try {
+      var page = this.pages.find(p => p.id === data.pageId);
+      if (!page || page.pageNumber === undefined) return;
+      
       var newBookmarkId = await this.bookmarksRepo.put({
         tabId: this.activeManga,
         pageId: data.pageId,
         createdAt: Date.now(),
-        title: `Page ${data.pageId}`
+        title: `Page ${page.pageNumber}`
       });
 
       var bookmarks = await this.bookmarksRepo.getAll(this.activeManga)
@@ -124,11 +133,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     const bm = this.bookmarks.find(b => b.id === +bookmarkId);
     if (!bm || !this.readerRef) return;
 
-    this.readerRef.scrollToBookmark(bm.pageId);
-  }
-
-    goToPage(pageId: number) {
-    this.readerRef.scrollToBookmark(pageId);
+    this.readerRef.scrollToPage(bm.pageId);
   }
 
   async loadBookmarks(newSelectedId?: number) {

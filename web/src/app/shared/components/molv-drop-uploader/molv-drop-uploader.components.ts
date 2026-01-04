@@ -89,7 +89,6 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
     );
   }
 
-
   clearAll() {
     this.pages = [];
     this.urls.set([]);
@@ -166,7 +165,7 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
     await this.addBlobImage(file, file.name);
   }
 
-  private async addBlobImage(blob: Blob, name?: string) {
+  private async addBlobImage(blob: Blob, name?: string, pageNumber?: number) {
     const url = this.urlService.createUrl(name!, blob);
 
     this.pages.push({ src: blob, name, tabId: 0 });
