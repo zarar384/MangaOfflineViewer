@@ -1,0 +1,50 @@
+{
+  "index": "/MangaOfflineViewer/index.html",
+
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/MangaOfflineViewer/index.html",
+          "/MangaOfflineViewer/**/*.js",
+          "/MangaOfflineViewer/**/*.css"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/MangaOfflineViewer/assets/**",
+          "/MangaOfflineViewer/**/*.woff2"
+        ]
+      }
+    }
+  ],
+
+  "dataGroups": [
+    {
+      "name": "manga-previews",
+      "urls": ["/MangaOfflineViewer/previews/**"],
+      "cacheConfig": {
+        "maxSize": 200,
+        "maxAge": "30d",
+        "strategy": "performance"
+      }
+    },
+    {
+      "name": "manga-images",
+      "urls": ["/MangaOfflineViewer/manga/**"],
+      "cacheConfig": {
+        "maxSize": 500,
+        "maxAge": "30d",
+        "strategy": "performance"
+      }
+    }
+  ]
+}

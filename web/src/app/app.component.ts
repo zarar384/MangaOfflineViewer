@@ -14,13 +14,17 @@ import { SwUpdate } from '@angular/service-worker';
   imports: [LayoutComponent, MolvLoaderComponent]
 })
 export class AppComponent {
-  constructor(updates: SwUpdate) {
-    updates.versionUpdates.subscribe(event => {
-      if (event.type === 'VERSION_READY') {
-        updates.activateUpdate().then(() => {
-          document.location.reload();
-        });
-      }
-    });
+  constructor(private updates: SwUpdate) {
+    if (this.updates.isEnabled) {
+      this.updates.versionUpdates.subscribe(event => {
+        console.log('[SW]', event.type);
+
+        if (event.type === 'VERSION_READY') {
+          this.updates.activateUpdate().then(() => {
+            document.location.reload();
+          });
+        }
+      });
+    }
   }
 }

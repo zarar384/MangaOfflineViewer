@@ -16,8 +16,6 @@
               "vendor": true
             },
             "outputPath": "dist/MangaOfflineViewerAngular/MangaOfflineViewer",
-            "baseHref": "/MangaOfflineViewer/",
-            "deployUrl": "/MangaOfflineViewer/",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -36,11 +34,33 @@
             "webWorkerTsConfig": "tsconfig.worker.json"
           },
           "configurations": {
-            "production": {
+            "production-local": {
               "serviceWorker": true,
-              "ngswConfigPath": "ngsw-config.json",
+              "ngswConfigPath": "ngsw-config.local.json",
               "optimization": true,
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "baseHref": "/",
+              "deployUrl": "/",
+              "fileReplacements": [
+                {
+                  "replace": "src/assets/manifest.json",
+                  "with": "src/assets/manifest.local.json"
+                }
+              ]
+            },
+            "production-gh": {
+              "serviceWorker": true,
+              "ngswConfigPath": "ngsw-config.gh.json",
+              "optimization": true,
+              "outputHashing": "all",
+              "baseHref": "/MangaOfflineViewer/",
+              "deployUrl": "/MangaOfflineViewer/",
+              "fileReplacements": [
+                {
+                  "replace": "src/assets/manifest.json",
+                  "with": "src/assets/manifest.gh.json"
+                }
+              ]
             }
           }
         },
@@ -54,7 +74,8 @@
           "builder": "angular-cli-ghpages:deploy",
           "options": {
             "dir": "dist/MangaOfflineViewerAngular/MangaOfflineViewer",
-            "buildConfiguration": "production"
+            "buildConfiguration": "production-gh",
+            "baseHref": "/MangaOfflineViewer/"
           }
         }
       }

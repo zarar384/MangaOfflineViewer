@@ -6,12 +6,13 @@ npm cache clean --force
 # Build & Run Prod 
 # http://localhost:8080/MangaOfflineViewer/
 ng build 
-ng build --configuration production
-http-server ./dist/MangaOfflineViewerAngular -p 8080
+ng build --configuration production-local
+http-server dist/MangaOfflineViewerAngular/MangaOfflineViewer -p 8080
 
 # GitHub Page
+ng build --configuration production-gh
+ng deploy 
 ng deploy --base-href=/MangaOfflineViewer/
-ng build --configuration production
 
 # Run Dev
 ng serve --hmr=false 
