@@ -1,0 +1,21 @@
+.chapter-list {
+  margin-top: 24px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.list-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.chapter-list movl-chapter-item {
+  display: block;
+  margin-bottom: 12px;
+}

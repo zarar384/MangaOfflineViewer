@@ -42,6 +42,26 @@ export class TabsService {
     });
   }
 
+  async getTabById(id: number): Promise<{ tab: Tab; previewUrl: string } | null> {
+  const tab = await this.repo.get(id);
+  if (!tab) return null;
+
+  return {
+    tab,
+    previewUrl: await this.buildPreview(tab)
+  };
+}
+
+async updateTab(tab: Tab) {
+  await this.repo.update(tab);
+  await this.refresh();
+}
+
+async deleteTab(id: number) {
+  await this.repo.delete(id);
+  await this.refresh();
+}
+
   hydrate(page: number, perPage: number) {
     this.page.set(page);
     this.perPage.set(perPage);

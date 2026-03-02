@@ -1,0 +1,15 @@
+<div class="chapter-list">
+
+  <div class="list-header">
+    <h2>Главы</h2>
+    <button class="molv-btn primary" (click)="addChapter()">
+      + Добавить главу
+    </button>
+  </div>
+
+  <movl-chapter-item
+    *ngFor="let chapter of chapters"
+    [chapter]="chapter">
+  </movl-chapter-item>
+
+</div>

@@ -1,0 +1,38 @@
+.manga-page {
+  padding: 20px;
+  color: var(--text-color);
+}
+
+.manga-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.cover img {
+  width: 240px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 0, 150, 0.3);
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.description {
+  min-height: 120px;
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}

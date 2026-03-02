@@ -4,11 +4,13 @@ import { Tab } from "../models/tab.model";
 import { Bookmark } from "../models/bookmark";
 import { DB_NAME, STORE_BOOKMARKS, STORE_PAGES } from "../db.config";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
+import { Chapter } from "../models/chapter.model";
 
 export class MangaDB extends Dexie {
   pages!: Table<Page, number>;
   tabs!: Table<Tab, number>;
   bookmarks!: Table<Bookmark, number>;
+  chapters!: Table<Chapter, number>;
 
   constructor() {
     super(DB_NAME);
@@ -51,6 +53,25 @@ export class MangaDB extends Dexie {
       pages: '++id, tabId, pageNumber, name',
       bookmarks: '++id, tabId, pageId'
     }).upgrade(async tx => {
+
+      // v4
+      this.version(4).stores({
+        tabs: '++id, name, updatedAt, description',
+        pages: '++id, tabId, chapterId, pageNumber, name',
+        bookmarks: '++id, tabId, pageId',
+        chapters: '++id, tabId, createdAt'
+      }).upgrade(async tx => {
+
+        // migrate pages - add chapterId field (nullable)
+        await tx.table<Page>('pages')
+          .toCollection()
+          .modify((p: any) => {
+            if (!('chapterId' in p)) {
+              p.chapterId = null;
+            }
+          });
+
+      });
 
       const pagesTable = tx.table<Page>('pages');
 

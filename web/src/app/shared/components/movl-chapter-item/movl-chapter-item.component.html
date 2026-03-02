@@ -1,0 +1,33 @@
+<div class="chapter-item">
+
+  <div class="chapter-header">
+
+    <div class="left" (click)="toggle()">
+      <span class="arrow" [class.open]="isOpen">▶</span>
+      <input [(ngModel)]="chapter.title" />
+    </div>
+
+    <div class="right">
+      <span class="count">{{ pages.length }} page{{ pages.length !== 1 ? 's' : '' }}</span>
+      <button class="molv-btn small" (click)="upload()">Upload</button>
+      <button class="molv-btn small primary" (click)="openChapter()">
+        Read
+      </button>
+    </div>
+
+  </div>
+
+  <div class="pages" *ngIf="isOpen">
+
+    <div
+      class="page-item"
+      *ngFor="let page of pages; let i = index"
+      (click)="openPage(i + 1)">
+
+      Page {{ i + 1 }}
+
+    </div>
+
+  </div>
+
+</div>

@@ -1,0 +1,26 @@
+<div class="manga-page">
+
+  <div class="manga-header">
+
+    <div class="cover">
+      <img [src]="tab?.preview" />
+    </div>
+
+    <div class="info">
+      @if (tab) {
+        <textarea [(ngModel)]="tab.name" class="title"></textarea>
+        <textarea [(ngModel)]="tab.description" class="description"></textarea>
+      }
+
+      <div class="actions">
+        <button class="molv-btn" (click)="edit()">Edit</button>
+        <button class="molv-btn danger" (click)="delete()">Delete</button>
+        <button class="molv-btn primary" (click)="save()">Save</button>
+      </div>
+    </div>
+
+  </div>
+
+  <movl-chapter-list [tabId]="tabId"></movl-chapter-list>
+
+</div>

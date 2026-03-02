@@ -1,0 +1,43 @@
+.chapter-item {
+  background: var(--panel-bg);
+  margin-bottom: 12px;
+  border-radius: 10px;
+  padding: 12px;
+  transition: 0.3s;
+}
+
+.chapter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.arrow {
+  transition: 0.2s;
+}
+
+.arrow.open {
+  transform: rotate(90deg);
+}
+
+.pages {
+  margin-top: 12px;
+  padding-left: 24px;
+}
+
+.page-item {
+  padding: 6px 0;
+  cursor: pointer;
+  color: var(--accent-color);
+}
+
+.page-item:hover {
+  text-shadow: 0 0 6px var(--accent-color);
+}
