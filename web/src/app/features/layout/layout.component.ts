@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper.component';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { MangaPageComponent } from "../manga-page/manga-page.component";
 
 @Component({
   selector: 'app-manga-layout',
@@ -13,8 +14,9 @@ import { TabsService } from 'src/app/core/services/tabs.service';
     NavbarComponent,
     MangaHomeComponent,
     ReaderWrapperComoponent,
-    CommonModule
-  ],
+    CommonModule,
+    MangaPageComponent
+],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css'],
 })

@@ -35,4 +35,5 @@
 
 .molv-txtbx-large {
   width: 100%;
+  box-sizing: border-box;
 }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -18,28 +18,47 @@ export class MangaPageComponent {
   @Input() tabId!: number;
 
   tab?: Tab;
-  previewUrl?: string;
+  editModel?: Tab;
+  
+  isEditMode = signal(false);
 
   constructor(
     private tabsService: TabsService,
-    private uiState: UiStateService
-  ) {}
+  ) {
+    var testTab: Tab = {
+      id: 1,
+      name: 'Test Manga',
+      description: 'This is a test manga description.',
+      preview: 'assets/favicon.ico?v=2',
+    }
+
+    this.tab = testTab;
+  }
 
   async ngOnInit() {
     const data = await this.tabsService.getTabById(this.tabId);
     if (!data) return;
 
     this.tab = data.tab;
-    this.previewUrl = data.previewUrl;
+  }
+
+  cancel(){
+    this.isEditMode.set(false);
   }
 
   edit() {
-    this.uiState.setEditMode(true);
+    if(!this.tab) return;
+
+    this.editModel = { ...this.tab };
+    this.isEditMode.set(true);
   }
 
   async save() {
-    if (!this.tab) return;
-    await this.tabsService.updateTab(this.tab);
+    if (!this.editModel) return;
+    await this.tabsService.updateTab(this.editModel);
+
+    this.tab = { ...this.editModel! };
+    this.isEditMode.set(false);
   }
 
   async delete() {

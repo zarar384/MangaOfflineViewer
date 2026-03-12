@@ -1,38 +1,19 @@
-.manga-page {
-  padding: 20px;
-  color: var(--text-color);
-}
+.manga-page { padding: 20px; color: var(--text-color); }
+.manga-header { display: flex; gap: 24px; margin-bottom: 32px; align-items: flex-start; flex-wrap: wrap; }
 
-.manga-header {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 32px;
-}
+.cover { flex-shrink: 0; }
+.cover img { width: 240px; display: block; border-radius: 12px; box-shadow: 0 0 20px rgba(255, 0, 150, 0.3); }
 
-.cover img {
-  width: 240px;
-  border-radius: 12px;
-  box-shadow: 0 0 20px rgba(255, 0, 150, 0.3);
-}
 
-.info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
 
-.title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 12px;
-}
+.info { width: 50%; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.title { font-size: 24px; font-weight: bold; margin: 0; }
+.description { min-height: 120px; line-height: 1.5; margin: 0; }
 
-.description {
-  min-height: 120px;
-  margin-bottom: 16px;
-}
+textarea.molv-txtbx-large { min-height: 120px; resize: vertical; }
 
-.actions {
-  display: flex;
-  gap: 12px;
-}
+.actions { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ADAPT */
+@media (max-width: 1024px) { .info { width: 50%; } }
+@media (max-width: 640px) { .manga-header { flex-direction: column; align-items: center; } .cover img { width: 180px; } .info { width: 100%; } }

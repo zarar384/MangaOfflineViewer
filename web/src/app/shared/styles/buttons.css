@@ -1,5 +1,4 @@
-.molv-btn-gradient {
-  background: linear-gradient(90deg, #ff7eb3, #ff758c);
+.molv-btn {
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -9,8 +8,20 @@
   transition: all 0.2s ease;
 }
 
-.molv-btn-gradient:hover {
+.molv-btn:hover {
   filter: brightness(1.1);
+}
+
+.molv-btn-pink {
+  background: linear-gradient(90deg, #ff7eb3, #ff758c);
+}
+
+.molv-btn-red {
+  background: linear-gradient(90deg, #ff6b6b, #ff3b3b);
+}
+
+.molv-btn-green {
+  background: linear-gradient(90deg, #6ddf9b, #38c172);
 }
 
 .molv-btn-small-remove {

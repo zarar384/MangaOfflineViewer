@@ -7,20 +7,36 @@
     </div>
 
     <div class="info">
-      @if (tab) {
-        <textarea [(ngModel)]="tab.name" class="title"></textarea>
-        <textarea [(ngModel)]="tab.description" class="description"></textarea>
+
+      <!-- title -->
+      @if (!isEditMode()) {
+        <h1 class="title">{{ tab?.name }}</h1>
+      }
+      @else {
+        <input [(ngModel)]="editModel!.name" type="text" class="molv-txtbx molv-txtbx-large" placeholder="Title" />
       }
 
+      <!-- description -->
+      @if (!isEditMode()) {
+        <p class="description">{{ tab?.description }}</p>
+      }
+      @else {
+        <textarea [(ngModel)]="editModel!.description" type="text" class="molv-txtbx molv-txtbx-large"  placeholder="Description"> </textarea>
+      }
+
+      <!-- buttons -->
       <div class="actions">
-        <button class="molv-btn" (click)="edit()">Edit</button>
-        <button class="molv-btn danger" (click)="delete()">Delete</button>
-        <button class="molv-btn primary" (click)="save()">Save</button>
+        @if (!isEditMode()) {
+          <button class="molv-btn molv-btn-pink" (click)="edit()">Edit</button>
+        }
+        @else {
+          <button class="molv-btn molv-btn-pink" (click)="cancel()">Cancel</button>
+          <button class="molv-btn molv-btn-green" (click)="save()">Save</button>
+          <button class="molv-btn molv-btn-red" (click)="delete()">Delete</button>
+        }
       </div>
     </div>
-
   </div>
 
   <movl-chapter-list [tabId]="tabId"></movl-chapter-list>
-
 </div>

@@ -39,7 +39,7 @@
               <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId">
               </molv-dropdown>
             </div>
-            <button class="molv-btn-gradient" [disabled]="!selectedPageId"
+            <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId"
               (click)="goToPage()">Go</button>
           </div>
 
@@ -49,8 +49,8 @@
               <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
               </molv-dropdown>
             </div>
-            <button class="molv-btn-gradient" (click)="saveBookmarkClicked.emit()">Save</button>
-            <button class="molv-btn-gradient" [disabled]="!selectedBookmarkId"
+            <button class="molv-btn molv-btn-pink" (click)="saveBookmarkClicked.emit()">Save</button>
+            <button class="molv-btn molv-btn-pink" [disabled]="!selectedBookmarkId"
               (click)="goToBookmark()">Go</button>
           </div>
           
@@ -63,7 +63,7 @@
             ]">
               </molv-dropdown>
             </div>
-            <button class="molv-btn-gradient" (click)="export(dwnldMod)">Download</button>
+            <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">Download</button>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@
         @for (bm of bookmarks; track $index) {
           <div style="display: flex; align-items: center; gap: 6px;">
             <input class="molv-txtbx" [(ngModel)]="bm.title" placeholder="Bookmark Title" />
-            <button class="molv-btn-gradient" (click)="editBookmarkTitle(bm, bm.title)">Update</button>
+            <button class="molv-btn molv-btn-pink" (click)="editBookmarkTitle(bm, bm.title)">Update</button>
             <button class="molv-btn-small-remove" (click)="deleteBookmark(bm)">✕</button>
           </div>
         }
