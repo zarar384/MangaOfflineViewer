@@ -7,3 +7,5 @@ export const STORE_BOOKMARKS = 'bookmarks';
 export const STORE_CHAPTERS = 'chapters';
 
 export const PREVIEW_MAX_SIZE = 300;
+
+export const USE_SEEDS = true;

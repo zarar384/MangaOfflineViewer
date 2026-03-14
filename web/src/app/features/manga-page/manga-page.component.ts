@@ -25,14 +25,7 @@ export class MangaPageComponent {
   constructor(
     private tabsService: TabsService,
   ) {
-    var testTab: Tab = {
-      id: 1,
-      name: 'Test Manga',
-      description: 'This is a test manga description.',
-      preview: 'assets/favicon.ico?v=2',
-    }
-
-    this.tab = testTab;
+    this.tabId = 1;
   }
 
   async ngOnInit() {

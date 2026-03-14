@@ -17,7 +17,8 @@ export class ChapterListComponent implements OnChanges {
 
   chapters: Chapter[] = [];
 
-  constructor(private chaptersRepo: ChaptersRepository) {}
+  constructor(private chaptersRepo: ChaptersRepository) {
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['tabId']?.currentValue != null) {
