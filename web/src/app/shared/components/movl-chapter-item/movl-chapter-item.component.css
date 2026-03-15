@@ -16,15 +16,36 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
+  flex: 1;
 }
 
 .arrow {
-  transition: 0.2s;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
 .arrow.open {
   transform: rotate(90deg);
+}
+
+.title-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-title {
+  font-weight: 600;
+  display: block;
+}
+
+.chapter-title-input {
+  width: clamp(160px, 50%, 500px);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pages {

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Chapter } from 'src/app/core/models/chapter.model';
 import { Page } from 'src/app/core/models/page.model';
 import { PagesRepository } from 'src/app/core/repositories/pages.repository';
@@ -9,12 +10,13 @@ import { PagesRepository } from 'src/app/core/repositories/pages.repository';
   selector: 'movl-chapter-item',
   templateUrl: './movl-chapter-item.component.html',
   styleUrls: ['./movl-chapter-item.component.css'],
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   standalone: true
 })
 export class ChapterItemComponent implements OnChanges {
 
   @Input({ required: true }) chapter!: Chapter;
+  @Input() isEditMode = false;
 
   pages: Page[] = [];
   isOpen = false;

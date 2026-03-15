@@ -6,6 +6,8 @@ interface ReaderState {
   page: number;
 }
 
+export type ViewMode = 'home' | 'chapters' | 'single';
+
 @Injectable({ providedIn: 'root' })
 export class UiStateService {
   private storageKey = 'ui-state';
@@ -22,6 +24,9 @@ export class UiStateService {
   private readerStateSignal = signal<ReaderState | null>(null);
   readerState = this.readerStateSignal.asReadonly();
 
+  private viewModeSignal = signal<ViewMode>('home');
+  viewMode = this.viewModeSignal.asReadonly();
+
   constructor() {
     const saved = this.getState();
 
@@ -31,6 +36,10 @@ export class UiStateService {
 
     if (saved.readerState) {
       this.readerStateSignal.set(saved.readerState);
+    }
+
+    if (saved.viewMode) {
+      this.viewModeSignal.set(saved.viewMode);
     }
   }
 
@@ -83,5 +92,11 @@ export class UiStateService {
 
   triggerRefreshTabs() {
     this.refreshTabsSignal.update(v => v + 1);
+  }
+
+  // VIEW MODE
+  setViewMode(mode: ViewMode) {
+    this.viewModeSignal.set(mode);
+    this.saveState({ viewMode: mode });
   }
 }

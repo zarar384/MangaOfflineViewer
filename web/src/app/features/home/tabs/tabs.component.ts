@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter,  Output,  inject } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Tab } from 'src/app/core/models/tab.model';
 import { LoadingService } from 'src/app/core/services/loading.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -7,7 +8,7 @@ import { TabsService } from 'src/app/core/services/tabs.service';
 @Component({
   selector: 'tabs',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoPipe],
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.css',
 })

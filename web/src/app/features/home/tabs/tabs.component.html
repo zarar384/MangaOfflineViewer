@@ -5,7 +5,7 @@
             <button class="molv-btn-small-remove"
                 (click)="openEditWindow(tabData.tab); $event.stopPropagation()">⚙</button>
             <button class="molv-btn-small-remove"
-                (click)="remove(tabData.tab.id!); $event.stopPropagation()">x</button>
+                (click)="remove(tabData.tab.id!); $event.stopPropagation()">✕</button>
         </div>
         <div class="cover" [style.backgroundImage]="'url(' + tabData.previewUrl + ')'">
             <div class="cover-overlay">
@@ -13,7 +13,7 @@
             </div>
         </div>
         <div class="meta">
-            <div class="meta-actions">Read →</div>
+            <div class="meta-actions">{{ 'read' | transloco }} →</div>
         </div>
     </div>
     }

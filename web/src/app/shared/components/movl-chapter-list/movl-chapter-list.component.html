@@ -1,15 +1,14 @@
 <div class="chapter-list">
 
   <div class="list-header">
-    <h2>Главы</h2>
+    <h2>{{ 'chapters' | transloco }}</h2>
+
     <button class="molv-btn molv-btn-pink" (click)="addChapter()">
-      + Добавить главу
+      + {{ 'addChapter' | transloco }}
     </button>
   </div>
 
-  <movl-chapter-item
-    *ngFor="let chapter of chapters"
-    [chapter]="chapter">
+  <movl-chapter-item *ngFor="let chapter of chapters" [chapter]="chapter" [isEditMode]="isEditMode">
   </movl-chapter-item>
 
 </div>

@@ -3,7 +3,7 @@
 .explorer-tab.active { background: linear-gradient(180deg, #2d4cff, #1e2fa8); color: #ffffff; transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(140, 180, 255, 0.35); }
 .explorer-tab.active::after { content: ""; position: absolute; left: 10%; right: 10%; bottom: 2px; height: 2px; box-shadow: 0 0 8px rgba(160, 200, 255, 0.6); border-radius: 2px; }
 
-.tab-btn {flex: 1 1 0; background: transparent; border: none; color: inherit; font-weight: 600; cursor: pointer;  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
+.tab-btn {flex: 1 1 0; background: transparent; border: none; color: inherit; font-weight: 600; font-size: 20px; cursor: pointer;  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
 .tab-close { background: transparent; border: none; color: rgba(255,255,255,0.6); cursor: pointer; flex: 0 0 auto; width: 18px; text-align: center; }
 .tabs-scroll { display: flex; gap: 6px; padding-bottom: 4px; overflow: hidden; width: 100%; min-width: 0; }
 

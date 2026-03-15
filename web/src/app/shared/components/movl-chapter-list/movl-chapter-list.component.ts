@@ -3,17 +3,19 @@ import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { Chapter } from 'src/app/core/models/chapter.model';
 import { ChaptersRepository } from 'src/app/core/repositories/chapters.repository';
 import { ChapterItemComponent } from '../movl-chapter-item/movl-chapter-item.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'movl-chapter-list',
   templateUrl: './movl-chapter-list.component.html',
   styleUrls: ['./movl-chapter-list.component.css'],
-  imports: [CommonModule, ChapterItemComponent],
+  imports: [CommonModule, ChapterItemComponent, TranslocoPipe],
   standalone: true
 })
 export class ChapterListComponent implements OnChanges {
 
   @Input() tabId!: number;
+  @Input() isEditMode = false;
 
   chapters: Chapter[] = [];
 

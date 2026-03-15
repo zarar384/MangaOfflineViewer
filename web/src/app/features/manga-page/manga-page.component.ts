@@ -3,14 +3,14 @@ import { Component, Input, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { ChapterListComponent } from 'src/app/shared/components/movl-chapter-list/movl-chapter-list.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'manga-page',
   templateUrl: './manga-page.component.html',
   styleUrls: ['./manga-page.component.css'],
-  imports: [ChapterListComponent, FormsModule, CommonModule],
+  imports: [ChapterListComponent, FormsModule, CommonModule, TranslocoPipe],
   standalone: true
 })
 export class MangaPageComponent {
@@ -41,7 +41,7 @@ export class MangaPageComponent {
 
   edit() {
     if(!this.tab) return;
-
+    
     this.editModel = { ...this.tab };
     this.isEditMode.set(true);
   }

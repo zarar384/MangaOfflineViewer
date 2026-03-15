@@ -3,6 +3,8 @@ import { LayoutComponent } from './features/layout/layout.component';
 import { MolvLoaderComponent } from './shared/components/molv-loader/molv-loader.component';
 import { LanguageService } from './core/services/language.service';
 import { SwUpdate } from '@angular/service-worker';
+import { SeedService } from './core/services/seed.service';
+import { LoadingService } from './core/services/loading.service';
 
 @Component({
   selector: 'app-root',
@@ -14,7 +16,7 @@ import { SwUpdate } from '@angular/service-worker';
   imports: [LayoutComponent, MolvLoaderComponent]
 })
 export class AppComponent {
-  constructor(private updates: SwUpdate) {
+  constructor(private updates: SwUpdate, private seedService: SeedService, private loading: LoadingService) {
     if (this.updates.isEnabled) {
       this.updates.versionUpdates.subscribe(event => {
         console.log('[SW]', event.type);
@@ -25,6 +27,16 @@ export class AppComponent {
           });
         }
       });
+    }
+  }
+
+  async ngOnInit() {
+    try {
+      this.loading.show();
+      await this.seedService.seedIfNeeded();
+
+    } finally {
+      this.loading.hide();
     }
   }
 }

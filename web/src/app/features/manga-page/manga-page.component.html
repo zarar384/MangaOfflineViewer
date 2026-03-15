@@ -27,16 +27,16 @@
       <!-- buttons -->
       <div class="actions">
         @if (!isEditMode()) {
-          <button class="molv-btn molv-btn-pink" (click)="edit()">Edit</button>
+          <button class="molv-btn molv-btn-orange" (click)="edit()">{{ 'edit' | transloco }}</button>
         }
         @else {
-          <button class="molv-btn molv-btn-pink" (click)="cancel()">Cancel</button>
-          <button class="molv-btn molv-btn-green" (click)="save()">Save</button>
-          <button class="molv-btn molv-btn-red" (click)="delete()">Delete</button>
+          <button class="molv-btn molv-btn-pink" (click)="cancel()">{{ 'cancel' | transloco }}</button>
+          <button class="molv-btn molv-btn-green" (click)="save()">{{ 'save' | transloco }}</button>
+          <button class="molv-btn molv-btn-red" (click)="delete()">{{ 'delete' | transloco }}</button>
         }
       </div>
     </div>
   </div>
 
-  <movl-chapter-list [tabId]="tabId"></movl-chapter-list>
+  <movl-chapter-list [tabId]="tabId" [isEditMode]="isEditMode()"></movl-chapter-list>
 </div>

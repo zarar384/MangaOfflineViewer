@@ -16,7 +16,7 @@ import { MangaPageComponent } from "../manga-page/manga-page.component";
     ReaderWrapperComoponent,
     CommonModule,
     MangaPageComponent
-],
+  ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css'],
 })
@@ -35,12 +35,34 @@ export class LayoutComponent implements OnInit {
     this.tabsService.hydrate(page, perPage);
   }
 
-  onMangaSelected(mangaId: number | null) {
+  async onMangaSelected(mangaId: number | null) {
     this.selectedMangaId = mangaId;
     this.uiState.saveState({ selectedMangaId: mangaId });
+
+    if (!mangaId) {
+      this.uiState.setViewMode('home');
+      return;
+    }
+
+    const data = await this.tabsService.getTabById(mangaId);
+    if (!data) {
+      this.uiState.setViewMode('home');
+      return;
+    }
+
+    const mode = data.tab.mode ?? 'single';
+
+    if (mode === 'chapters')
+      this.uiState.setViewMode('chapters');
+    else
+      this.uiState.setViewMode('single');
   }
 
   onOpenUploadWindowClicked() {
     this.homeComp.showUploadWindow = true;
+  }
+
+  get viewMode() {
+    return this.uiState.viewMode();
   }
 }

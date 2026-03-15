@@ -4,11 +4,12 @@ import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-manga-navbar',
   standalone: true,
-  imports: [CommonModule, MolvTabsComponent],
+  imports: [CommonModule, MolvTabsComponent, TranslocoPipe],
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.css'],
 })

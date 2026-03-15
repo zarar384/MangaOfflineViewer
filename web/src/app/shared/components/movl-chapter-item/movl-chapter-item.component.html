@@ -2,32 +2,39 @@
 
   <div class="chapter-header">
 
-    <div class="left" (click)="toggle()">
-      <span class="arrow" [class.open]="isOpen">▶</span>
-      <input [(ngModel)]="chapter.title" />
+    <div class="left">
+      <span class="arrow" (click)="toggle()" [class.open]="isOpen">▶</span>
+
+      <div class="title-container">
+        @if (!isEditMode) {
+        <span class="chapter-title">{{ chapter.title }}</span>
+        }
+        @else {
+        <input class="molv-txtbx chapter-title-input" [(ngModel)]="chapter.title" (click)="$event.stopPropagation()" />
+        }
+      </div>
     </div>
 
     <div class="right">
-      <span class="count">{{ pages.length }} page{{ pages.length !== 1 ? 's' : '' }}</span>
-      <button class="molv-btn small" (click)="upload()">Upload</button>
-      <button class="molv-btn small primary" (click)="openChapter()">
-        Read
+      <span class="count">
+        {{ pages.length }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
+      </span>
+
+      <button class="molv-btn molv-btn-orange" (click)="upload()">
+        {{ 'uploadFiles' | transloco }}
+      </button>
+
+      <button class="molv-btn molv-btn-pink" (click)="openChapter()">
+        {{ 'read' | transloco }}
       </button>
     </div>
 
   </div>
 
   <div class="pages" *ngIf="isOpen">
-
-    <div
-      class="page-item"
-      *ngFor="let page of pages; let i = index"
-      (click)="openPage(i + 1)">
-
-      Page {{ i + 1 }}
-
+    <div class="page-item" *ngFor="let page of pages; let i = index" (click)="openPage(i + 1)">
+      {{ i + 1 }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
     </div>
-
   </div>
 
 </div>

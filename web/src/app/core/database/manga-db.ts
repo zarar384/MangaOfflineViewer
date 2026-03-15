@@ -54,25 +54,6 @@ export class MangaDB extends Dexie {
       bookmarks: '++id, tabId, pageId'
     }).upgrade(async tx => {
 
-      // v4
-      this.version(4).stores({
-        tabs: '++id, name, updatedAt, description',
-        pages: '++id, tabId, chapterId, pageNumber, name',
-        bookmarks: '++id, tabId, pageId',
-        chapters: '++id, tabId, createdAt'
-      }).upgrade(async tx => {
-
-        // migrate pages - add chapterId field (nullable)
-        await tx.table<Page>('pages')
-          .toCollection()
-          .modify((p: any) => {
-            if (!('chapterId' in p)) {
-              p.chapterId = null;
-            }
-          });
-
-      });
-
       const pagesTable = tx.table<Page>('pages');
 
       // group pages by tabId
@@ -86,7 +67,7 @@ export class MangaDB extends Dexie {
 
       // number pages within each tab
       for (const [, pages] of pagesByTab) {
-        pages.sort((a, b) => numericNameSort(`${a}`, `${b}`))
+        pages.sort((a, b) => numericNameSort(`${a.name}`, `${b.name}`))
           .forEach((page, index) => {
             page.pageNumber = index + 1; 
           });
@@ -96,6 +77,44 @@ export class MangaDB extends Dexie {
       await pagesTable.bulkPut(
         Array.from(pagesByTab.values()).flat()
       );
+    });
+
+    // v4
+    this.version(4).stores({
+      tabs: '++id, name, updatedAt, description',
+      pages: '++id, tabId, chapterId, pageNumber, name',
+      bookmarks: '++id, tabId, pageId',
+      chapters: '++id, tabId, createdAt'
+    }).upgrade(async tx => {
+
+      // migrate pages - add chapterId field (nullable)
+      await tx.table<Page>('pages')
+        .toCollection()
+        .modify((p: any) => {
+          if (!('chapterId' in p)) {
+            p.chapterId = null;
+          }
+        });
+
+    });
+
+    // v5
+    this.version(5).stores({
+      tabs: '++id, name, updatedAt, description, mode',
+      pages: '++id, tabId, chapterId, pageNumber, name',
+      bookmarks: '++id, tabId, pageId',
+      chapters: '++id, tabId, createdAt'
+    }).upgrade(async tx => {
+
+      // migrate tabs - add mode (default single)
+      await tx.table<Tab>('tabs')
+        .toCollection()
+        .modify((t: any) => {
+          if (!('mode' in t) || !t.mode) {
+            t.mode = 'single';
+          }
+        });
+
     });
 
     // future migrations can be added like version(n).upgrade(...)
@@ -108,6 +127,7 @@ export class MangaDB extends Dexie {
     //     if (!('url' in p)) p.url = undefined;
     //   });
     // });
+
   }
 }
 
