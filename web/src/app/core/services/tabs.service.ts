@@ -52,6 +52,12 @@ export class TabsService {
   };
 }
 
+async createTab(tab: Tab) {
+  const created = await this.repo.add(tab);
+  await this.refresh();
+  return created;
+}
+
 async updateTab(tab: Tab) {
   await this.repo.update(tab);
   await this.refresh();

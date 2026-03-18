@@ -14,7 +14,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 })
 export class ChapterListComponent implements OnChanges {
 
-  @Input() tabId!: number;
+  @Input() activeManga: number | null = null;
   @Input() isEditMode = false;
 
   chapters: Chapter[] = [];
@@ -23,15 +23,16 @@ export class ChapterListComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['tabId']?.currentValue != null) {
+    if (changes['activeManga']?.currentValue != null) {
       this.loadChapters();
     }
   }
 
   async addChapter() {
-    const order = await this.chaptersRepo.getNextOrder(this.tabId);
+    if (!this.activeManga) return;
+    const order = await this.chaptersRepo.getNextOrder(this.activeManga);
     await this.chaptersRepo.add({
-      tabId: this.tabId,
+      tabId: this.activeManga,
       title: `Chapter ${order}`,
       order,
       createdAt: Date.now(),
@@ -42,6 +43,7 @@ export class ChapterListComponent implements OnChanges {
   }
 
   private async loadChapters() {
-    this.chapters = await this.chaptersRepo.getAll(this.tabId);
+    if (!this.activeManga) return;
+    this.chapters = await this.chaptersRepo.getAll(this.activeManga);
   }
 }

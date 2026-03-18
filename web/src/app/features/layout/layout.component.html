@@ -1,32 +1,29 @@
 <div class="app-shell">
 
-  <app-manga-navbar
-    [activeManga]="selectedMangaId"
-    (mangaSelected)="onMangaSelected($event)"
+  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)"
     (openUploadWindowClicked)="onOpenUploadWindowClicked()">
   </app-manga-navbar>
 
 
   @if(viewMode === 'home')
   {
-    <div class="content">
-      <app-manga-home
-        [activeManga]="selectedMangaId"
-        (mangaSelected)="onMangaSelected($event)">
-      </app-manga-home>
-    </div>
+  <div class="content">
+    <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
+    </app-manga-home>
+  </div>
   }
 
   @if(viewMode === 'chapters')
   {
-    <manga-page></manga-page>
+  <manga-page [activeManga]="selectedMangaId">
+  </manga-page>
   }
 
   @if(viewMode === 'single')
   {
-    <app-manga-reader
-      [activeManga]="selectedMangaId">
-    </app-manga-reader>
+  <app-manga-reader [activeManga]="selectedMangaId">
+  </app-manga-reader>
   }
 
+  <upload-file-window [isVisible]="showUploadWindow()" (closeWindow)="onUploadWindowClose()"></upload-file-window>
 </div>

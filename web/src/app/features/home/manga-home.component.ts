@@ -20,7 +20,6 @@ import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-
     MolvPaginationComponent,
     SettingsWindowComponent,
     EditTabWindowComponent,
-    UploadFileWindowComponent
   ]
 })
 export class MangaHomeComponent implements OnInit {
@@ -32,7 +31,6 @@ export class MangaHomeComponent implements OnInit {
   perPage = signal(10);
 
   showSettingsWindow = true;
-  showUploadWindow = false;
   showEditWindow = false;
   tab: Tab | null = null;
 
@@ -79,9 +77,5 @@ export class MangaHomeComponent implements OnInit {
 
   onEditWindowClose() {
     this.showEditWindow = false;
-  }
-
-  onUploadWindowClose() {
-    this.showUploadWindow = false;
   }
 }

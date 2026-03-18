@@ -3,6 +3,11 @@
   "version": 1,
   "projects": {
     "MangaOfflineViewerAngular": {
+      "schematics": {
+        "@schematics/angular:service": {
+          "skipTests": true
+        }
+      },
       "root": "",
       "projectType": "application",
       "sourceRoot": "src",
@@ -81,7 +86,6 @@
       }
     }
   },
-  "defaultProject": "MangaOfflineViewerAngular",
   "cli": {
     "analytics": false
   }

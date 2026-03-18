@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, effect, OnInit, signal, ViewChild } from '@angular/core';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { MangaHomeComponent } from '../home/manga-home.component';
 import { CommonModule } from '@angular/common';
@@ -6,6 +6,8 @@ import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { MangaPageComponent } from "../manga-page/manga-page.component";
+import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
+import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 
 @Component({
   selector: 'app-manga-layout',
@@ -15,7 +17,8 @@ import { MangaPageComponent } from "../manga-page/manga-page.component";
     MangaHomeComponent,
     ReaderWrapperComoponent,
     CommonModule,
-    MangaPageComponent
+    MangaPageComponent,
+    UploadFileWindowComponent
   ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css'],
@@ -25,7 +28,19 @@ export class LayoutComponent implements OnInit {
 
   selectedMangaId: number | null = null;
 
-  constructor(private uiState: UiStateService, private tabsService: TabsService) { }
+  // Upload window 
+  showUploadWindow = signal(false);
+
+  constructor(
+    private uiState: UiStateService,
+    private tabsService: TabsService,
+    private draftService: MangaDraftService) {
+    effect(() => {
+      const value = this.uiState.uploadWindow();
+      this.showUploadWindow.set(value);
+    });
+  }
+
   ngOnInit(): void {
     this.selectedMangaId = this.uiState.getValue<number>('selectedMangaId');
 
@@ -36,33 +51,42 @@ export class LayoutComponent implements OnInit {
   }
 
   async onMangaSelected(mangaId: number | null) {
+    // Clear any existing draft when selecting a manga
+    this.draftService.clear();
+
     this.selectedMangaId = mangaId;
     this.uiState.saveState({ selectedMangaId: mangaId });
 
     if (!mangaId) {
-      this.uiState.setViewMode('home');
+      this.uiState.navigate('home');
       return;
     }
 
     const data = await this.tabsService.getTabById(mangaId);
     if (!data) {
-      this.uiState.setViewMode('home');
+      this.uiState.navigate('home');
       return;
     }
 
     const mode = data.tab.mode ?? 'single';
 
     if (mode === 'chapters')
-      this.uiState.setViewMode('chapters');
+      this.uiState.navigate('chapters');
     else
-      this.uiState.setViewMode('single');
+      this.uiState.navigate('single');
   }
 
+  // Upload window
   onOpenUploadWindowClicked() {
-    this.homeComp.showUploadWindow = true;
+    this.uiState.setUploadWindow(true);
   }
 
+  onUploadWindowClose() {
+    this.uiState.setUploadWindow(false);
+  }
+
+  // View mode
   get viewMode() {
-    return this.uiState.viewMode();
+    return this.uiState.currentView();
   }
 }

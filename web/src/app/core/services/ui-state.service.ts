@@ -24,8 +24,15 @@ export class UiStateService {
   private readerStateSignal = signal<ReaderState | null>(null);
   readerState = this.readerStateSignal.asReadonly();
 
-  private viewModeSignal = signal<ViewMode>('home');
-  viewMode = this.viewModeSignal.asReadonly();
+  // View mode
+  private currentViewSignal = signal<ViewMode>('home');
+  private nextViewSignal = signal<ViewMode | null>(null);
+
+  currentView = this.currentViewSignal.asReadonly();
+  nextView = this.nextViewSignal.asReadonly();
+
+  // Upload window
+  private uploadWindowSignal = signal(false);
 
   constructor() {
     const saved = this.getState();
@@ -39,7 +46,7 @@ export class UiStateService {
     }
 
     if (saved.viewMode) {
-      this.viewModeSignal.set(saved.viewMode);
+      this.currentViewSignal.set(saved.viewMode);
     }
   }
 
@@ -95,8 +102,28 @@ export class UiStateService {
   }
 
   // VIEW MODE
-  setViewMode(mode: ViewMode) {
-    this.viewModeSignal.set(mode);
-    this.saveState({ viewMode: mode });
+  async navigate(to: ViewMode) {
+    const from = this.currentViewSignal();
+
+    if (from === to) return;
+
+    this.nextViewSignal.set(to);
+
+    // Maybe add loading...
+    // await new Promise(r => setTimeout(r, 300));
+
+    this.currentViewSignal.set(to);
+    this.nextViewSignal.set(null);
+
+    this.saveState({ viewMode: to });
+  }
+
+  // UPLOAD WINDOW
+  setUploadWindow(value: boolean) {
+    this.uploadWindowSignal.set(value);
+  }
+
+  uploadWindow() {
+    return this.uploadWindowSignal();
   }
 }

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, Input} from '@angular/core';
+import { Component, EventEmitter, Output, Input } from '@angular/core';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 import { CommonModule } from '@angular/common';
 import { Tab } from 'src/app/core/models/tab.model';
@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
 
 @Component({
   selector: 'upload-file-window',
@@ -24,10 +26,25 @@ export class UploadFileWindowComponent {
   saveAll$ = new Subject<Tab>();
   clearAll$ = new Subject<void>();
 
-  constructor(private tabsService:TabsService){}
+  constructor(
+    private uiState: UiStateService,
+    private draftService: MangaDraftService) { }
 
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');
+  }
+
+  openMultiMode() {
+    const tab: Tab = {
+      name: this.finalName ?? 'Untitled',
+      mode: 'chapters'
+    };
+
+    this.draftService.setDraft(tab);
+    this.closeWindow.emit();
+
+    // Set the view mode to 'chapters' when opening multi-mode
+    this.uiState.navigate('chapters');
   }
 
   onWindowClose() {
