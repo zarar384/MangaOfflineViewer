@@ -34,6 +34,11 @@ export class UiStateService {
   // Upload window
   private uploadWindowSignal = signal(false);
 
+  // Selected manga
+  private selectedMangaIdSignal = signal<number | null>(null);
+
+  selectedMangaId = this.selectedMangaIdSignal.asReadonly();
+
   constructor() {
     const saved = this.getState();
 
@@ -47,6 +52,10 @@ export class UiStateService {
 
     if (saved.viewMode) {
       this.currentViewSignal.set(saved.viewMode);
+    }
+
+    if (saved.selectedMangaId) {
+      this.selectedMangaIdSignal.set(saved.selectedMangaId);
     }
   }
 
@@ -125,5 +134,11 @@ export class UiStateService {
 
   uploadWindow() {
     return this.uploadWindowSignal();
+  }
+
+  // SELECTED MANGA
+  setSelectedManga(id: number | null) {
+    this.selectedMangaIdSignal.set(id);
+    this.saveState({ selectedMangaId: id });
   }
 }

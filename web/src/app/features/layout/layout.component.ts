@@ -26,7 +26,9 @@ import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-
 export class LayoutComponent implements OnInit {
   @ViewChild(MangaHomeComponent) homeComp!: MangaHomeComponent;
 
-  selectedMangaId: number | null = null;
+  get selectedMangaId() {
+    return this.uiState.selectedMangaId();
+  }
 
   // Upload window 
   showUploadWindow = signal(false);
@@ -42,7 +44,8 @@ export class LayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.selectedMangaId = this.uiState.getValue<number>('selectedMangaId');
+    const savedId = this.selectedMangaId;
+    this.tabsService.setSelectedManga(savedId);
 
     const page = this.uiState.getValue<number>('page') ?? 1;
     const perPage = this.uiState.getValue<number>('perPage') ?? 10;
@@ -51,29 +54,10 @@ export class LayoutComponent implements OnInit {
   }
 
   async onMangaSelected(mangaId: number | null) {
-    // Clear any existing draft when selecting a manga
+    // clear any existing draft when selecting a manga
     this.draftService.clear();
 
-    this.selectedMangaId = mangaId;
-    this.uiState.saveState({ selectedMangaId: mangaId });
-
-    if (!mangaId) {
-      this.uiState.navigate('home');
-      return;
-    }
-
-    const data = await this.tabsService.getTabById(mangaId);
-    if (!data) {
-      this.uiState.navigate('home');
-      return;
-    }
-
-    const mode = data.tab.mode ?? 'single';
-
-    if (mode === 'chapters')
-      this.uiState.navigate('chapters');
-    else
-      this.uiState.navigate('single');
+    this.tabsService.setSelectedManga(mangaId);
   }
 
   // Upload window

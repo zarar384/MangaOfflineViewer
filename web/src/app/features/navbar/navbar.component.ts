@@ -5,6 +5,7 @@ import { TabsService } from 'src/app/core/services/tabs.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -17,12 +18,13 @@ export class NavbarComponent {
 
   private tabsService = inject(TabsService);
   private uiState = inject(UiStateService);
+  private draftService = inject(MangaDraftService);
 
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
   @Output() openUploadWindowClicked = new EventEmitter<void>();
 
-  selectedChapter = signal<Tab | null>(null);
+  selectedMangaId = this.uiState.selectedMangaId;
 
   // page & perPage as signals (read-only)
   page = computed(() => this.uiState.getValue<number>('page') ?? 1);
@@ -37,7 +39,12 @@ export class NavbarComponent {
   );
 
   onTabSelected(tab: Tab) {
-    this.selectedChapter.set(tab);
+    if (tab.id == this.selectedMangaId()) return;
+
+    // clear any existing draft when selecting a different manga
+    this.draftService.clear(); 
+
+    this.tabsService.setSelectedManga(tab.id!);
     this.mangaSelected.emit(tab.id);
   }
 
@@ -46,13 +53,13 @@ export class NavbarComponent {
       tab.id!
     );
 
-    if (this.selectedChapter()?.id === tab.id) {
-      this.selectedChapter.set(null);
+    if (this.selectedMangaId() === tab.id) {
+      this.tabsService.setSelectedManga(null);
     }
   }
 
   goHome() {
-    this.selectedChapter.set(null);
+    this.tabsService.setSelectedManga(null);
     this.mangaSelected.emit(null);
   }
 

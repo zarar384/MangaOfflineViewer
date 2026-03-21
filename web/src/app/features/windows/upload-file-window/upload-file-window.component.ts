@@ -5,7 +5,6 @@ import { Tab } from 'src/app/core/models/tab.model';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
-import { TabsService } from 'src/app/core/services/tabs.service';
 import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 

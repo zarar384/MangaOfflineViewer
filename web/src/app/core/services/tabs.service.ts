@@ -43,30 +43,30 @@ export class TabsService {
   }
 
   async getTabById(id: number): Promise<{ tab: Tab; previewUrl: string } | null> {
-  const tab = await this.repo.get(id);
-  if (!tab) return null;
+    const tab = await this.repo.get(id);
+    if (!tab) return null;
 
-  return {
-    tab,
-    previewUrl: await this.buildPreview(tab)
-  };
-}
+    return {
+      tab,
+      previewUrl: await this.buildPreview(tab)
+    };
+  }
 
-async createTab(tab: Tab) {
-  const created = await this.repo.add(tab);
-  await this.refresh();
-  return created;
-}
+  async createTab(tab: Tab) {
+    const created = await this.repo.add(tab);
+    await this.refresh();
+    return created;
+  }
 
-async updateTab(tab: Tab) {
-  await this.repo.update(tab);
-  await this.refresh();
-}
+  async updateTab(tab: Tab) {
+    await this.repo.update(tab);
+    await this.refresh();
+  }
 
-async deleteTab(id: number) {
-  await this.repo.delete(id);
-  await this.refresh();
-}
+  async deleteTab(id: number) {
+    await this.repo.delete(id);
+    await this.refresh();
+  }
 
   hydrate(page: number, perPage: number) {
     this.page.set(page);
@@ -117,5 +117,35 @@ async deleteTab(id: number) {
       return this.url.createUrl(tab.name, tab.preview);
     }
     return tab.preview ?? DEFAULT_PREVIEW;
+  }
+
+  // UI STATE INTERACTIONS
+  async setSelectedManga(mangaId: number | null) {
+    {
+      // if no mangaId is provided, navigate to home and clear selection
+      if (!mangaId) {
+        this.uiState.navigate('home');
+        this.uiState.setSelectedManga(null);
+        return;
+      }
+
+      // try to find the tab by mangaId. If not found, navigate home and clear selection
+      const data = await this.getTabById(mangaId);
+      if (!data) {
+        this.uiState.navigate('home');
+        this.uiState.setSelectedManga(null);
+        return;
+      }
+
+      // set the selected manga in UI state and navigate based on tab mode
+      this.uiState.setSelectedManga(mangaId);
+
+      const mode = data.tab.mode ?? 'single';
+
+      if (mode === 'chapters')
+        this.uiState.navigate('chapters');
+      else
+        this.uiState.navigate('single');
+    }
   }
 }

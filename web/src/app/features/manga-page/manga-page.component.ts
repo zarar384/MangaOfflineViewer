@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, OnInit, signal } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, SimpleChanges, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -18,18 +18,41 @@ export class MangaPageComponent implements OnChanges {
 
   @Input() activeManga: number | null = null;
 
-  tab?: Tab;
-  editModel?: Tab;
-
+  tab = signal<Tab | null>(null);
   isEditMode = signal(false);
 
   constructor(
     private tabsService: TabsService,
-    private draftService: MangaDraftService
+    public draftService: MangaDraftService
   ) {
   }
 
-  // Warn user about unsaved changes when trying to close the tab or refresh the page
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['activeManga']) {
+      const id = changes['activeManga'].currentValue;
+      this.loadManga(id);
+    }
+  }
+
+  private async loadManga(id: number | null) {
+    if (!id) return;
+
+    const draft = this.draftService.getDraft();
+
+    if (draft) {
+      this.tab.set(draft.tab);
+      this.isEditMode.set(true);
+      return;
+    }
+
+    const data = await this.tabsService.getTabById(id);
+    if (!data) return;
+
+    this.tab.set(data.tab);
+    this.isEditMode.set(false);
+  }
+
+  // Warn user about unsaved changes
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any) {
     if (this.isEditMode() && this.draftService.getDraft()) {
@@ -37,69 +60,60 @@ export class MangaPageComponent implements OnChanges {
     }
   }
 
-  async ngOnChanges() {
-    this.isEditMode.set(false);
-    
-    const draftTab = this.draftService.getDraft();
-
-    // Use the draft and enter edit mode 
-    if (draftTab) {
-      this.tab = draftTab;
-      this.editModel = { ...draftTab };
-      this.isEditMode.set(true);
-
-      console.log('Loaded draft for manga', draftTab);
-      return;
-    }
-
-    if (!this.activeManga) return;
-    const data = await this.tabsService.getTabById(this.activeManga);
-    if (!data) return;
-
-    this.tab = data.tab;
-  }
-
-  cancel() {
-    this.isEditMode.set(false);
-  }
-
+  // Actions
   edit() {
-    if (!this.tab) return;
+    const current = this.tab();
+    if (!current) return;
 
-    this.editModel = { ...this.tab };
+    this.draftService.setDraft(current);
     this.isEditMode.set(true);
   }
 
-  async save() {
-    if (!this.editModel) return;
+  cancel() {
+    this.draftService.clear();
+    this.isEditMode.set(false);
+  }
 
-    if (!this.editModel.id) {
-      // Create new tab
-      const id = await this.tabsService.createTab(this.editModel);
-      this.tab = { ...this.editModel, id: id };
+  async save() {
+    const draft = this.draftService.getDraft();
+    if (!draft) return;
+
+    let tab = draft.tab;
+
+    if (!tab.id) {
+      const id = await this.tabsService.createTab(tab);
+      tab = { ...tab, id };
     } else {
-      // Update existing tab
-      await this.tabsService.updateTab(this.editModel);
+      await this.tabsService.updateTab(tab);
     }
-    this.tab = { ...this.editModel! };
+
+    this.tab.set(tab);
     this.isEditMode.set(false);
 
     this.draftService.clear();
   }
 
   async delete() {
-    if (!this.activeManga) return;
-    await this.tabsService.deleteTab(this.activeManga);
+    const current = this.tab();
+    if (!current?.id) return;
+
+    await this.tabsService.deleteTab(current.id);
+    this.tab.set(null);
   }
 
-  // UPDATE DRAFT 
+  // Draft updates
   onNameChange(value: string) {
-    this.editModel!.name = value;
-    this.draftService.updateDraft({ name: value });
+    this.draftService.updateTab({ name: value });
   }
 
   onDescriptionChange(value: string) {
-    this.editModel!.description = value;
-    this.draftService.updateDraft({ description: value });
+    this.draftService.updateTab({ description: value });
+  }
+
+  // Draft model for edit form
+  get draft() {
+    const draft = this.draftService.getTab();
+    if (!draft) return null;
+    return { ...draft };
   }
 }
