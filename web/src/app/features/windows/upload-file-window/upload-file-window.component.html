@@ -5,14 +5,15 @@
   [height]="'400px'"
   position="center"
   [showClose]="true"
+  [closeDisabled]="filesProcessing"
   [showHide]="false"
   [showTransparency]="false"
   (close)="onWindowClose()">
   <div class="molv-container">
-    <input type="text" class="molv-txtbx" placeholder="Manga Name" [(ngModel)]="finalName"  />
-    <button class="molv-btn molv-btn-orange" (click)="openMultiMode()"> Multi chapters </button>
+    <input type="text" class="molv-txtbx" placeholder="Manga Name" [(ngModel)]="fileName"  />
+    <button class="molv-btn molv-btn-orange" (click)="openChaptersMode()"> Multi chapters</button>
     <button class="molv-btn molv-btn-pink" (click)="saveAndClose()">Save</button>
     <molv-drop-uploader [visible]="isVisible" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
-      (onDropFinished)="onUploadFinished()" (fileSelected)="finalName = finalName ?? $event"></molv-drop-uploader>
+      (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event" (fileSelected)="fileName = fileName ?? $event"></molv-drop-uploader>
   </div>
 </app-window>

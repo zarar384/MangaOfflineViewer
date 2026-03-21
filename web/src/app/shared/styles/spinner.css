@@ -1,0 +1,41 @@
+.molv-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+
+  background: conic-gradient(
+    from 0deg,
+    #ff7eb3,
+    #ff6f9e,
+    #c084fc,
+    #a855f7,
+    #ff7eb3
+  );
+
+  animation: molv-spin 0.9s linear infinite;
+
+  position: relative;
+
+  box-shadow:
+    0 0 12px rgba(255, 120, 170, 0.4),
+    0 0 18px rgba(168, 85, 247, 0.35);
+}
+
+.molv-spinner::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: #fff0f6;
+  box-shadow: inset 0 0 6px rgba(255,150,180,0.3);
+}
+
+@keyframes molv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.molv-spinner.small{
+  width: 12px;
+  height: 12px;
+}

@@ -7,7 +7,6 @@ import { Tab } from 'src/app/core/models/tab.model';
 import { TabsComponent } from './tabs/tabs.component';
 import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
 import { EditTabWindowComponent } from '../windows/edit-tab-window/edit-tab-window.component';
-import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 
 @Component({
   selector: 'app-manga-home',

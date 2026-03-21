@@ -8,6 +8,7 @@ import { TabsService } from 'src/app/core/services/tabs.service';
 import { MangaPageComponent } from "../manga-page/manga-page.component";
 import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
+import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 
 @Component({
   selector: 'app-manga-layout',
@@ -29,6 +30,9 @@ export class LayoutComponent implements OnInit {
   get selectedMangaId() {
     return this.uiState.selectedMangaId();
   }
+
+  // just for easier template access
+  readonly ViewMod = ViewMod;
 
   // Upload window 
   showUploadWindow = signal(false);

@@ -17,6 +17,7 @@ export class WindowComponent implements OnInit {
   @Input() height = '300px';
   @Input() position: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' = 'center';
   @Input() showClose = true;
+  @Input() closeDisabled = false;
   @Input() showHide = false;
   @Input() showTransparency = false;
   @Input() blockBackground = true;

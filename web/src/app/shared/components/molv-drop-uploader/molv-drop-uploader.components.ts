@@ -10,7 +10,7 @@ import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
 import { Subject, tap, finalize, from, Subscription } from 'rxjs';
-import { TabsService } from 'src/app/core/services/tabs.service';
+import { TabsService} from 'src/app/core/services/tabs.service';
 import { isIOS } from '../../utils/constants';
 
 @Component({
@@ -23,11 +23,12 @@ import { isIOS } from '../../utils/constants';
 export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges {
   @Input() pages: Page[] = [];
   @Input() visible = true;
-  @Input() saveAll$!: Subject<Tab>;
+  @Input() saveAll$!: Subject<[Tab, string]>;
   @Input() clearAll$!: Subject<void>;
 
   @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
+  @Output() filesProcessing = new EventEmitter<boolean>();
 
   private tabsRepo = inject(TabsRepository);
   private urlService = inject(ObjectUrlService);
@@ -35,17 +36,17 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
 
-  filesProcessing = signal(false);
   progress = signal(0);
   urls = signal<{ name?: string; src: string }[]>([]);
+  isProcessing = signal(false);
 
   private sub = new Subscription();
 
   ngOnInit() {
     // save command
     this.sub.add(
-      this.saveAll$.subscribe(tab => {
-        this.saveAll(tab).subscribe();
+      this.saveAll$.subscribe(([tab, name]) => {
+        this.saveAll(tab, name).subscribe();
       })
     );
 
@@ -76,11 +77,11 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
     this.urls.set(urls);
   }
 
-  saveAll(tab: Tab) {
+  saveAll(tab: Tab, name: string) {
     this.loading.show();
 
     return from(
-      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages)
+      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages, { name })
     ).pipe(
       tap(() => {
         this.tabsService.refresh();
@@ -98,9 +99,8 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
   }
 
   async onFilesDropped(files: FileList | File[]) {
-    if (this.filesProcessing()) return;
-
-    this.filesProcessing.set(true);
+    this.filesProcessing.emit(true);
+    this.isProcessing.set(true);
     this.progress.set(0);
 
     try {
@@ -110,7 +110,8 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
       this.onDropFinished.emit();
       this.fileSelected.emit(files[0]?.name);
     } finally {
-      this.filesProcessing.set(false);
+      this.filesProcessing.emit(false);
+      this.isProcessing.set(false);
       this.progress.set(100);
       await sleepIfNeeded();
     }

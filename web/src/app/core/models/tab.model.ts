@@ -1,4 +1,6 @@
-export type TabMode = 'single' | 'chapters';
+import { ViewMod } from "src/app/shared/enums/viewmod.enum";
+
+export type TabMode = ViewMod.Single | ViewMod.Chapters;
 
 export interface Tab {
   id?: number;

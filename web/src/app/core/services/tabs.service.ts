@@ -4,6 +4,7 @@ import { ObjectUrlService } from './object-url.service';
 import { Tab } from '../models/tab.model';
 import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
 import { UiStateService } from './ui-state.service';
+import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -124,7 +125,7 @@ export class TabsService {
     {
       // if no mangaId is provided, navigate to home and clear selection
       if (!mangaId) {
-        this.uiState.navigate('home');
+        this.uiState.navigate(ViewMod.Home);
         this.uiState.setSelectedManga(null);
         return;
       }
@@ -132,7 +133,7 @@ export class TabsService {
       // try to find the tab by mangaId. If not found, navigate home and clear selection
       const data = await this.getTabById(mangaId);
       if (!data) {
-        this.uiState.navigate('home');
+        this.uiState.navigate(ViewMod.Home);
         this.uiState.setSelectedManga(null);
         return;
       }
@@ -140,12 +141,12 @@ export class TabsService {
       // set the selected manga in UI state and navigate based on tab mode
       this.uiState.setSelectedManga(mangaId);
 
-      const mode = data.tab.mode ?? 'single';
+      const mode = data.tab.mode ?? ViewMod.Single;
 
-      if (mode === 'chapters')
-        this.uiState.navigate('chapters');
+      if (mode === ViewMod.Chapters)
+        this.uiState.navigate(ViewMod.Chapters);
       else
-        this.uiState.navigate('single');
+        this.uiState.navigate(ViewMod.Single);
     }
   }
 }

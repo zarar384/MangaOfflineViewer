@@ -1,12 +1,11 @@
 import { computed, Injectable, signal } from '@angular/core';
+import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 
 interface ReaderState {
   tabId: number;
   chapterId: number;
   page: number;
 }
-
-export type ViewMode = 'home' | 'chapters' | 'single';
 
 @Injectable({ providedIn: 'root' })
 export class UiStateService {
@@ -25,8 +24,8 @@ export class UiStateService {
   readerState = this.readerStateSignal.asReadonly();
 
   // View mode
-  private currentViewSignal = signal<ViewMode>('home');
-  private nextViewSignal = signal<ViewMode | null>(null);
+  private currentViewSignal = signal<ViewMod>(ViewMod.Home);
+  private nextViewSignal = signal<ViewMod | null>(null);
 
   currentView = this.currentViewSignal.asReadonly();
   nextView = this.nextViewSignal.asReadonly();
@@ -111,7 +110,7 @@ export class UiStateService {
   }
 
   // VIEW MODE
-  async navigate(to: ViewMode) {
+  async navigate(to: ViewMod) {
     const from = this.currentViewSignal();
 
     if (from === to) return;

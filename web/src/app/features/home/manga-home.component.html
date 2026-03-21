@@ -14,5 +14,5 @@
 
 
 <!-- windows -->
-<edit-tab-window [isVisible]="showEditWindow" [tab]="tab" (closeWindow)="onEditWindowClose()"></edit-tab-window >
+<edit-tab-window [isVisible]="showEditWindow" [tabId]="tab?.id" [fileName]="tab?.name" [viewMode]="tab?.mode" (closeWindow)="onEditWindowClose()"></edit-tab-window >
 <settings-window [isVisible]="showSettingsWindow" (hideWindow)="onSettingsWindowHide()"></settings-window>
