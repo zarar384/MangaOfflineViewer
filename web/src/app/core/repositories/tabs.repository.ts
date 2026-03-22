@@ -106,12 +106,11 @@ export class TabsRepository {
       // save chapter if needed and get chapterId for pages
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
         chapterId = await db.chapters.put(chapter);
-
       }
 
       // prepare pages and bulk put
       const normalized: Page[] = pages.map((p: any, indx: number) => ({
-        id: p.id ?? undefined,       // Dexie create ++id if undefined
+        id: undefined, // let Dexie assign id
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
@@ -126,14 +125,14 @@ export class TabsRepository {
         .toArray();
 
       const incomingIds = new Set(
-        normalized
-          .filter(p => p.id !== undefined)
-          .map(p => p.id as number)
+        pages
+          .map(p => p.id)
+          .filter(id => id !== undefined)
       );
 
       // delete only those that have id and are not in incoming
       const toDelete = existing
-        .filter(p => p.id !== undefined && !incomingIds.has(p.id))
+        .filter(p => !incomingIds.has(p.id!))
         .map(p => p.id as number);
 
       // delete old pages 
@@ -147,8 +146,7 @@ export class TabsRepository {
       }
 
       return savedId as number;
-    }
-    );
+    });
 
     return tabId;
   }
