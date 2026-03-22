@@ -110,7 +110,7 @@ export class TabsRepository {
 
       // prepare pages and bulk put
       const normalized: Page[] = pages.map((p: any, indx: number) => ({
-        id: undefined, // let Dexie assign id
+        id: undefined,
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
@@ -125,7 +125,7 @@ export class TabsRepository {
         .toArray();
 
       const incomingIds = new Set(
-        pages
+        normalized
           .map(p => p.id)
           .filter(id => id !== undefined)
       );
