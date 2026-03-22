@@ -9,9 +9,10 @@ import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
 import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
 import { LoadingService } from 'src/app/core/services/loading.service';
-import { Subject, tap, finalize, from, Subscription } from 'rxjs';
-import { TabsService} from 'src/app/core/services/tabs.service';
+import { Subject, tap, finalize, from, Subscription, switchMap } from 'rxjs';
+import { TabsService } from 'src/app/core/services/tabs.service';
 import { isIOS } from '../../utils/constants';
+import { Chapter } from 'src/app/core/models/chapter.model';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -20,10 +21,10 @@ import { isIOS } from '../../utils/constants';
   styleUrls: ['./molv-drop-uploader.components.css'],
   standalone: true
 })
-export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges {
+export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   @Input() pages: Page[] = [];
   @Input() visible = true;
-  @Input() saveAll$!: Subject<[Tab, string]>;
+  @Input() saveAll$!: Subject<[Tab, Chapter | undefined]>;
   @Input() clearAll$!: Subject<void>;
 
   @Output() onDropFinished = new EventEmitter<void>();
@@ -36,52 +37,59 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
 
+  // subs
+  private saveSub?: Subscription;
+  private clearSub?: Subscription;
+
   progress = signal(0);
   urls = signal<{ name?: string; src: string }[]>([]);
   isProcessing = signal(false);
 
-  private sub = new Subscription();
-
-  ngOnInit() {
-    // save command
-    this.sub.add(
-      this.saveAll$.subscribe(([tab, name]) => {
-        this.saveAll(tab, name).subscribe();
-      })
-    );
-
-    // clear command
-    this.sub.add(
-      this.clearAll$.subscribe(() => this.clearAll())
-    );
-  }
-
   ngOnChanges(changes: SimpleChanges) {
+    // save
+    if (changes['saveAll$']) {
+      this.saveSub?.unsubscribe();
+
+      if (this.saveAll$) {
+        this.saveSub = this.saveAll$
+          .pipe(
+            switchMap(([tab, chapter]) =>
+              this.saveAll(tab, chapter)
+            )
+          )
+          .subscribe();
+      }
+    }
+
+    // clear
+    if (changes['clearAll$']) {
+      this.clearSub?.unsubscribe();
+
+      if (this.clearAll$) {
+        this.clearSub = this.clearAll$.pipe(
+          tap(() => {
+            this.clearAll();
+          })
+        ).subscribe();
+      }
+    }
+
+    // pages
     if (changes['pages']) {
       this.rebuildUrls();
     }
   }
 
   ngOnDestroy() {
-    this.sub.unsubscribe();
+    this.saveSub?.unsubscribe();
+    this.clearSub?.unsubscribe();
   }
 
-  private async rebuildUrls() {
-    const urls = await Promise.all(
-      this.pages.map(async p => ({
-        name: p.name,
-        src: await this.urlService.createUrl(p.name ?? 'page', p.src)
-      }))
-    );
-
-    this.urls.set(urls);
-  }
-
-  saveAll(tab: Tab, name: string) {
+  saveAll(tab: Tab, chapter: Chapter | undefined) {
     this.loading.show();
 
     return from(
-      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages, { name })
+      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages, { chapter })
     ).pipe(
       tap(() => {
         this.tabsService.refresh();
@@ -96,6 +104,17 @@ export class MolvDropUploaderComponents implements OnInit, OnDestroy, OnChanges 
   clearAll() {
     this.pages = [];
     this.urls.set([]);
+  }
+
+  private async rebuildUrls() {
+    const urls = await Promise.all(
+      this.pages.map(async p => ({
+        name: p.name,
+        src: await this.urlService.createUrl(p.name ?? 'page', p.src)
+      }))
+    );
+
+    this.urls.set(urls);
   }
 
   async onFilesDropped(files: FileList | File[]) {

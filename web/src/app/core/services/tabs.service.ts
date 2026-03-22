@@ -43,14 +43,11 @@ export class TabsService {
     });
   }
 
-  async getTabById(id: number): Promise<{ tab: Tab; previewUrl: string } | null> {
+  async getTabById(id: number): Promise<Tab | null> {
     const tab = await this.repo.get(id);
     if (!tab) return null;
 
-    return {
-      tab,
-      previewUrl: await this.buildPreview(tab)
-    };
+    return tab;
   }
 
   async createTab(tab: Tab) {
@@ -112,7 +109,7 @@ export class TabsService {
   }
 
 
-  private async buildPreview(tab: Tab): Promise<string> {
+  public async buildPreview(tab: Tab): Promise<string> {
     if (tab.preview instanceof Blob) {
       this.url.revokeUrl(tab.name);
       return this.url.createUrl(tab.name, tab.preview);
@@ -131,8 +128,8 @@ export class TabsService {
       }
 
       // try to find the tab by mangaId. If not found, navigate home and clear selection
-      const data = await this.getTabById(mangaId);
-      if (!data) {
+      const tab = await this.getTabById(mangaId);
+      if (!tab) {
         this.uiState.navigate(ViewMod.Home);
         this.uiState.setSelectedManga(null);
         return;
@@ -141,7 +138,7 @@ export class TabsService {
       // set the selected manga in UI state and navigate based on tab mode
       this.uiState.setSelectedManga(mangaId);
 
-      const mode = data.tab.mode ?? ViewMod.Single;
+      const mode = tab.mode ?? ViewMod.Single;
 
       if (mode === ViewMod.Chapters)
         this.uiState.navigate(ViewMod.Chapters);

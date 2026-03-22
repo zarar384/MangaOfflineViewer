@@ -1,4 +1,4 @@
-<div class="drop-area" [class.disabled]="isProcessing()" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
+<div class="drop-area" *ngIf="visible" [class.disabled]="isProcessing()" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
   @if(!isProcessing()){<p>Drag & drop files here or click to select</p>}
   @else{<p>Processing... {{progress() | number:'1.0-0'}}%</p>}
 

@@ -15,7 +15,6 @@ import { TranslocoPipe } from '@jsverse/transloco';
 export class ChapterListComponent implements OnChanges {
 
   @Input() activeManga: number | null = null;
-  @Input() isEditMode = false;
 
   chapters: Chapter[] = [];
 

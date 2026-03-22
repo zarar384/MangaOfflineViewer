@@ -1,16 +1,14 @@
 <div class="chapter-item">
-
   <div class="chapter-header">
-
     <div class="left">
       <span class="arrow" (click)="toggle()" [class.open]="isOpen">▶</span>
 
       <div class="title-container">
-        @if (!isEditMode) {
-        <span class="chapter-title">{{ chapter.title }}</span>
+        @if (isEditMode) {
+        <input class="molv-txtbx chapter-title-input"  [(ngModel)]="editTitle" (click)="$event.stopPropagation()" />
         }
         @else {
-        <input class="molv-txtbx chapter-title-input" [(ngModel)]="chapter.title" (click)="$event.stopPropagation()" />
+        <span class="chapter-title">{{ chapter.title }}</span>
         }
       </div>
     </div>
@@ -20,21 +18,39 @@
         {{ pages.length }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
       </span>
 
-      <button class="molv-btn molv-btn-orange" (click)="upload()">
-        {{ 'uploadFiles' | transloco }}
+      @if(isEditMode) {
+      <button class="molv-btn molv-btn-orange" (click)="saveAndClose()">
+        {{ 'save' | transloco }}
+      </button>
+
+      <button class="molv-btn molv-btn-pink" (click)="cancel()">
+        {{ 'cancel' | transloco }}
+      </button>
+      }
+      @else{
+      <button class="molv-btn molv-btn-orange" (click)="upload($event)">
+        {{ 'edit' | transloco }}
       </button>
 
       <button class="molv-btn molv-btn-pink" (click)="openChapter()">
         {{ 'read' | transloco }}
       </button>
+      }
     </div>
-
   </div>
 
   <div class="pages" *ngIf="isOpen">
+    @if(isEditMode) {
+    <!-- uploader -->
+    <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$" [pages]="pages"
+      (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event">
+    </molv-drop-uploader>
+    }
+    @else {
+    <!-- pages -->
     <div class="page-item" *ngFor="let page of pages; let i = index" (click)="openPage(i + 1)">
       {{ i + 1 }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
     </div>
+    }
   </div>
-
 </div>

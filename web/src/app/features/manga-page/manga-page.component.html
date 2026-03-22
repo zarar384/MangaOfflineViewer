@@ -3,14 +3,14 @@
   <div class="manga-header">
 
     <div class="cover">
-      <img [src]="tab()?.preview" />
+      <img [src]="tab()?.previewUrl" />
     </div>
 
     <div class="info">
 
       <!-- title -->
       @if (!isEditMode()) {
-        <h1 class="title">{{ tab()?.name }}</h1>
+        <h1 class="title">{{ tab()?.tab?.name }}</h1>
       }
       @else {
         <input [(ngModel)]="draft!.name" (ngModelChange)="onNameChange($event)" type="text" class="molv-txtbx molv-txtbx-large" placeholder="Title" />
@@ -18,7 +18,7 @@
 
       <!-- description -->
       @if (!isEditMode()) {
-        <p class="description">{{ tab()?.description }}</p>
+        <p class="description">{{ tab()?.tab?.description }}</p>
       }
       @else {
         <textarea [(ngModel)]="draft!.description" (ngModelChange)="onDescriptionChange($event)" type="text" class="molv-txtbx molv-txtbx-large"  placeholder="Description"> </textarea>
@@ -38,5 +38,5 @@
     </div>
   </div>
 
-  <movl-chapter-list [activeManga]="activeManga" [isEditMode]="isEditMode()"></movl-chapter-list>
+  <movl-chapter-list [activeManga]="activeManga"></movl-chapter-list>
 </div>

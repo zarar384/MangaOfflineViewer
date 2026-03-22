@@ -18,7 +18,8 @@ export class MangaPageComponent implements OnChanges {
 
   @Input() activeManga: number | null = null;
 
-  tab = signal<Tab | null>(null);
+  // TODO: REFACTOR!!!!
+  tab = signal<{ tab: Tab | null, previewUrl: string | undefined }>({ tab: null, previewUrl: undefined });
   isEditMode = signal(false);
 
   constructor(
@@ -40,15 +41,16 @@ export class MangaPageComponent implements OnChanges {
     const draft = this.draftService.getDraft();
 
     if (draft) {
-      this.tab.set(draft.tab);
+      this.tab.set({ tab: draft.tab, previewUrl: undefined });
       this.isEditMode.set(true);
       return;
     }
 
-    const data = await this.tabsService.getTabById(id);
-    if (!data) return;
+    const tab = await this.tabsService.getTabById(id);
+    if (!tab) return;
 
-    this.tab.set(data.tab);
+    const previewUrl = await this.tabsService.buildPreview(tab);
+    this.tab.set({ tab, previewUrl });
     this.isEditMode.set(false);
   }
 
@@ -63,9 +65,9 @@ export class MangaPageComponent implements OnChanges {
   // Actions
   edit() {
     const current = this.tab();
-    if (!current) return;
+    if (!current || !current.tab) return;
 
-    this.draftService.setDraft(current);
+    this.draftService.setDraft(current.tab);
     this.isEditMode.set(true);
   }
 
@@ -87,7 +89,8 @@ export class MangaPageComponent implements OnChanges {
       await this.tabsService.updateTab(tab);
     }
 
-    this.tab.set(tab);
+    const previewUrl = await this.tabsService.buildPreview(tab);
+    this.tab.set({ tab, previewUrl });
     this.isEditMode.set(false);
 
     this.draftService.clear();
@@ -95,10 +98,10 @@ export class MangaPageComponent implements OnChanges {
 
   async delete() {
     const current = this.tab();
-    if (!current?.id) return;
+    if (!current?.tab?.id) return;
 
-    await this.tabsService.deleteTab(current.id);
-    this.tab.set(null);
+    await this.tabsService.deleteTab(current.tab.id);
+    this.tab.set({ tab: null, previewUrl: undefined });
   }
 
   // Draft updates

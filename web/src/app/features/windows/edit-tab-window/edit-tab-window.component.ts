@@ -11,6 +11,7 @@ import { Subject } from 'rxjs';
 import { TabsService } from "src/app/core/services/tabs.service";
 import { ViewMod } from "src/app/shared/enums/viewmod.enum";
 import { LoadingService } from "src/app/core/services/loading.service";
+import { Chapter } from "src/app/core/models/chapter.model";
 
 @Component({
   selector: 'edit-tab-window',
@@ -28,7 +29,7 @@ export class EditTabWindowComponent implements OnChanges {
 
   pages: Page[] = [];
 
-  saveAll$ = new Subject<[Tab, string]>();
+  saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
 
@@ -67,21 +68,15 @@ export class EditTabWindowComponent implements OnChanges {
 
   async saveAndClose() {
     try {
-      var tab = await this.tabService.getTabById(this.tabId!).then(t => {
-        if (!t) {
-          console.error('Tab not found for id', this.tabId);
-          return null;
-        }
-        return t.tab;
-      });
+      var tab = await this.tabService.getTabById(this.tabId!);
 
       if (!tab) {
+        console.error('Tab not found');
         return;
       }
 
-
-      var name = this.fileName ?? `Tab ${tab!.id}`;
-      this.saveAll$.next([tab, name]);
+      tab.name = this.fileName ?? `Tab ${tab.id}`;
+      this.saveAll$.next([tab, undefined]);
     }
     catch (err) {
       console.error('Error saving tab', err);

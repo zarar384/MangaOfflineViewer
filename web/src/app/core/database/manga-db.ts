@@ -2,7 +2,7 @@ import Dexie, { Table } from "dexie";
 import { Page } from "../models/page.model";
 import { Tab } from "../models/tab.model";
 import { Bookmark } from "../models/bookmark";
-import { DB_NAME, STORE_BOOKMARKS, STORE_PAGES } from "../db.config";
+import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_PAGES, STORE_TABS } from "../db.config";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
 import { Chapter } from "../models/chapter.model";
 
@@ -14,9 +14,8 @@ export class MangaDB extends Dexie {
 
   constructor() {
     super(DB_NAME);
-
-    // MIGRATIONS
     
+    // MIGRATIONS
     // v1
     this.version(1).stores({
       tabs: '++id, updatedAt',
@@ -32,13 +31,13 @@ export class MangaDB extends Dexie {
     }).upgrade(async tx => {
 
       // migrate pages
-      await tx.table(STORE_PAGES).toCollection().modify((p: any) => {
+      await tx.table<Page>(STORE_PAGES).toCollection().modify((p: any) => {
         p.tabId = p.tab;
         delete p.tab;
       });
 
       // migrate bookmarks
-      await tx.table(STORE_BOOKMARKS).toCollection().modify((b: any) => {
+      await tx.table<Bookmark>(STORE_BOOKMARKS).toCollection().modify((b: any) => {
         b.tabId = b.tab;
         b.pageId = b.page;
 
@@ -54,7 +53,7 @@ export class MangaDB extends Dexie {
       bookmarks: '++id, tabId, pageId'
     }).upgrade(async tx => {
 
-      const pagesTable = tx.table<Page>('pages');
+      const pagesTable = tx.table<Page>(STORE_PAGES);
 
       // group pages by tabId
       const pagesByTab = new Map<number, Page[]>();
@@ -88,7 +87,7 @@ export class MangaDB extends Dexie {
     }).upgrade(async tx => {
 
       // migrate pages - add chapterId field (nullable)
-      await tx.table<Page>('pages')
+      await tx.table<Page>(STORE_PAGES)
         .toCollection()
         .modify((p: any) => {
           if (!('chapterId' in p)) {
@@ -103,11 +102,11 @@ export class MangaDB extends Dexie {
       tabs: '++id, name, updatedAt, description, mode',
       pages: '++id, tabId, chapterId, pageNumber, name',
       bookmarks: '++id, tabId, pageId',
-      chapters: '++id, tabId, createdAt'
+      chapters: '++id, tabId, order, createdAt, [tabId+order]'
     }).upgrade(async tx => {
 
       // migrate tabs - add mode (default single)
-      await tx.table<Tab>('tabs')
+      await tx.table<Tab>(STORE_TABS)
         .toCollection()
         .modify((t: any) => {
           if (!('mode' in t) || !t.mode) {
@@ -132,3 +131,16 @@ export class MangaDB extends Dexie {
 }
 
 export const db = new MangaDB();
+
+// RECREATE DB IF VERSION DB != DB_VERSION
+// db.open().then(async () => {
+//   console.log('Current DB version:', db.verno);
+
+//   if (db.verno !== DB_VERSION) {
+//     console.warn('DB version mismatch → recreating');
+
+//     await db.delete();
+
+//     location.reload();
+//   }
+// });

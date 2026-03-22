@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { LayoutComponent } from './features/layout/layout.component';
 import { MolvLoaderComponent } from './shared/components/molv-loader/molv-loader.component';
-import { LanguageService } from './core/services/language.service';
 import { SwUpdate } from '@angular/service-worker';
 import { SeedService } from './core/services/seed.service';
 import { LoadingService } from './core/services/loading.service';

@@ -6,27 +6,25 @@ import { Page } from '../models/page.model';
 import { PREVIEW_MAX_SIZE } from '../db.config';
 import { Dexie } from 'dexie';
 import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { Chapter } from '../models/chapter.model';
 
 export const TABS_SEED: Tab[] = [
   {
     id: 1,
     name: "One Piece",
     description: "Pirates searching for the One Piece treasure.",
-    preview: 'assets/favicon.ico?v=2',
     mode: ViewMod.Chapters
   },
   {
     id: 2,
     name: "Naruto",
     description: "A young ninja dreams of becoming Hokage.",
-    preview: 'assets/favicon.ico?v=2',
     mode: ViewMod.Single
   },
   {
     id: 3,
     name: "Attack on Titan",
     description: "Humanity fights against giant titans.",
-    preview: 'assets/favicon.ico?v=2',
     mode: ViewMod.Chapters
   }
 ];
@@ -34,7 +32,7 @@ export const TABS_SEED: Tab[] = [
 export type SaveTabOptions = {
   deleteOldPages?: boolean;
   previewMaxSize?: number | null;
-  name?: string | undefined;
+  chapter?: Chapter | undefined;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -54,10 +52,11 @@ export class TabsRepository {
   }
 
   async delete(id: number): Promise<void> {
-    await db.transaction('rw', db.tabs, db.pages, db.bookmarks, async () => {
+    await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
       await db.tabs.delete(id);
       await db.pages.where('tabId').equals(id).delete();
       await db.bookmarks.where('tabId').equals(id).delete();
+      await db.chapters.where('tabId').equals(id).delete();
     });
   }
 
@@ -80,11 +79,11 @@ export class TabsRepository {
   }
 
   async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, options: SaveTabOptions = {}): Promise<number> {
-    const { previewMaxSize, deleteOldPages, name } = options;
+    const { previewMaxSize, deleteOldPages, chapter } = options;
     const preview = await createPreviewFromFirstPage(pages, previewMaxSize || PREVIEW_MAX_SIZE);
 
     // transaction to save tab and pages
-    const tabId = await db.transaction('rw', db.tabs, db.pages, async () => {
+    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
       const tabToSave = {
         ...tab,
         preview: preview ?? tab.preview,
@@ -92,23 +91,27 @@ export class TabsRepository {
       };
 
       if (tabToSave.mode === ViewMod.Single) {
-        tabToSave.name = name ?? tabToSave.name;
+        tabToSave.name = chapter?.title ?? tabToSave.name;
       }
 
       // save tab or update
       const savedId = await db.tabs.put(tabToSave);
 
-      if (deleteOldPages) {
+      if (deleteOldPages || pages.length === 0) {
         await db.pages.where('tabId').equals(savedId as number).delete();
       }
 
+      var chapterId: number | undefined = undefined;
+
       // save chapter if needed and get chapterId for pages
-      const allPagesWithoutChapter = pages.every(p => p.chapterId === undefined);
-      const chapterId = await this.createChapter(tabToSave, allPagesWithoutChapter, name);
+      if (tabToSave.mode === ViewMod.Chapters && chapter) {
+        chapterId = await db.chapters.put(chapter);
+
+      }
 
       // prepare pages and bulk put
       const normalized: Page[] = pages.map((p: any, indx: number) => ({
-        id: undefined,          // Dexie create ++id if undefined
+        id: p.id ?? undefined,       // Dexie create ++id if undefined
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
@@ -116,67 +119,37 @@ export class TabsRepository {
         chapterId: p.chapterId ?? chapterId
       }));
 
-      if (normalized.length) await db.pages.bulkPut(normalized);
+      // find existing pages for the tab to determine which ones to delete (those that have id and are not in incoming)
+      const existing = await db.pages
+        .where('tabId')
+        .equals(savedId as number)
+        .toArray();
+
+      const incomingIds = new Set(
+        normalized
+          .filter(p => p.id !== undefined)
+          .map(p => p.id as number)
+      );
+
+      // delete only those that have id and are not in incoming
+      const toDelete = existing
+        .filter(p => p.id !== undefined && !incomingIds.has(p.id))
+        .map(p => p.id as number);
+
+      // delete old pages 
+      if (toDelete.length) {
+        await db.pages.bulkDelete(toDelete);
+      }
+
+      // add/update new pages
+      if (normalized.length) {
+        await db.pages.bulkPut(normalized);
+      }
 
       return savedId as number;
-    });
+    }
+    );
 
     return tabId;
-  }
-
-  private async createChapter(tabToSave: Tab, createChapter: boolean, name: string | undefined): Promise<number | undefined> {
-    var chapterId: number | undefined = undefined;
-
-    // if mod is 'chapters', find the next chapter order and create a new chapter if needed
-    if (tabToSave.mode === ViewMod.Chapters && createChapter) {
-      const nextOrder = await db.chapters.get({ tabId: tabToSave.id as number }).then(async chapter => {
-        if (!chapter) {
-          // no chapters exist, start with 1
-          return 1;
-        } else {
-          // use compound index [tabId+order]] 
-          // [1, 1], [1, 2], [1, 3], ... [2, 1], [2, 2], ...
-          // find the last chapter for this tab and increment the order
-          const last = await db.chapters
-            .where('[tabId+order]')
-            .between([tabToSave.id, Dexie.minKey], [tabToSave.id, Dexie.maxKey])
-            .last();
-
-          return (last?.order ?? 0) + 1;
-        }
-      });
-
-      // save new chapter 
-      if (nextOrder !== undefined) {
-        chapterId = await db.chapters.add({
-          tabId: tabToSave.id as number,
-          title: name ?? `Chapter ${nextOrder}`,
-          order: nextOrder,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        });
-      }
-    }
-    else if (tabToSave.mode === ViewMod.Chapters && !createChapter) {
-      {
-        // update chapter title
-        const chapter = await db.chapters.get({ tabId: tabToSave.id as number }).then(chapter => {
-          if (!chapter) {
-            console.warn('No chapter found for tab', tabToSave.id);
-            return null;
-          }
-          return chapter;
-        });
-
-        if (chapter) {
-          await db.chapters.update(chapter.id as number, {
-            title: name ?? chapter.title,
-            updatedAt: Date.now()
-          });
-        }
-      }
-
-      return chapterId;
-    }
   }
 }

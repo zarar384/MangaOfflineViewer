@@ -9,6 +9,7 @@ import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
 import { UiStateService } from 'src/app/core/services/ui-state.service';
 import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { Chapter } from 'src/app/core/models/chapter.model';
 
 @Component({
   selector: 'upload-file-window',
@@ -27,7 +28,7 @@ export class UploadFileWindowComponent {
   tab: Tab = { mode: this.viewMode === ViewMod.Chapters ? ViewMod.Chapters : ViewMod.Single, name: '' };
   fileName: string | null = null;
 
-  saveAll$ = new Subject<[Tab, string]>();
+  saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
 
@@ -63,15 +64,10 @@ export class UploadFileWindowComponent {
     try {
       // find the tab and upload chapter with pages
       if (this.viewMode === ViewMod.Chapters) {
-        var tab = await this.tabService.getTabById(this.tabId!).then(t => {
-          if (!t) {
-            console.error('Tab not found for id', this.tabId);
-            return null;
-          }
-          return t.tab;
-        });
+        const tab = await this.tabService.getTabById(this.tabId!);
 
         if (!tab) {
+          console.error('Tab not found');
           return;
         }
 
@@ -81,8 +77,8 @@ export class UploadFileWindowComponent {
         // for single mode, just set the tab name and save pages
       }
 
-      var name = this.fileName ?? `Tab ${tab!.id}`;
-      this.saveAll$.next([this.tab, name]);
+      this.tab.name = this.fileName ?? this.tab.name ?? 'Untitled';
+      this.saveAll$.next([this.tab, undefined]);
     }
     catch (err) {
       console.error('Error saving tab', err);
