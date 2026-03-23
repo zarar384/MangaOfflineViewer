@@ -6,6 +6,8 @@ import { TabsService } from 'src/app/core/services/tabs.service';
 import { ChapterListComponent } from 'src/app/shared/components/movl-chapter-list/movl-chapter-list.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
+import { createPreview } from 'src/app/shared/utils/preview';
+import { PREVIEW_MAX_SIZE } from 'src/app/core/db.config';
 
 @Component({
   selector: 'manga-page',
@@ -18,14 +20,17 @@ export class MangaPageComponent implements OnChanges {
 
   @Input() activeManga: number | null = null;
 
-  // TODO: REFACTOR!!!!
-  tab = signal<{ tab: Tab | null, previewUrl: string | undefined }>({ tab: null, previewUrl: undefined });
+  tab = signal<Tab | null>(null);
   isEditMode = signal(false);
+  previewUrl = signal<string | null>(null);
 
   constructor(
     private tabsService: TabsService,
     public draftService: MangaDraftService
   ) {
+    effect(() => {
+      this.updatePreview();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -41,7 +46,7 @@ export class MangaPageComponent implements OnChanges {
     const draft = this.draftService.getDraft();
 
     if (draft) {
-      this.tab.set({ tab: draft.tab, previewUrl: undefined });
+      this.tab.set(draft.tab);
       this.isEditMode.set(true);
       return;
     }
@@ -49,8 +54,7 @@ export class MangaPageComponent implements OnChanges {
     const tab = await this.tabsService.getTabById(id);
     if (!tab) return;
 
-    const previewUrl = await this.tabsService.buildPreview(tab);
-    this.tab.set({ tab, previewUrl });
+    this.tab.set(tab);
     this.isEditMode.set(false);
   }
 
@@ -65,9 +69,9 @@ export class MangaPageComponent implements OnChanges {
   // Actions
   edit() {
     const current = this.tab();
-    if (!current || !current.tab) return;
+    if (!current) return;
 
-    this.draftService.setDraft(current.tab);
+    this.draftService.setDraft(current);
     this.isEditMode.set(true);
   }
 
@@ -82,26 +86,40 @@ export class MangaPageComponent implements OnChanges {
 
     let tab = draft.tab;
 
-    if (!tab.id) {
-      const id = await this.tabsService.createTab(tab);
-      tab = { ...tab, id };
-    } else {
-      await this.tabsService.updateTab(tab);
+    try {
+      // create preview if new file is selected
+      if (tab.preview) {
+        tab =
+        {
+          ...tab,
+          preview: await createPreview(tab.preview, PREVIEW_MAX_SIZE)
+        }
+      }
+
+      // save or update tab 
+      if (!tab.id) {
+        const id = await this.tabsService.createTab(tab);
+        tab = { ...tab, id };
+      } else {
+        await this.tabsService.updateTab(tab);
+      }
+
+      this.tab.set(tab);
+      this.isEditMode.set(false);
+
+      this.draftService.clear();
     }
-
-    const previewUrl = await this.tabsService.buildPreview(tab);
-    this.tab.set({ tab, previewUrl });
-    this.isEditMode.set(false);
-
-    this.draftService.clear();
+    catch (error) {
+      console.error('Save failed:', error);
+    }
   }
 
   async delete() {
     const current = this.tab();
-    if (!current?.tab?.id) return;
+    if (!current?.id) return;
 
-    await this.tabsService.deleteTab(current.tab.id);
-    this.tab.set({ tab: null, previewUrl: undefined });
+    await this.tabsService.deleteTab(current.id);
+    this.tab.set(null);
   }
 
   // Draft updates
@@ -111,6 +129,41 @@ export class MangaPageComponent implements OnChanges {
 
   onDescriptionChange(value: string) {
     this.draftService.updateTab({ description: value });
+  }
+
+  // Handle file selection and update draft
+  async onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+
+    if (!file.type.startsWith('image/')) return;
+
+    // Update draft with new file
+    this.draftService.updateTab({ preview: file });
+  }
+
+  // preview handling
+  private async updatePreview() {
+    // from draft if in edit mode, otherwise from tab
+    const draft = this.draftService.getTab();
+
+    if (this.isEditMode() && draft?.preview) {
+      const url = await this.tabsService.buildPreview(draft);
+      this.previewUrl.set(url);
+      return;
+    }
+
+    // from tab
+    const tab = this.tab();
+    if (!tab) {
+      this.previewUrl.set(null);
+      return;
+    }
+
+    const url = await this.tabsService.buildPreview(tab);
+    this.previewUrl.set(url);
   }
 
   // Draft model for edit form

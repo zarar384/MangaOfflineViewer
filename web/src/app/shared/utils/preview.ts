@@ -13,7 +13,7 @@ export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: 
     }
 }
 
-async function createPreview(imageSrc: Blob | string, preivewMaxSize: number): Promise<Blob | string> {
+export async function createPreview(imageSrc: Blob | string, preivewMaxSize: number): Promise<Blob | string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
         let objectUrl: string | null = null;

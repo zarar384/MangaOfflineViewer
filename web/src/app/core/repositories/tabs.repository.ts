@@ -80,7 +80,15 @@ export class TabsRepository {
 
   async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, options: SaveTabOptions = {}): Promise<number> {
     const { previewMaxSize, deleteOldPages, chapter } = options;
-    const preview = await createPreviewFromFirstPage(pages, previewMaxSize || PREVIEW_MAX_SIZE);
+
+    // preview
+    var preview: Blob | string | null = null;
+    if (tab.mode === ViewMod.Single) { // create preview from first page for single view
+      preview = await createPreviewFromFirstPage(pages, previewMaxSize || PREVIEW_MAX_SIZE);
+    }
+    else if (tab.mode === ViewMod.Chapters) { // the client choose himself
+      preview = tab.preview ?? null;
+    }
 
     // transaction to save tab and pages
     const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {

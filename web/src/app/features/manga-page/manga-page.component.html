@@ -2,37 +2,49 @@
 
   <div class="manga-header">
 
-    <div class="cover">
-      <img [src]="tab()?.previewUrl" />
+    <div class="card">
+      <div class="cover">
+        <img [src]="previewUrl()" />
+      </div>
+      @if (isEditMode()) {
+      <div class="header">
+        <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">Change</button>
+
+        <input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
+      </div>
+      }
+
     </div>
 
     <div class="info">
 
       <!-- title -->
       @if (!isEditMode()) {
-        <h1 class="title">{{ tab()?.tab?.name }}</h1>
+      <h1 class="title">{{ tab()?.name }}</h1>
       }
       @else {
-        <input [(ngModel)]="draft!.name" (ngModelChange)="onNameChange($event)" type="text" class="molv-txtbx molv-txtbx-large" placeholder="Title" />
+      <input [(ngModel)]="draft!.name" (ngModelChange)="onNameChange($event)" type="text"
+        class="molv-txtbx molv-txtbx-large" placeholder="Title" />
       }
 
       <!-- description -->
       @if (!isEditMode()) {
-        <p class="description">{{ tab()?.tab?.description }}</p>
+      <p class="description">{{ tab()?.description }}</p>
       }
       @else {
-        <textarea [(ngModel)]="draft!.description" (ngModelChange)="onDescriptionChange($event)" type="text" class="molv-txtbx molv-txtbx-large"  placeholder="Description"> </textarea>
+      <textarea [(ngModel)]="draft!.description" (ngModelChange)="onDescriptionChange($event)" type="text"
+        class="molv-txtbx molv-txtbx-large" placeholder="Description"> </textarea>
       }
 
       <!-- buttons -->
       <div class="actions">
         @if (!isEditMode()) {
-          <button class="molv-btn molv-btn-orange" (click)="edit()">{{ 'edit' | transloco }}</button>
+        <button class="molv-btn molv-btn-orange" (click)="edit()">{{ 'edit' | transloco }}</button>
         }
         @else {
-          <button class="molv-btn molv-btn-pink" (click)="cancel()">{{ 'cancel' | transloco }}</button>
-          <button class="molv-btn molv-btn-green" (click)="save()">{{ 'save' | transloco }}</button>
-          <button class="molv-btn molv-btn-red" (click)="delete()">{{ 'delete' | transloco }}</button>
+        <button class="molv-btn molv-btn-pink" (click)="cancel()">{{ 'cancel' | transloco }}</button>
+        <button class="molv-btn molv-btn-green" (click)="save()">{{ 'save' | transloco }}</button>
+        <button class="molv-btn molv-btn-red" (click)="delete()">{{ 'delete' | transloco }}</button>
         }
       </div>
     </div>
