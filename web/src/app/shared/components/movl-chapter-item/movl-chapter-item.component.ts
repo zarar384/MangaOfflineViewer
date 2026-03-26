@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Chapter } from 'src/app/core/models/chapter.model';
@@ -9,6 +9,7 @@ import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { ViewMod } from '../../enums/viewmod.enum';
 
 @Component({
   selector: 'movl-chapter-item',
@@ -62,11 +63,11 @@ export class ChapterItemComponent implements OnChanges {
   }
 
   openChapter() {
-    this.openPage(1);
+    this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
+    // this.openPage(1);
   }
 
   openPage(pageNumber: number) {
-    void pageNumber;
   }
 
   private async loadPages() {

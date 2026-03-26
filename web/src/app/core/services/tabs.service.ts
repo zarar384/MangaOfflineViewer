@@ -108,17 +108,22 @@ export class TabsService {
     await this.load(this.page(), this.perPage());
   }
 
-
   public async buildPreview(tab: Tab): Promise<string> {
-    if (tab.preview instanceof Blob) {
-      this.url.revokeUrl(tab.name);
-      return this.url.createUrl(tab.name, tab.preview);
+    // already a URL string
+    if (typeof tab.preview === 'string') {
+      return tab.preview;
     }
+
+    // create a new
+    if (tab.preview instanceof Blob) {
+      return this.url.createUrl(String(tab.id ?? tab.name), tab.preview);
+    }
+
     return tab.preview ?? DEFAULT_PREVIEW;
   }
 
   // UI STATE INTERACTIONS
-  async setSelectedManga(mangaId: number | null) {
+  async setSelectedManga(mangaId: number | null, mod: ViewMod | null = null) {
     {
       // if no mangaId is provided, navigate to home and clear selection
       if (!mangaId) {
@@ -138,12 +143,17 @@ export class TabsService {
       // set the selected manga in UI state and navigate based on tab mode
       this.uiState.setSelectedManga(mangaId);
 
-      const mode = tab.mode ?? ViewMod.Single;
+      const mode = mod ?? tab.mode ?? ViewMod.Single;
 
       if (mode === ViewMod.Chapters)
         this.uiState.navigate(ViewMod.Chapters);
       else
         this.uiState.navigate(ViewMod.Single);
     }
+  }
+
+  // Invalidate object URL for a tab's preview when it's updated or deleted
+  invalidatePreview(id: number) {
+    this.url.revokeUrl(String(id));
   }
 }

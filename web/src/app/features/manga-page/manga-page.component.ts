@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, SimpleChanges, effect, signal } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, OnInit, SimpleChanges, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
@@ -66,6 +66,12 @@ export class MangaPageComponent implements OnChanges {
     }
   }
 
+  // Clear draft on unload to prevent stale data
+  @HostListener('window:unload')
+  onUnload() {
+    this.draftService.clear();
+  }
+
   // Actions
   edit() {
     const current = this.tab();
@@ -80,6 +86,7 @@ export class MangaPageComponent implements OnChanges {
     this.isEditMode.set(false);
   }
 
+  // save draft changes to tab
   async save() {
     const draft = this.draftService.getDraft();
     if (!draft) return;
@@ -112,6 +119,14 @@ export class MangaPageComponent implements OnChanges {
     catch (error) {
       console.error('Save failed:', error);
     }
+    finally {
+      if (tab.id) {
+        this.tabsService.invalidatePreview(tab.id);
+        await this.tabsService.refresh();
+      }
+
+      await this.updatePreview();
+    }
   }
 
   async delete() {
@@ -142,34 +157,42 @@ export class MangaPageComponent implements OnChanges {
 
     // Update draft with new file
     this.draftService.updateTab({ preview: file });
+
+    await this.updatePreview();
   }
 
   // preview handling
   private async updatePreview() {
-    // from draft if in edit mode, otherwise from tab
-    const draft = this.draftService.getTab();
+      // from draft if in edit mode, otherwise from tab
+      const draft = this.draftService.getTab();
 
-    if (this.isEditMode() && draft?.preview) {
-      const url = await this.tabsService.buildPreview(draft);
+      // edit mode
+      if (this.isEditMode() && draft?.preview) {
+        if (draft.preview instanceof Blob) {
+          const url = URL.createObjectURL(draft.preview);
+          this.previewUrl.set(url);
+          return;
+        }
+
+        // if it's a string
+        this.previewUrl.set(draft.preview);
+        return;
+      }
+
+      // IT'S NOT EDIT MODE, GET PREVIEW URL
+      // from tab
+      const tab = this.tab();
+      if (!tab) {
+        this.previewUrl.set(null);
+        return;
+      }
+
+      const url = await this.tabsService.buildPreview(tab);
       this.previewUrl.set(url);
-      return;
-    }
-
-    // from tab
-    const tab = this.tab();
-    if (!tab) {
-      this.previewUrl.set(null);
-      return;
-    }
-
-    const url = await this.tabsService.buildPreview(tab);
-    this.previewUrl.set(url);
   }
 
   // Draft model for edit form
   get draft() {
-    const draft = this.draftService.getTab();
-    if (!draft) return null;
-    return { ...draft };
+    return this.draftService.getTab();
   }
 }
