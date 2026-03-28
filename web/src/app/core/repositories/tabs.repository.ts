@@ -131,7 +131,8 @@ export class TabsRepository {
         src: p.src ?? p.blob,
         name: p.name ?? null,
         pageNumber: startPageNumber + indx + 1,
-        chapterId: p.chapterId ?? chapterId ?? null
+        chapterId: p.chapterId ?? chapterId ?? null,
+        chapterOrder: p.chapterOrder ?? chapter?.order ?? -1
       }));
 
       // find existing pages for the tab and chapter(chapter mode) 

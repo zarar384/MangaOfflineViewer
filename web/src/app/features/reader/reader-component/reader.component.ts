@@ -49,7 +49,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     // React to navigation
     effect(() => {
-      const pageId = this.reader.startPageId();
+      const pageId = this.reader.currentPageId();
 
       // include navTick to trigger effect even if pageId doesn't change
       const tick = this.reader.navTick(); 

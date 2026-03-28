@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Page } from '../models/page.model';
 import { db } from '../database/manga-db';
+import { Dexie } from 'dexie';
 
 export const PAGES_SEED: Page[] = [
   {
@@ -59,9 +60,15 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
-  async getAll(tabId: number) {
-    return db.pages.where('tabId').equals(tabId).sortBy('id');
-  }
+async getAll(tabId: number) {
+  return db.pages
+    .where('[tabId+chapterOrder+pageNumber]')
+    .between(
+      [tabId, Dexie.minKey, Dexie.minKey],
+      [tabId, Dexie.maxKey, Dexie.maxKey]
+    )
+    .toArray();
+}
 
   async delete(id: number) {
     return db.pages.delete(id);

@@ -69,7 +69,7 @@ export class ChapterItemComponent implements OnChanges {
       mangaId: this.chapter.tabId!,
       chapterId: this.chapter.id!,
       pages: this.pages,
-      startPageId: this.pages[0]?.id
+      currentPageId: this.pages[0]?.id
     });
 
     this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
@@ -80,7 +80,7 @@ export class ChapterItemComponent implements OnChanges {
       mangaId: this.chapter.tabId!,
       chapterId: this.chapter.id!,
       pages: this.pages,
-      startPageId: pageId
+      currentPageId: pageId
     });
 
     this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);

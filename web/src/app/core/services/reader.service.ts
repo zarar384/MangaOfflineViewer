@@ -17,9 +17,8 @@ export class ReaderService {
   /** Pages of the current chapter */
   private _pages = signal<Page[]>([]);
 
-  /** Target page for navigation (scroll target) */
-  private _startPageId = signal<number | undefined>(undefined);
-
+  /** Target current page for navigation (scroll target) */
+  private _currentPageId = signal<number | undefined>(undefined);
   /** Navigation trigger to force scroll even if pageId doesn't change */
   private _navTick = signal(0);
 
@@ -27,7 +26,7 @@ export class ReaderService {
   private _isOpen = signal<boolean>(false);
 
   // UI SETTINGS (not persisted, can be reset on each open)
-  
+
   /** Reading mode: 'scroll' or 'page' */
   private _mode = signal<'scroll' | 'page'>('scroll');
 
@@ -52,7 +51,7 @@ export class ReaderService {
   readonly chapterId = computed(() => this._chapterId());
 
   /** Returns page id that should be focused */
-  readonly startPageId = computed(() => this._startPageId());
+  readonly currentPageId = computed(() => this._currentPageId());
 
   /** Returns current navigation trigger value */
   readonly navTick = computed(() => this._navTick());
@@ -82,18 +81,18 @@ export class ReaderService {
    * @param mangaId - parent manga identifier
    * @param chapterId - chapter identifier
    * @param pages - full list of pages
-   * @param startPageId - optional page to scroll to
+   * @param currentPageId - optional page to scroll to
    */
   open(params: {
     mangaId: number;
     chapterId: number;
     pages: Page[];
-    startPageId?: number;
+    currentPageId?: number;
   }): void {
     this._mangaId.set(params.mangaId);
     this._chapterId.set(params.chapterId);
     this._pages.set(params.pages);
-    this._startPageId.set(params.startPageId);
+    this._currentPageId.set(params.currentPageId);
     this._isOpen.set(true);
   }
 
@@ -103,7 +102,7 @@ export class ReaderService {
     this._mangaId.set(null);
     this._chapterId.set(null);
     this._pages.set([]);
-    this._startPageId.set(undefined);
+    this._currentPageId.set(undefined);
   }
 
   /**
@@ -112,8 +111,9 @@ export class ReaderService {
    * @param pageId - target page identifier
    */
   goToPage(pageId: number): void {
+    if(pageId === this._currentPageId())  return; // no need to navigate if already on target page
     // if (!this._isOpen()) return;
-    this._startPageId.set(pageId);
+    this._currentPageId.set(pageId);
     this._navTick.update(v => v + 1); // trigger navigation even if pageId is the same
   }
 
@@ -129,9 +129,6 @@ export class ReaderService {
     if (chapterId !== undefined) {
       this._chapterId.set(chapterId);
     }
-
-    // Reset navigation to first page
-    this._startPageId.set(pages[0]?.id);
   }
 
   // Returns current state snapshot (for imperative use only)
@@ -140,7 +137,7 @@ export class ReaderService {
       mangaId: this._mangaId(),
       chapterId: this._chapterId(),
       pages: this._pages(),
-      startPageId: this._startPageId(),
+      currentPageId: this._currentPageId(),
       isOpen: this._isOpen()
     };
   }

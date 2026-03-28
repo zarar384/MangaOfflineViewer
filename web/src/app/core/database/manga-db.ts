@@ -2,7 +2,7 @@ import Dexie, { Table } from "dexie";
 import { Page } from "../models/page.model";
 import { Tab } from "../models/tab.model";
 import { Bookmark } from "../models/bookmark";
-import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_PAGES, STORE_TABS } from "../db.config";
+import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_CHAPTERS, STORE_PAGES, STORE_TABS } from "../db.config";
 import { numericNameSort } from "src/app/shared/utils/file-parsing";
 import { Chapter } from "../models/chapter.model";
 
@@ -14,7 +14,7 @@ export class MangaDB extends Dexie {
 
   constructor() {
     super(DB_NAME);
-    
+
     // MIGRATIONS
     // v1
     this.version(1).stores({
@@ -68,7 +68,7 @@ export class MangaDB extends Dexie {
       for (const [, pages] of pagesByTab) {
         pages.sort((a, b) => numericNameSort(`${a.name}`, `${b.name}`))
           .forEach((page, index) => {
-            page.pageNumber = index + 1; 
+            page.pageNumber = index + 1;
           });
       }
 
@@ -116,6 +116,33 @@ export class MangaDB extends Dexie {
 
     });
 
+    // v6
+    this.version(6).stores({
+      tabs: '++id, name, updatedAt, description, mode',
+      pages: '++id, tabId, chapterId, chapterOrder, pageNumber, name, [tabId+chapterOrder+pageNumber]',
+      bookmarks: '++id, tabId, pageId',
+      chapters: '++id, tabId, order, createdAt, [tabId+order]'
+    }).upgrade(async tx => {
+      // migrate pages: add chapterOrder field (default -1)
+      const pages = await tx.table<Page>(STORE_PAGES).toArray();
+      const chapters = await tx.table<Chapter>(STORE_CHAPTERS).toArray();
+
+      const chapterMap = new Map<number, Chapter>();
+      chapters.forEach(ch => {
+        if (ch.id != null) chapterMap.set(ch.id, ch);
+      });
+
+      pages.forEach(p => {
+        if (p.chapterId && chapterMap.has(p.chapterId)) {
+          p.chapterOrder = chapterMap.get(p.chapterId)!.order;
+        } else {
+          p.chapterOrder = null;
+        }
+      });
+
+      await tx.table<Page>(STORE_PAGES).bulkPut(pages);
+    });
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({
@@ -131,7 +158,6 @@ export class MangaDB extends Dexie {
 }
 
 export const db = new MangaDB();
-
 // RECREATE DB IF VERSION DB != DB_VERSION
 // db.open().then(async () => {
 //   console.log('Current DB version:', db.verno);

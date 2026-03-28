@@ -71,15 +71,10 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
 
     try {
       const pages = await this.pagesRepo.getAll(this.activeManga);
-
-      const sorted = pages.sort((a, b) =>
-        numericNameSort(`${a}`, `${b}`)
-      );
-
-      this.pages = sorted;
-
+      this.pages = pages;
+      
       // Update reader state with new pages
-      this.reader.setPages(sorted);
+      this.reader.setPages(pages);
 
     } catch (err) {
       console.error('Error loading pages', err);
@@ -131,7 +126,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     if (!this.activeManga) return;
 
     // Get current page from reader state
-    const pageId = this.reader.getSnapshot().startPageId;
+    const pageId = this.reader.getSnapshot().currentPageId;
     if (!pageId) return;
 
     // Load all bookmarks for current manga
