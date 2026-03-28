@@ -1,9 +1,18 @@
-import { AfterViewInit, Component, Input, QueryList, ViewChildren, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  QueryList,
+  ViewChildren,
+  ElementRef,
+  OnDestroy,
+  effect,
+  EffectRef
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from 'src/app/core/models/page.model';
 import { ObjectUrlService } from 'src/app/core/services/object-url.service';
-import { Bookmark } from 'src/app/core/models/bookmark';
 import { LoadingService } from 'src/app/core/services/loading.service';
+import { ReaderService } from 'src/app/core/services/reader.service';
 import { isIOS } from 'src/app/shared/utils/constants';
 
 @Component({
@@ -13,19 +22,56 @@ import { isIOS } from 'src/app/shared/utils/constants';
   standalone: true,
   imports: [CommonModule]
 })
-export class ReaderComponent implements AfterViewInit, OnChanges {
-  @Input() pages: Page[] = [];
-  @Input() gap = 16;
-  @Input() mode: 'scroll' | 'page' = 'scroll';
-  @Input() zoom = 1;
+export class ReaderComponent implements AfterViewInit, OnDestroy {
+
+  constructor(
+    private urlService: ObjectUrlService,
+    private loading: LoadingService,
+    public reader: ReaderService
+  ) {
+
+    // React to pages change
+    effect(() => {
+      const pages = this.reader.pages();
+
+      if (!pages || pages.length === 0) return;
+
+      this.cleanupUnusedUrls(pages);
+      this.createPageUrls(pages);
+      this.currentlyLoading = 0;
+
+      setTimeout(() => {
+        this.observer?.disconnect();
+        this.setupObserver();
+        this.observeImages();
+      });
+    });
+
+    // React to navigation
+    effect(() => {
+      const pageId = this.reader.startPageId();
+
+      if (!pageId) return;
+
+      setTimeout(() => {
+        this.scrollToPage(pageId);
+      }, 50);
+    });
+  }
+
+  get pages(): Page[] {
+    return this.reader.pages();
+  }
 
   observer!: IntersectionObserver;
   pageUrls: Map<number, string> = new Map();
+
   private readonly MAX_CONCURRENT_LOAD = 8;
   private currentlyLoading = 0;
 
   @ViewChildren('imgRef') imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
-  constructor(private urlService: ObjectUrlService, private loading: LoadingService) { }
+
+
   ngAfterViewInit(): void {
     this.setupObserver();
     this.observeImages();
@@ -33,41 +79,22 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     this.imgRefs.changes.subscribe(() => this.observeImages());
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['pages']) {
-      const previousPages = changes['pages'].previousValue as Page[] || [];
-      const currentPages = changes['pages'].currentValue as Page[] || [];
+  ngOnDestroy(): void {
+    this.observer?.disconnect();
 
-      this.cleanupUnusedUrls(currentPages);
-      this.createPageUrls(currentPages); // create blob URLs for all pages
-      this.currentlyLoading = 0;
-
-      setTimeout(() => {
-        if (this.observer) {
-          this.observer.disconnect();
-        }
-        this.setupObserver();
-        this.observeImages();
-      }, 0);
-    }
+    this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
+    this.pageUrls.clear();
   }
 
+  // IMAGE LOADING
   private setupObserver() {
     this.observer = new IntersectionObserver((entries) => {
-      // sort entries by proximity to viewport
       const visibleEntries = entries
         .filter(entry => entry.isIntersecting)
-        .sort((a, b) => {
-          const aDistance = Math.abs(a.boundingClientRect.top);
-          const bDistance = Math.abs(b.boundingClientRect.top);
-          return aDistance - bDistance;
-        });
+        .sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top));
 
-      // logic to load images with concurrency limit
       for (const entry of visibleEntries) {
-        if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) {
-          break;
-        }
+        if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) break;
 
         const img = entry.target as HTMLImageElement;
         const dataSrc = img.dataset['src'];
@@ -86,12 +113,10 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
   private observeImages() {
     if (!this.imgRefs || !this.observer) return;
 
-    // unobserve all 
     this.imgRefs.forEach(ref => {
       this.observer.unobserve(ref.nativeElement);
     });
 
-    // subscribe only to unloaded images
     const unloadedImages = this.imgRefs.filter(ref => {
       const img = ref.nativeElement;
       return img.dataset['src'] && (!img.src || img.src === '');
@@ -103,16 +128,13 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
   }
 
   private loadImage(imgElement: HTMLImageElement, dataSrc: string) {
-    if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) {
-      return;
-    }
+    if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) return;
 
-    if (!imgElement.src || imgElement.src === '') {
+    if (!imgElement.src) {
       this.currentlyLoading++;
 
       imgElement.onload = () => {
         this.currentlyLoading--;
-        // after image is loaded check for more images to load
         setTimeout(() => this.observeImages(), 50);
       };
 
@@ -125,10 +147,9 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
     }
   }
 
+  // URL MANAGEMENT
   private async createPageUrls(pages: Page[]) {
-    if (isIOS) {
-      return;
-    }
+    if (isIOS) return;
 
     for (const page of pages) {
       if (
@@ -136,10 +157,7 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
         page.id !== undefined &&
         !this.pageUrls.has(page.id)
       ) {
-        const blobUrl = await this.urlService.createUrl(
-          `${page.id}`,
-          page.src
-        );
+        const blobUrl = await this.urlService.createUrl(`${page.id}`, page.src);
         this.pageUrls.set(page.id, blobUrl);
       }
     }
@@ -151,106 +169,111 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
       return;
     }
 
-    const newPageIds = new Set(newPages.map(p => p.id).filter(Boolean));
+    const newIds = new Set(newPages.map(p => p.id).filter(Boolean));
 
-    this.pageUrls.forEach((url, pageId) => {
-      if (!newPageIds.has(pageId)) {
+    this.pageUrls.forEach((url, id) => {
+      if (!newIds.has(id)) {
         this.urlService.revokeUrl(url);
-        this.pageUrls.delete(pageId);
+        this.pageUrls.delete(id);
       }
     });
   }
 
-
   getPageUrl(page: Page): string {
     if (isIOS) {
-    if (typeof page.src === 'string') {
-      return page.src; // data URL
+      if (typeof page.src === 'string') return page.src;
+      if (page.src instanceof Blob) return URL.createObjectURL(page.src);
+      return '';
     }
-
-    // IOS fallback for Blob src
-    if (page.src instanceof Blob) {
-      return URL.createObjectURL(page.src);
-    }
-
-    return '';
-  }
 
     if (page.src instanceof Blob && page.id !== undefined) {
       return this.pageUrls.get(page.id) || '';
     }
+
     return typeof page.src === 'string' ? page.src : '';
   }
 
-  // page navigation logic 
+  get readerMode() {
+    return this.reader.mode();
+  }
+
+  get readerZoom() {
+    return this.reader.zoom();
+  }
+
+  get readerGap() {
+    return this.reader.gap();
+  }
+
+  // NAVIGATION
   public getCurrentPage(): { pageId: number } | null {
     const container = document.querySelector<HTMLElement>('.reader-container');
     if (!container) return null;
 
-    let closestPageId: number | null = null;
-    let minDistance = Infinity;
+    let closest: number | null = null;
+    let min = Infinity;
 
     this.imgRefs.forEach(ref => {
       const img = ref.nativeElement;
-      const rect = img.getBoundingClientRect();
-      const distance = Math.abs(rect.top);
-      const pageId = Number(img.dataset['pageId']);
+      const distance = Math.abs(img.getBoundingClientRect().top);
+      const id = Number(img.dataset['pageId']);
 
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestPageId = pageId;
+      if (distance < min) {
+        min = distance;
+        closest = id;
       }
     });
 
-    if (closestPageId == null) return null;
-    return { pageId: closestPageId };
+    return closest == null ? null : { pageId: closest };
   }
 
   private scrollInProgress = false;
 
   async scrollToPage(pageId: number) {
     if (this.scrollInProgress) return;
+
     this.scrollInProgress = true;
     this.loading.show();
 
-    // check if already at the page
     const container = document.querySelector<HTMLElement>('.reader-container');
-    const currentPage = this.getCurrentPage();
-    if (!container || currentPage?.pageId === pageId) {
-      this.loading.hide();
-      this.scrollInProgress = false;
-      return null;
-    }
+    const current = this.getCurrentPage();
 
-    // find the index of the target page
-    const pageIndex = this.pages.findIndex(p => p.id === pageId);
-    if (pageIndex === -1) {
+    if (!container || current?.pageId === pageId) {
       this.loading.hide();
       this.scrollInProgress = false;
       return;
     }
 
-    // load images up to the target page
-    for (let i = 0; i <= pageIndex; i++) {
-      const ref = this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === this.pages[i].id);
+    const index = this.pages.findIndex(p => p.id === pageId);
+    if (index === -1) {
+      this.loading.hide();
+      this.scrollInProgress = false;
+      return;
+    }
+
+    for (let i = 0; i <= index; i++) {
+      const ref = this.imgRefs.find(r =>
+        Number(r.nativeElement.dataset['pageId']) === this.pages[i].id
+      );
       if (ref) await this.loadImageAsync(ref.nativeElement);
     }
 
-    // whait until DOM is updated
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(r => setTimeout(r, 50));
 
-    // find the target image
-    const targetImg = this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === pageId)?.nativeElement;
-    if (!targetImg) {
+    const target = this.imgRefs.find(r =>
+      Number(r.nativeElement.dataset['pageId']) === pageId
+    )?.nativeElement;
+
+    if (!target) {
       this.loading.hide();
       this.scrollInProgress = false;
       return;
     }
 
-    // scroll to the target image
-    const targetScrollTop = targetImg.offsetTop;
-    container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
-    await this.waitForScroll(container, targetScrollTop);
+    const top = target.offsetTop;
+    container.scrollTo({ top, behavior: 'smooth' });
+
+    await this.waitForScroll(container, top);
 
     this.loading.hide();
     this.scrollInProgress = false;
@@ -258,36 +281,33 @@ export class ReaderComponent implements AfterViewInit, OnChanges {
 
   private loadImageAsync(img: HTMLImageElement): Promise<void> {
     return new Promise(resolve => {
-      if (img.src && img.complete) {
-        resolve();
+      if (img.src && img.complete) return resolve();
+
+      const dataSrc = img.dataset['src'];
+
+      if (dataSrc && !img.src) {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = dataSrc;
       } else {
-        const dataSrc = img.dataset['src'];
-        if (dataSrc && (!img.src || img.src === '')) {
-          img.onload = () => resolve();
-          img.onerror = () => resolve(); // resolve even on error to avoid blocking
-          img.src = dataSrc;
-        } else {
-          const onLoad = () => {
-            img.removeEventListener('load', onLoad);
-            resolve();
-          };
-          img.addEventListener('load', onLoad);
-        }
+        const onLoad = () => {
+          img.removeEventListener('load', onLoad);
+          resolve();
+        };
+        img.addEventListener('load', onLoad);
       }
     });
   }
 
   private waitForScroll(container: HTMLElement, target: number): Promise<void> {
     return new Promise(resolve => {
-      const tolerance = 1;
-      const maxTime = 2000;
-      const startTime = performance.now();
+      const start = performance.now();
 
       const check = () => {
-        if (Math.abs(container.scrollTop - target) <= tolerance) {
+        if (Math.abs(container.scrollTop - target) <= 1) {
           resolve();
-        } else if (performance.now() - startTime > maxTime) {
-          console.warn('Scroll timeout reached');
+        } else if (performance.now() - start > 2000) {
+          console.warn('Scroll timeout');
           resolve();
         } else {
           requestAnimationFrame(check);

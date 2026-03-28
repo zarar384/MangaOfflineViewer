@@ -1,18 +1,18 @@
-<div class="reader-container" 
-     [class.page-mode]="mode === 'page'" 
-     [class.scroll-mode]="mode === 'scroll'">
+<div class="reader-container"
+     [class.page-mode]="readerMode === 'page'"
+     [class.scroll-mode]="readerMode === 'scroll'">
 
   @for (page of pages; track page.id) {
-    <div class="image-container" 
-         [style.zoom]="mode === 'scroll' ? zoom : 1"
-         [style.margin-bottom.px]="mode === 'scroll' ? gap : 0">
-      
-      <img 
-        #imgRef 
-        class="reader-img" 
-        [attr.data-src]="getPageUrl(page)" 
-        [attr.data-page-id]="page.id" 
-        [alt]="'page ' + page.id" 
+    <div class="image-container"
+         [style.zoom]="readerMode === 'scroll' ? readerZoom : 1"
+         [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">
+
+      <img
+        #imgRef
+        class="reader-img"
+        [attr.data-src]="getPageUrl(page)"
+        [attr.data-page-id]="page.id"
+        [alt]="'page ' + page.id"
       />
     </div>
   }

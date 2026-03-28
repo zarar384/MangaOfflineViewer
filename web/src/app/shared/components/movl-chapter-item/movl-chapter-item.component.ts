@@ -10,6 +10,7 @@ import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uplo
 import { Tab } from 'src/app/core/models/tab.model';
 import { TabsService } from 'src/app/core/services/tabs.service';
 import { ViewMod } from '../../enums/viewmod.enum';
+import { ReaderService } from 'src/app/core/services/reader.service';
 
 @Component({
   selector: 'movl-chapter-item',
@@ -35,7 +36,8 @@ export class ChapterItemComponent implements OnChanges {
 
   constructor(
     private pagesRepo: PagesRepository,
-    private tabService: TabsService
+    private tabService: TabsService,
+    private reader: ReaderService
   ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -63,13 +65,26 @@ export class ChapterItemComponent implements OnChanges {
   }
 
   openChapter() {
+    this.reader.open({
+      mangaId: this.chapter.tabId!,
+      chapterId: this.chapter.id!,
+      pages: this.pages,
+      startPageId: this.pages[0]?.id
+    });
+
     this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
-    // this.openPage(1);
   }
 
-  openPage(pageNumber: number) {
-  }
+  openPage(pageId: number) {
+    this.reader.open({
+      mangaId: this.chapter.tabId!,
+      chapterId: this.chapter.id!,
+      pages: this.pages,
+      startPageId: pageId
+    });
 
+    this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
+  }
   private async loadPages() {
     if (!this.chapter.id) {
       this.pages = [];
