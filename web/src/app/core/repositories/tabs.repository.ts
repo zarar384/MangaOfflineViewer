@@ -4,7 +4,6 @@ import { Tab } from '../models/tab.model';
 import { db } from '../database/manga-db';
 import { Page } from '../models/page.model';
 import { PREVIEW_MAX_SIZE } from '../db.config';
-import { Dexie } from 'dexie';
 import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
 
@@ -123,13 +122,15 @@ export class TabsRepository {
         src: p.src ?? p.blob,
         name: p.name ?? null,
         pageNumber: indx + 1,
-        chapterId: p.chapterId ?? chapterId
+        chapterId: p.chapterId ?? chapterId ?? null
       }));
 
-      // find existing pages for the tab to determine which ones to delete (those that have id and are not in incoming)
+      // find existing pages for the tab and chapter(chapter mode) 
+      // to determine which ones to delete (those that have id and are not in incoming)
       const existing = await db.pages
         .where('tabId')
         .equals(savedId as number)
+        .filter(p => (p.chapterId ?? null) === (chapterId ?? null))
         .toArray();
 
       const incomingIds = new Set(

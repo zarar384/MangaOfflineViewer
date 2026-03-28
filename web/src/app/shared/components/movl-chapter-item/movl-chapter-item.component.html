@@ -1,8 +1,13 @@
 <div class="chapter-item">
   <div class="chapter-header">
     <div class="left">
+      @if(filesProcessing) {
+      <div class="molv-spinner small"></div>
+      }
+      @else {
       <span class="arrow" (click)="toggle()" [class.open]="isOpen">▶</span>
-
+      }
+      
       <div class="title-container">
         @if (isEditMode) {
         <input class="molv-txtbx chapter-title-input"  [(ngModel)]="editTitle" (click)="$event.stopPropagation()" />

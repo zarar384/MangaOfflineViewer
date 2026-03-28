@@ -41,8 +41,6 @@ export class MangaPageComponent implements OnChanges {
   }
 
   private async loadManga(id: number | null) {
-    if (!id) return;
-
     const draft = this.draftService.getDraft();
 
     if (draft) {
@@ -50,6 +48,9 @@ export class MangaPageComponent implements OnChanges {
       this.isEditMode.set(true);
       return;
     }
+
+    // TODO: handle case when id is null (e.g. show empty state or redirect to home)
+    if (!id) return;
 
     const tab = await this.tabsService.getTabById(id);
     if (!tab) return;

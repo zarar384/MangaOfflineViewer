@@ -50,7 +50,7 @@ export class ChapterItemComponent implements OnChanges {
     this.isOpen = !this.isOpen;
   }
 
-  upload(event: Event) {
+   upload(event: Event) {
     event.stopPropagation();
 
     this.isOpen = true;
@@ -99,6 +99,7 @@ export class ChapterItemComponent implements OnChanges {
   cancel() {
     this.clearAll$.next();
     this.isEditMode = false;
+    this.isOpen = false;
   }
 
   async saveAndClose() {
@@ -116,9 +117,10 @@ export class ChapterItemComponent implements OnChanges {
       this.clearAll$.next();
 
       // wait for save to complete before closing edit mode
-      queueMicrotask(() => {
+      queueMicrotask(async () => {
         this.isEditMode = false;
-      });
+    await this.loadPages();
+        });
     }
     catch (err) {
       console.error('Error saving tab', err);
