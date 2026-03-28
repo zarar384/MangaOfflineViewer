@@ -36,10 +36,10 @@
           <!-- go to page -->
          <div class="setting-left">
             <div class="setting-label">
-              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId">
+              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageNumber">
               </molv-dropdown>
             </div>
-            <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId"
+            <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageNumber"
               (click)="goToPage()">Go</button>
           </div>
 

@@ -8,6 +8,7 @@ import { MolvModule } from 'src/app/shared/components/molv-module.component';
 import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
 import { WindowComponent } from 'src/app/shared/components/window/window.component';
 import { FormsModule } from '@angular/forms';
+import { ReaderService } from 'src/app/core/services/reader.service';
 
 @Component({
   selector: 'reader-settings-window',
@@ -25,7 +26,7 @@ export class ReaderSettingsWindowComponent {
   @Input() bookmarks: Bookmark[] = [];
   @Input() pages: { id: number, number: number }[] = [];
   @Input() selectedBookmarkId: number | null = null;
-  @Input() selectedPageId: number | null = null;
+  @Input() selectedPageNumber: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
@@ -42,7 +43,10 @@ export class ReaderSettingsWindowComponent {
 
   activeTab: 'home' | 'bookmarks' = 'home';
 
-  constructor(private uiState: UiStateService, private bookmarksRepo: BookmarksRepository) { }
+  constructor(
+    private uiState: UiStateService, 
+    private bookmarksRepo: BookmarksRepository,
+   private reader: ReaderService) { }
 
   onWindowHide() {
     this.hideWindow.emit();
@@ -55,9 +59,13 @@ export class ReaderSettingsWindowComponent {
 
   set modeIsPage(value: boolean) {
     this.mode = value ? 'page' : 'scroll';
+
     this.uiState.saveState({ readerMode: this.mode });
-    this.modeChange.emit(this.mode);
     this.uiState.saveState({ downloadMod: this.downloadMod });
+
+    this.reader.setSettings({ mode: this.mode });
+
+    this.modeChange.emit(this.mode);
   }
 
   // ZOOM
@@ -67,7 +75,11 @@ export class ReaderSettingsWindowComponent {
 
   set zoom(value: number) {
     this.zoomLevel = value;
+
     this.uiState.saveState({ readerZoom: this.zoomLevel });
+
+    this.reader.setSettings({ zoom: this.zoomLevel });
+
     this.zoomLevelChange.emit(value);
   }
 
@@ -78,7 +90,11 @@ export class ReaderSettingsWindowComponent {
 
   set gap(value: number) {
     this.gapLevel = value;
+
     this.uiState.saveState({ readerGap: this.gapLevel });
+
+    this.reader.setSettings({ gap: this.gapLevel });
+    
     this.gapLevelChange.emit(value);
   }
 
@@ -117,11 +133,11 @@ export class ReaderSettingsWindowComponent {
 
   // PAGE
   goToPage() {
-    var bookmark = this.bookmarks.find(b => b.pageId === this.selectedPageId);
-    if (bookmark)
-      this.selectedBookmarkId = bookmark.id!;
+    // var bookmark = this.bookmarks.find(b => b.pageId === this.selectedPageNumber);
+    // if (bookmark)
+    //   this.selectedBookmarkId = bookmark.id!;
 
-    this.goToPageClicked.emit(+this.selectedPageId!)
+    this.goToPageClicked.emit(+this.selectedPageNumber!)
   }
 
   // BOOKMARKS
@@ -138,7 +154,7 @@ export class ReaderSettingsWindowComponent {
   goToBookmark() {
     var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
     var page = this.pages.find(p => p.id === bookmark?.pageId);
-    this.selectedPageId = page ? page?.number! : null;
+    this.selectedPageNumber = page ? page?.number! : null;
     this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
 

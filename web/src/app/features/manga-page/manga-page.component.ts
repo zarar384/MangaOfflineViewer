@@ -112,6 +112,10 @@ export class MangaPageComponent implements OnChanges {
         await this.tabsService.updateTab(tab);
       }
 
+      if(!this.activeManga){
+        this.activeManga = tab.id!;
+      }
+
       this.tab.set(tab);
       this.isEditMode.set(false);
 

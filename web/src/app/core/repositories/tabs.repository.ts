@@ -109,10 +109,19 @@ export class TabsRepository {
       }
 
       var chapterId: number | undefined = undefined;
+      let startPageNumber = 0;
 
       // save chapter if needed and get chapterId for pages
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
         chapterId = await db.chapters.put(chapter);
+
+        // calculate pageNumber for new pages based on existing ones in the tab
+        const lastPage = await db.pages
+          .where('tabId')
+          .equals(savedId as number)
+          .last();
+
+        startPageNumber = lastPage?.pageNumber ?? 0;
       }
 
       // prepare pages and bulk put
@@ -121,7 +130,7 @@ export class TabsRepository {
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
-        pageNumber: indx + 1,
+        pageNumber: startPageNumber + indx + 1,
         chapterId: p.chapterId ?? chapterId ?? null
       }));
 

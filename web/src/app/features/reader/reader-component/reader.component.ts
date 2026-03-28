@@ -51,6 +51,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const pageId = this.reader.startPageId();
 
+      // include navTick to trigger effect even if pageId doesn't change
+      const tick = this.reader.navTick(); 
+
       if (!pageId) return;
 
       setTimeout(() => {

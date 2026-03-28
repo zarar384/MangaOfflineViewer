@@ -20,6 +20,9 @@ export class ReaderService {
   /** Target page for navigation (scroll target) */
   private _startPageId = signal<number | undefined>(undefined);
 
+  /** Navigation trigger to force scroll even if pageId doesn't change */
+  private _navTick = signal(0);
+
   /** Reader visibility state */
   private _isOpen = signal<boolean>(false);
 
@@ -50,6 +53,9 @@ export class ReaderService {
 
   /** Returns page id that should be focused */
   readonly startPageId = computed(() => this._startPageId());
+
+  /** Returns current navigation trigger value */
+  readonly navTick = computed(() => this._navTick());
 
   /** Returns current reading mode */
   readonly mode = computed(() => this._mode());
@@ -108,6 +114,7 @@ export class ReaderService {
   goToPage(pageId: number): void {
     // if (!this._isOpen()) return;
     this._startPageId.set(pageId);
+    this._navTick.update(v => v + 1); // trigger navigation even if pageId is the same
   }
 
   /**
