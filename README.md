@@ -1,4 +1,9 @@
 # MangaOfflineViewer
+Offline-first Manga Reader (PWA)
+
+No backend required
+
+IndexedDB + Dexie
 
 ## Scope
 
