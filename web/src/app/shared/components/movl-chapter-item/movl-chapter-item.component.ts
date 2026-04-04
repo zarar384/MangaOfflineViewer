@@ -2,15 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Chapter } from 'src/app/core/models/chapter.model';
-import { Page } from 'src/app/core/models/page.model';
-import { PagesRepository } from 'src/app/core/repositories/pages.repository';
+import { Chapter } from '../../../core/models/chapter.model';
+import { Page } from '../../../core/models/page.model';
+import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
-import { Tab } from 'src/app/core/models/tab.model';
-import { TabsService } from 'src/app/core/services/tabs.service';
+import { Tab } from '../../../core/models/tab.model';
+import { TabsService } from '../../../core/services/tabs.service';
 import { ViewMod } from '../../enums/viewmod.enum';
-import { ReaderService } from 'src/app/core/services/reader.service';
+import { ReaderService } from '../../../core/services/reader.service';
 
 @Component({
   selector: 'movl-chapter-item',

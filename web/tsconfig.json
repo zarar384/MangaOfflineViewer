@@ -3,21 +3,21 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "es2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "sourceMap": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strict": true,
-    "baseUrl": "./",
     "typeRoots": ["node_modules/@types"],
+    "rootDir": "./src",
     "outDir": "./dist/out-tsc",
-    "skipLibCheck": true,  
-    "types": []  
+    "skipLibCheck": true,
+    "types": []
   },
   "angularCompilerOptions": {
     "enableIvy": true,
     "strictTemplates": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.worker.ts"]  
+  "exclude": ["node_modules", "dist", "**/*.worker.ts"]
 }

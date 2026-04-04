@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, signal, computed, inject } from '@angular/core';
-import { Tab } from 'src/app/core/models/tab.model';
-import { TabsService } from 'src/app/core/services/tabs.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
+import { Tab } from '../../core/models/tab.model';
+import { TabsService } from '../../core/services/tabs.service';
+import { UiStateService } from '../../core/services/ui-state.service';
+import { MolvTabsComponent } from '../../shared/components/molv-tabs/molv-tabs.component';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
+import { MangaDraftService } from '../../core/services/manga-draft.service';
 
 @Component({
   selector: 'app-manga-navbar',

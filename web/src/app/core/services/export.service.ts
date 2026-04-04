@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import * as JSZip from 'jszip';
 import { Tab } from '../models/tab.model';
 import { Page } from '../models/page.model';
-import { blobToDataURL, downloadBlob, encodeQuotedPrintable, getImageExtension } from 'src/app/shared/utils/file-parsing';
-import { isIOS } from 'src/app/shared/utils/constants';
+import { blobToDataURL, downloadBlob, encodeQuotedPrintable, getImageExtension } from '../../shared/utils/file-parsing';
+import { isIOS } from '../../shared/utils/constants';
 
 @Injectable({
     providedIn: 'root'

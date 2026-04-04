@@ -1,10 +1,10 @@
 import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Page } from 'src/app/core/models/page.model';
-import { ObjectUrlService } from 'src/app/core/services/object-url.service';
-import { LoadingService } from 'src/app/core/services/loading.service';
-import { ReaderService } from 'src/app/core/services/reader.service';
-import { isIOS } from 'src/app/shared/utils/constants';
+import { Page } from '../../../core/models/page.model';
+import { ObjectUrlService } from '../../../core/services/object-url.service';
+import { LoadingService } from '../../../core/services/loading.service';
+import { ReaderService } from '../../../core/services/reader.service';
+import { isIOS } from '../../../shared/utils/constants';
 
 @Component({
   selector: 'manga-reader',

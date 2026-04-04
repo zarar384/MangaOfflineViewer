@@ -3,7 +3,7 @@ import { Page } from "../models/page.model";
 import { Tab } from "../models/tab.model";
 import { Bookmark } from "../models/bookmark";
 import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_CHAPTERS, STORE_PAGES, STORE_TABS } from "../db.config";
-import { numericNameSort } from "src/app/shared/utils/file-parsing";
+import { numericNameSort } from "../../shared/utils/file-parsing";
 import { Chapter } from "../models/chapter.model";
 
 export class MangaDB extends Dexie {

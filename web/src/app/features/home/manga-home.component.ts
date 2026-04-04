@@ -1,9 +1,9 @@
 import { Component, EventEmitter, Input, Output, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MolvPaginationComponent } from 'src/app/shared/components/molv-pagination/molv-pagination.component';
-import { TabsService } from 'src/app/core/services/tabs.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { Tab } from 'src/app/core/models/tab.model';
+import { MolvPaginationComponent } from '../../shared/components/molv-pagination/molv-pagination.component';
+import { TabsService } from '../../core/services/tabs.service';
+import { UiStateService } from '../../core/services/ui-state.service';
+import { Tab } from '../../core/models/tab.model';
 import { TabsComponent } from './tabs/tabs.component';
 import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
 import { EditTabWindowComponent } from '../windows/edit-tab-window/edit-tab-window.component';

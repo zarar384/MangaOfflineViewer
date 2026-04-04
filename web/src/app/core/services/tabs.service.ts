@@ -2,9 +2,9 @@ import { Injectable, signal, effect } from '@angular/core';
 import { TabsRepository } from '../repositories/tabs.repository';
 import { ObjectUrlService } from './object-url.service';
 import { Tab } from '../models/tab.model';
-import { DEFAULT_PREVIEW } from 'src/assets/assets.config';
 import { UiStateService } from './ui-state.service';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { ViewMod } from '../../shared/enums/viewmod.enum';
+import { DEFAULT_PREVIEW } from '../../../assets/assets.config';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {

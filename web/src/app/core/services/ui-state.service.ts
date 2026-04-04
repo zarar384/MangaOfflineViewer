@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { ViewMod } from '../../shared/enums/viewmod.enum';
 
 interface ReaderState {
   tabId: number;

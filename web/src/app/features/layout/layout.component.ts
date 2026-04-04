@@ -3,12 +3,12 @@ import { NavbarComponent } from '../navbar/navbar.component';
 import { MangaHomeComponent } from '../home/manga-home.component';
 import { CommonModule } from '@angular/common';
 import { ReaderWrapperComoponent } from '../reader/reader-wrapper/reader-wrapper.component';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { TabsService } from 'src/app/core/services/tabs.service';
+import { UiStateService } from '../../core/services/ui-state.service';
+import { TabsService } from '../../core/services/tabs.service';
 import { MangaPageComponent } from "../manga-page/manga-page.component";
-import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
+import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { ViewMod } from '../../shared/enums/viewmod.enum';
 
 @Component({
   selector: 'app-manga-layout',

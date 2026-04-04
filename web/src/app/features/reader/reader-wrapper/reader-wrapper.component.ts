@@ -2,16 +2,16 @@ import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/cor
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
-import { PagesRepository } from 'src/app/core/repositories/pages.repository';
-import { Page } from 'src/app/core/models/page.model';
-import { numericNameSort } from 'src/app/shared/utils/file-parsing';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { ExportService } from 'src/app/core/services/export.service';
-import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
-import { LoadingService } from 'src/app/core/services/loading.service';
-import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
-import { Bookmark } from 'src/app/core/models/bookmark';
-import { ReaderService } from 'src/app/core/services/reader.service';
+import { PagesRepository } from '../../../core/repositories/pages.repository';
+import { Page } from '../../../core/models/page.model';
+import { numericNameSort } from '../../../shared/utils/file-parsing';
+import { UiStateService } from '../../../core/services/ui-state.service';
+import { ExportService } from '../../../core/services/export.service';
+import { TabsRepository } from '../../../core/repositories/tabs.repository';
+import { LoadingService } from '../../../core/services/loading.service';
+import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
+import { Bookmark } from '../../../core/models/bookmark';
+import { ReaderService } from '../../../core/services/reader.service';
 
 @Component({
   selector: 'app-manga-reader',

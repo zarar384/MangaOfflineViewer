@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Tab } from 'src/app/core/models/tab.model';
-import { TabsService } from 'src/app/core/services/tabs.service';
+import { Tab } from '../../../core/models/tab.model';
+import { TabsService } from '../../../core/services/tabs.service';
 
 @Component({
   selector: 'molv-tabs',

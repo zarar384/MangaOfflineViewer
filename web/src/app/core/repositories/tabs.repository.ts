@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
-import { createPreviewFromFirstPage } from 'src/app/shared/utils/preview';
+import { createPreviewFromFirstPage } from '../../shared/utils/preview';
 import { Tab } from '../models/tab.model';
 import { db } from '../database/manga-db';
 import { Page } from '../models/page.model';
 import { PREVIEW_MAX_SIZE } from '../db.config';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
 
 export const TABS_SEED: Tab[] = [

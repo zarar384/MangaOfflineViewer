@@ -1,14 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Bookmark } from 'src/app/core/models/bookmark';
-import { Tab } from 'src/app/core/models/tab.model';
-import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { MolvModule } from 'src/app/shared/components/molv-module.component';
-import { MolvTabsComponent } from 'src/app/shared/components/molv-tabs/molv-tabs.component';
-import { WindowComponent } from 'src/app/shared/components/window/window.component';
+import { Bookmark } from '../../../core/models/bookmark';
+import { Tab } from '../../../core/models/tab.model';
+import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
+import { UiStateService } from '../../../core/services/ui-state.service';
+import { MolvModule } from '../../../shared/components/molv-module.component';
+import { MolvTabsComponent } from '../../../shared/components/molv-tabs/molv-tabs.component';
+import { WindowComponent } from '../../../shared/components/window/window.component';
 import { FormsModule } from '@angular/forms';
-import { ReaderService } from 'src/app/core/services/reader.service';
+import { ReaderService } from '../../../core/services/reader.service';
 
 @Component({
   selector: 'reader-settings-window',

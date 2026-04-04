@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { UiStateService } from '../../../core/services/ui-state.service';
 import { isIOS } from '../../utils/constants';
 
 @Component({

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { isIOS } from 'src/app/shared/utils/constants';
+import { isIOS } from '../../shared/utils/constants';
 
 @Injectable({ providedIn: 'root' })
 export class ObjectUrlService {

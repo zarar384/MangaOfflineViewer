@@ -1,17 +1,17 @@
 import { CommonModule } from "@angular/common";
 import { Component, EventEmitter, input, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Page } from "src/app/core/models/page.model";
-import { Tab } from "src/app/core/models/tab.model";
-import { PagesRepository } from "src/app/core/repositories/pages.repository";
-import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
-import { WindowComponent } from "src/app/shared/components/window/window.component";
-import { numericNameSort } from "src/app/shared/utils/file-parsing";
+import { Page } from "../../../core/models/page.model";
+import { Tab } from "../../../core/models/tab.model";
+import { PagesRepository } from "../../../core/repositories/pages.repository";
+import { MolvDropUploaderComponents } from '../../../shared/components/molv-drop-uploader/molv-drop-uploader.components';
+import { WindowComponent } from "../../../shared/components/window/window.component";
+import { numericNameSort } from "../../../shared/utils/file-parsing";
 import { Subject } from 'rxjs';
-import { TabsService } from "src/app/core/services/tabs.service";
-import { ViewMod } from "src/app/shared/enums/viewmod.enum";
-import { LoadingService } from "src/app/core/services/loading.service";
-import { Chapter } from "src/app/core/models/chapter.model";
+import { TabsService } from "../../../core/services/tabs.service";
+import { ViewMod } from "../../../shared/enums/viewmod.enum";
+import { LoadingService } from "../../../core/services/loading.service";
+import { Chapter } from "../../../core/models/chapter.model";
 
 @Component({
   selector: 'edit-tab-window',

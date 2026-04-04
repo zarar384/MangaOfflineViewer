@@ -1,4 +1,4 @@
-import { ViewMod } from "src/app/shared/enums/viewmod.enum";
+import { ViewMod } from "../../shared/enums/viewmod.enum";
 
 export type TabMode = ViewMod.Single | ViewMod.Chapters;
 

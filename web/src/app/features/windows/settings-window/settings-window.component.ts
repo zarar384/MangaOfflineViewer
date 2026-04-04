@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { LanguageService } from 'src/app/core/services/language.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { MolvModule } from 'src/app/shared/components/molv-module.component';
-import { WindowComponent } from 'src/app/shared/components/window/window.component';
+import { LanguageService } from '../../../core/services/language.service';
+import { UiStateService } from '../../../core/services/ui-state.service';
+import { MolvModule } from '../../../shared/components/molv-module.component';
+import { WindowComponent } from '../../../shared/components/window/window.component';
 
 @Component({
   selector: 'settings-window',

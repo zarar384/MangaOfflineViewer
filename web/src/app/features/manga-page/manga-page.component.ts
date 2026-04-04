@@ -1,13 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, Input, OnChanges, OnInit, SimpleChanges, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Tab } from 'src/app/core/models/tab.model';
-import { TabsService } from 'src/app/core/services/tabs.service';
-import { ChapterListComponent } from 'src/app/shared/components/movl-chapter-list/movl-chapter-list.component';
+import { Tab } from '../../core/models/tab.model';
+import { TabsService } from '../../core/services/tabs.service';
+import { ChapterListComponent } from '../../shared/components/movl-chapter-list/movl-chapter-list.component';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
-import { createPreview } from 'src/app/shared/utils/preview';
-import { PREVIEW_MAX_SIZE } from 'src/app/core/db.config';
+import { MangaDraftService } from '../../core/services/manga-draft.service';
+import { createPreview } from '../../shared/utils/preview';
+import { PREVIEW_MAX_SIZE } from '../../core/db.config';
 
 @Component({
   selector: 'manga-page',

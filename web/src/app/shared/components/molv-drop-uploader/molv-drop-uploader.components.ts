@@ -3,16 +3,16 @@ import { Component, EventEmitter, Input, Output, signal, inject, OnChanges, Simp
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
 import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
-import { Tab } from 'src/app/core/models/tab.model';
-import { TabsRepository } from 'src/app/core/repositories/tabs.repository';
-import { Page } from 'src/app/core/models/page.model';
-import { ObjectUrlService } from 'src/app/core/services/object-url.service';
-import { MhtmlExtractorService } from 'src/app/core/services/mhtml-extractor.service';
-import { LoadingService } from 'src/app/core/services/loading.service';
+import { Tab } from '../../../core/models/tab.model';
+import { TabsRepository } from '../../../core/repositories/tabs.repository';
+import { Page } from '../../../core/models/page.model';
+import { ObjectUrlService } from '../../../core/services/object-url.service';
+import { MhtmlExtractorService } from '../../../core/services/mhtml-extractor.service';
+import { LoadingService } from '../../../core/services/loading.service';
 import { Subject, tap, finalize, from, Subscription, switchMap } from 'rxjs';
-import { TabsService } from 'src/app/core/services/tabs.service';
+import { TabsService } from '../../../core/services/tabs.service';
 import { isIOS } from '../../utils/constants';
-import { Chapter } from 'src/app/core/models/chapter.model';
+import { Chapter } from '../../../core/models/chapter.model';
 
 @Component({
   selector: 'molv-drop-uploader',

@@ -1,15 +1,15 @@
 import { Component, EventEmitter, Output, Input } from '@angular/core';
-import { WindowComponent } from 'src/app/shared/components/window/window.component';
+import { WindowComponent } from '../../../shared/components/window/window.component';
 import { CommonModule } from '@angular/common';
-import { Tab } from 'src/app/core/models/tab.model';
+import { Tab } from '../../../core/models/tab.model';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { MolvDropUploaderComponents } from 'src/app/shared/components/molv-drop-uploader/molv-drop-uploader.components';
-import { MangaDraftService } from 'src/app/core/services/manga-draft.service';
-import { UiStateService } from 'src/app/core/services/ui-state.service';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
-import { TabsService } from 'src/app/core/services/tabs.service';
-import { Chapter } from 'src/app/core/models/chapter.model';
+import { MolvDropUploaderComponents } from '../../../shared/components/molv-drop-uploader/molv-drop-uploader.components';
+import { MangaDraftService } from '../../../core/services/manga-draft.service';
+import { UiStateService } from '../../../core/services/ui-state.service';
+import { ViewMod } from '../../../shared/enums/viewmod.enum';
+import { TabsService } from '../../../core/services/tabs.service';
+import { Chapter } from '../../../core/models/chapter.model';
 
 @Component({
   selector: 'upload-file-window',

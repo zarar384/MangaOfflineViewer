@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { isIOS } from 'src/app/shared/utils/constants';
-import { decodeQuotedPrintable, parseHTMLForImages } from 'src/app/shared/utils/file-parsing';
+import { isIOS } from '../../shared/utils/constants';
+import { decodeQuotedPrintable, parseHTMLForImages } from '../../shared/utils/file-parsing';
 
 @Injectable({ providedIn: 'root' })
 export class MhtmlExtractorService {

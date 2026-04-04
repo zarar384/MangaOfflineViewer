@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { Chapter } from 'src/app/core/models/chapter.model';
-import { ChaptersRepository } from 'src/app/core/repositories/chapters.repository';
+import { Chapter } from '../../../core/models/chapter.model';
+import { ChaptersRepository } from '../../../core/repositories/chapters.repository';
 import { ChapterItemComponent } from '../movl-chapter-item/movl-chapter-item.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 

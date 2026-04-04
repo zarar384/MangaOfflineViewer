@@ -1,4 +1,4 @@
-import { Page } from "src/app/core/models/page.model";
+import { Page } from "../../core/models/page.model";
 import { isIOS } from "./constants";
 
 export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: number): Promise<Blob | string | null> {
