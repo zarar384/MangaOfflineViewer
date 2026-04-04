@@ -66,3 +66,28 @@
 .molv-btn-small-remove:focus {
   outline: none;
 }
+
+
+.molv-mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.molv-mode-btn {
+  flex: 1;
+  padding: 6px 8px;          
+  font-size: 14px;           
+  border-radius: 6px;        
+  opacity: 0.85;             
+}
+
+.molv-mode-btn.active {
+  opacity: 1;
+  filter: brightness(1.1);
+  box-shadow: 0 0 6px rgba(255, 120, 120, 0.4);
+}
+
+.molv-mode-btn:hover {
+  opacity: 1;
+}
