@@ -18,10 +18,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   // WINDOWING CONFIG (virtualization)
 
-  private windowSize = 10;           // how many pages we keep in DOM
-  private preloadThreshold = 3;      // when to shift window (near edges)
-  private startIndex = 0;            // start index of current window
-  private isJumping = false;         // prevent double navigation
+  private windowSize = 10;                      // how many pages we keep in DOM
+  private startIndex = 0;                       // start index of current window
+  private isJumping = false;                    // prevent double navigation
+  private currentIndex = 0;                     // current index within window
 
   visiblePages: Page[] = [];
 
@@ -34,9 +34,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private readonly MAX_CONCURRENT_LOAD = 8; // limit parallel image loading
   private currentlyLoading = 0;
 
-  private isShifting = false; // prevent multiple window shifts
   private preloading = new Set<number>(); // track pages being preloaded
   private readonly PRELOAD_RADIUS = 3; // how many pages to preload around current
+  private loadingSet = new Set<number>(); // track pages currently loading (for UI feedback)
 
   @ViewChildren('imgRef')
   imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
@@ -81,7 +81,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // REACT: navigation (page change)
     effect(() => {
       const pageId = this.reader.currentPageId();
+      const pages = this.reader.pages();
       const tick = this.reader.navTick(); // trigger signal
+
+      // skip if pageId does not belong to current pages (IOS can have old pageId after chapter change)
+      const exists = pages.some(p => p.id === pageId);
+      if (!exists || pages.length === 0) return;
 
       if (!pageId) return;
       if (this.isJumping) return;
@@ -145,18 +150,21 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private updateVisiblePages() {
     const pages = this.reader.pages();
 
-    // slice only visible window
-    this.visiblePages = pages.slice(
-      this.startIndex,
-      this.startIndex + this.windowSize
-    );
-  }
+    const half = Math.floor(this.windowSize / 2);
 
+    const start = Math.max(0, this.currentIndex - half);
+    const end = Math.min(pages.length, this.currentIndex + half + 1);
+
+    this.startIndex = start;
+    this.visiblePages = pages.slice(start, end);
+  }
   private async jumpToPage(pageId: number) {
     const pages = this.reader.pages();
 
     const index = pages.findIndex(p => p.id === pageId);
     if (index === -1) return;
+
+    this.currentIndex = index;
 
     // center page inside window
     const half = 3;
@@ -179,122 +187,32 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     await new Promise(r => setTimeout(r, 50));
   }
 
-  private shiftWindowUp() {
-    if (this.isShifting) return;
-    if (this.startIndex === 0) return;
-
-    this.isShifting = true;
-
-    this.preserveScrollPosition(() => {
-      this.startIndex = Math.max(
-        this.startIndex - this.preloadThreshold,
-        0
-      );
-
-      this.updateVisiblePages();
-      this.refreshAfterWindowChange();
-    });
-
-    setTimeout(() => this.isShifting = false, 100);
-  }
-
-  private shiftWindowDown() {
-    if (this.isShifting) return;
-
-    const pages = this.reader.pages();
-    if (this.startIndex + this.windowSize >= pages.length) return;
-
-    this.isShifting = true;
-
-    this.preserveScrollPosition(() => {
-      this.startIndex = Math.min(
-        this.startIndex + this.preloadThreshold,
-        pages.length - this.windowSize
-      );
-
-      this.updateVisiblePages();
-      this.refreshAfterWindowChange();
-    });
-
-    setTimeout(() => this.isShifting = false, 100);
-  }
-
   private refreshAfterWindowChange() {
     // remove unused URLs + create new
     this.cleanupUnusedUrls(this.visiblePages);
     this.createPageUrls(this.visiblePages);
 
     // reset observer (old elements are gone)
-    this.observer?.disconnect();
-
     setTimeout(() => {
-      this.setupObserver();
       this.observeImages();
     });
   }
 
   // SCROLL HANDLING
 
-  private scrollTimeout: any;
-
   private onScroll() {
-    // debounce scroll (avoid too many calls)
-    clearTimeout(this.scrollTimeout);
+    if (this.isJumping) return;
 
-    this.scrollTimeout = setTimeout(() => {
-      this.checkWindowShift();
-    }, 50);
-  }
-
-  private checkWindowShift() {
     const current = this.getCurrentPage();
     if (!current) return;
 
-    // find current index inside visible window
-    const visibleIndex = this.visiblePages.findIndex(p => p.id === current.pageId);
-    if (visibleIndex === -1) return;
+    const index = this.pages.findIndex(p => p.id === current.pageId);
+    if (index === -1) return;
 
-    // near bottom → shift down
-    if (visibleIndex >= this.windowSize - this.preloadThreshold) {
-      this.shiftWindowDown();
-    }
+    this.currentIndex = index;
 
-    // near top → shift up
-    if (visibleIndex <= this.preloadThreshold) {
-      this.shiftWindowUp();
-    }
-  }
-
-  private preserveScrollPosition(callback: () => void) {
-    const container = document.querySelector<HTMLElement>('.reader-container');
-    if (!container) return;
-
-    // find first visible image as anchor
-    let anchorEl: HTMLElement | null = null;
-    let anchorOffset = 0;
-
-    for (const ref of this.imgRefs.toArray()) {
-      const el = ref.nativeElement;
-      const rect = el.getBoundingClientRect();
-
-      if (rect.top >= 0) {
-        anchorEl = el;
-        anchorOffset = rect.top;
-        break;
-      }
-    }
-
-    callback(); // change window
-
-    // restore scroll position
-    requestAnimationFrame(() => {
-      if (!anchorEl) return;
-
-      const newRect = anchorEl.getBoundingClientRect();
-      const delta = newRect.top - anchorOffset;
-
-      container.scrollTop += delta;
-    });
+    this.updateVisiblePages();
+    this.refreshAfterWindowChange();
   }
 
   public getCurrentPage(): { pageId: number } | null {
@@ -340,18 +258,25 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const img = entry.target as HTMLImageElement;
         const pageId = Number(img.dataset['pageId']);
 
+        if (this.loadingSet.has(pageId)) continue;
+
         const page = this.pages.find(p => p.id === pageId);
         if (!page) continue;
 
-        await this.ensurePageLoaded(page);
-        await this.createPageUrls([page]);
+        this.loadingSet.add(pageId);
 
-        const src = this.getPageUrl(page);
+        this.ensurePageLoaded(page).then(() => {
+          this.createPageUrls([page]).then(() => {
+            const src = this.getPageUrl(page);
 
-        if (src && (!img.src || img.src === '')) {
-          this.loadImage(img, src);
-          this.observer.unobserve(img);
-        }
+            if (src && img.src !== src) {
+              this.loadImage(img, src, pageId);
+              this.observer.unobserve(img);
+            } else {
+              this.loadingSet.delete(pageId);
+            }
+          });
+        });
 
         //  preload nearby pages (priority loading)
         const index = this.pages.findIndex(p => p.id === pageId);
@@ -385,7 +310,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  private loadImage(imgElement: HTMLImageElement, dataSrc: string) {
+  private loadImage(imgElement: HTMLImageElement, dataSrc: string, pageId: number) {
     if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) return;
 
     if (!imgElement.src) {
@@ -393,11 +318,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       imgElement.onload = () => {
         this.currentlyLoading--;
+        this.loadingSet.delete(pageId);
         setTimeout(() => this.observeImages(), 50);
       };
 
       imgElement.onerror = () => {
         this.currentlyLoading--;
+        this.loadingSet.delete(pageId);
         console.error('Failed to load image:', dataSrc);
       };
 
@@ -406,7 +333,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   // URL MANAGEMENT (blob handling)
-  
+
   private async preloadNearby(centerIndex: number) {
     const pages = this.pages;
 
@@ -499,6 +426,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
 
     return typeof page.src === 'string' ? page.src : '';
+  }
+
+  trackByPage(page: Page, index: number) {
+    if (isIOS) {
+      return `${page.id}-${index}`;
+    }
+
+    return page.id;
   }
 
   // SCROLL TO PAGE (navigation)
