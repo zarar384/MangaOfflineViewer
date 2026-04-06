@@ -9,6 +9,7 @@ import { MangaPageComponent } from "../manga-page/manga-page.component";
 import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
+import { ReaderService } from '../../core/services/reader.service';
 
 @Component({
   selector: 'app-manga-layout',
@@ -40,7 +41,9 @@ export class LayoutComponent implements OnInit {
   constructor(
     private uiState: UiStateService,
     private tabsService: TabsService,
-    private draftService: MangaDraftService) {
+    private draftService: MangaDraftService,
+    private reader: ReaderService
+  ) {
     effect(() => {
       const value = this.uiState.uploadWindow();
       this.showUploadWindow.set(value);
@@ -60,6 +63,9 @@ export class LayoutComponent implements OnInit {
   async onMangaSelected(mangaId: number | null) {
     // clear any existing draft when selecting a manga
     this.draftService.clear();
+    
+    // clear reader state
+    this.reader.close();
 
     this.tabsService.setSelectedManga(mangaId);
   }

@@ -9,6 +9,7 @@ import { MolvTabsComponent } from '../../../shared/components/molv-tabs/molv-tab
 import { WindowComponent } from '../../../shared/components/window/window.component';
 import { FormsModule } from '@angular/forms';
 import { ReaderService } from '../../../core/services/reader.service';
+import { PageMeta } from '../../../core/models/page.model';
 
 @Component({
   selector: 'reader-settings-window',
@@ -24,7 +25,7 @@ export class ReaderSettingsWindowComponent {
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
   @Input() bookmarks: Bookmark[] = [];
-  @Input() pages: { id: number, number: number }[] = [];
+  @Input() pages: PageMeta[] = [];
   @Input() selectedBookmarkId: number | null = null;
   @Input() selectedPageNumber: number | null = null;
 
@@ -124,8 +125,8 @@ export class ReaderSettingsWindowComponent {
   get pageOptions() {
     const options = [{ value: 0, label: 'Select' }];
     var pages = (this.pages).map(n => ({
-      value: n.number!,
-      label: `${n.number}`
+      value: n.pageNumber!,
+      label: `${n.pageNumber}`
     }));
 
     return options.concat(pages);
@@ -154,7 +155,7 @@ export class ReaderSettingsWindowComponent {
   goToBookmark() {
     var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
     var page = this.pages.find(p => p.id === bookmark?.pageId);
-    this.selectedPageNumber = page ? page?.number! : null;
+    this.selectedPageNumber = page ? page?.pageNumber! : null;
     this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
 

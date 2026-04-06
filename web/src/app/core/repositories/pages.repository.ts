@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Page } from '../models/page.model';
+import { Page, PageMeta } from '../models/page.model';
 import { db } from '../database/manga-db';
 import { Dexie } from 'dexie';
 
@@ -71,7 +71,7 @@ export class PagesRepository {
   }
 
   // get only page ids to avoid loading src blobs into memory
-  async getMeta(tabId: number): Promise<Pick<Page, 'id' | 'pageNumber'>[]> {
+  async getMeta(tabId: number): Promise<PageMeta[]> {
     const pages = await db.pages
       .where('[tabId+chapterOrder+pageNumber]')
       .between(
@@ -81,10 +81,23 @@ export class PagesRepository {
       .sortBy('[tabId+chapterOrder+pageNumber]');
 
     return pages.map(p => ({
-      id: p.id,
-      pageNumber: p.pageNumber
+      ...p,
+      src: null
     }));
   }
+
+  async getMetaByChapter(chapterId: number): Promise<PageMeta[]> {
+    const pages = await db.pages
+      .where('chapterId')
+      .equals(chapterId)
+      .sortBy('pageNumber');
+
+    return pages.map(p => ({
+      ...p,
+      src: null
+    }));
+  }
+
 
   async getByChapter(chapterId: number) {
     return db.pages

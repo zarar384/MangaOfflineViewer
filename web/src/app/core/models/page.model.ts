@@ -1,9 +1,12 @@
-export interface Page {
+export interface Page extends PageMeta {
+  src?:  Blob | string | null;
+  chapterOrder?: number | null;
+}
+
+export interface PageMeta {
   id?: number;
   tabId: number;   // FK
   chapterId?: number | null; // FK, nullable
-  chapterOrder?: number | null;
-  src:  Blob | string | null;
   name?: string;
   pageNumber?: number;
 }

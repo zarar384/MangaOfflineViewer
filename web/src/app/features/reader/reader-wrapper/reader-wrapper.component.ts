@@ -3,7 +3,7 @@ import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-win
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
-import { Page } from '../../../core/models/page.model';
+import { Page, PageMeta } from '../../../core/models/page.model';
 import { numericNameSort } from '../../../shared/utils/file-parsing';
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { ExportService } from '../../../core/services/export.service';
@@ -25,7 +25,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   @Input() activeManga: number | null = null;
 
   // Local state (for UI)
-  pages: Page[] = [];
+  pages: PageMeta[] = [];
   bookmarks: Bookmark[] = [];
 
   gap = 0.5;
@@ -69,14 +69,8 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     if (!this.activeManga) return;
 
     try {
-      const meta = await this.pagesRepo.getMeta(this.activeManga);
+      this.pages = await this.pagesRepo.getMeta(this.activeManga);
 
-      this.pages = meta.map(p => ({
-        id: p.id,
-        tabId: this.activeManga!,
-        pageNumber: p.pageNumber,
-        src: null
-      }));
       // Update reader state with new pages
       this.reader.setPages(this.pages);
 
@@ -105,10 +99,9 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   }
 
   // SETTINGS WINDOW: MAIN
-  get pageNumbers(): { id: number, number: number }[] {
+  get pageNumbers(): PageMeta[] {
     return (this.pages ?? [])
-      .map(p => ({ id: p.id, number: p.pageNumber }))
-      .filter((p): p is { id: number, number: number } => p.id !== undefined);
+      .filter(p => p.id !== undefined);
   }
 
   goToPage(pageNumber: number) {

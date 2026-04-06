@@ -1,19 +1,12 @@
-import {
-  AfterViewInit,
-  Component,
-  QueryList,
-  ViewChildren,
-  ElementRef,
-  OnDestroy,
-  effect,
-} from '@angular/core';
+import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Page } from '../../../core/models/page.model';
+import { Page, PageMeta } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { isIOS } from '../../../shared/utils/constants';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'manga-reader',
@@ -32,7 +25,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private isNavigating = false;
 
   private pageUrls = new Map<number, string>();
-  private iosUrls = new Map<number, string>();
 
   private pageIndexMap = new Map<number, number>();
 
@@ -49,19 +41,26 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private loadToken = 0;
 
+  private BUFFER = 5; // number of pages from edge to trigger window update
+
   visiblePages: Page[] = [];
 
   constructor(
     private urlService: ObjectUrlService,
     private loading: LoadingService,
     public reader: ReaderService,
-    private pagesRepo: PagesRepository
+    private pagesRepo: PagesRepository,
+    private destroyRef: DestroyRef
   ) {
 
     // reset state when pages changed
     effect(() => {
       const pages = this.reader.pages();
       if (!pages?.length) return;
+
+      // clear old URLs
+      this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
+      this.pageUrls.clear();
 
       // build index map for O(1) access
       this.pageIndexMap.clear();
@@ -95,6 +94,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       });
     });
 
+
     // navigation
     effect(() => {
       const pageId = this.reader.currentPageId();
@@ -104,22 +104,30 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.handleNavigation(pageId);
     });
+
   }
 
   ngAfterViewInit(): void {
     this.setupObserver();
 
     // re-observe when DOM changes
-    this.imgRefs.changes.subscribe(() => {
-      this.observeImages();
-    });
+    this.imgRefs.changes
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.observeImages();
+      });
   }
 
+  private destroyed = false;
+
   ngOnDestroy(): void {
+    this.destroyed = true;
+
     this.observer?.disconnect();
 
+    // revoke all URLs
     this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
-    this.iosUrls.forEach(url => URL.revokeObjectURL(url));
+    this.pageUrls.clear();
   }
 
   private setupObserver() {
@@ -172,8 +180,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (
             first === undefined ||
             last === undefined ||
-            id < first ||
-            id > last
+            globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
+            globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
           ) {
             this.updateVisiblePages(globalIndex);
           }
@@ -196,16 +204,26 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         try {
 
           await this.ensurePageLoaded(page);
+          if(this.destroyed) return;
 
           if (token !== this.loadToken) return;
+
+          const alreadyExists = this.pageUrls.has(page.id!);
 
           const url = await this.getOrCreateUrl(page);
+          if(this.destroyed) return;
 
-          if (token !== this.loadToken) return;
+          if (token !== this.loadToken) {
+            if (!alreadyExists && url) {
+              this.urlService.revokeUrl(url);
+            }
+            return;
+          }
 
           if (!url) continue;
 
           await this.loadImage(img, url);
+          if(this.destroyed) return;
 
           this.cleanupFarImages(id);
 
@@ -228,9 +246,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private observeImages() {
+    // revoke old URLs that are no longer visible
+    this.imgRefs.forEach(ref => {
+      this.observer.unobserve(ref.nativeElement);
+    });
+
     // reset observer targets
     this.observer.disconnect();
 
+    // re-observe current images
     this.imgRefs.forEach(ref => {
       this.observer.observe(ref.nativeElement);
     });
@@ -276,13 +300,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     if (typeof page.src === 'string') return page.src;
     if (!(page.src instanceof Blob) || page.id == null) return '';
 
-    if (isIOS) {
-      if (!this.iosUrls.has(page.id)) {
-        this.iosUrls.set(page.id, URL.createObjectURL(page.src));
-      }
-      return this.iosUrls.get(page.id)!;
-    }
-
     if (!this.pageUrls.has(page.id)) {
       const url = await this.urlService.createUrl(`${page.id}`, page.src);
       this.pageUrls.set(page.id, url);
@@ -292,8 +309,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private cleanupFarImages(currentId: number) {
-    const pages = this.pages;
-
     const currentIndex = this.pageIndexMap.get(currentId);
     if (currentIndex === undefined) return;
 
@@ -310,20 +325,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       // remove far images from memory
       if (index < min || index > max) {
 
-        if (img.src) img.src = '';
-
-        if (isIOS && this.iosUrls.has(id)) {
-          URL.revokeObjectURL(this.iosUrls.get(id)!);
-          this.iosUrls.delete(id);
-        }
-
         if (this.pageUrls.has(id)) {
           this.urlService.revokeUrl(this.pageUrls.get(id)!);
           this.pageUrls.delete(id);
         }
-
-        const page = pages[index];
-        if (page) page.src = null;
 
         this.loadingSet.delete(id);
       }
@@ -348,7 +353,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // update visible window before load
     this.updateVisiblePages(index);
 
-    const pages = this.pages;
+    const pages = this.visiblePages;
     const start = Math.max(0, index - this.MAX_LOAD);
     const end = Math.min(pages.length, index + this.MAX_LOAD + 1);
 
@@ -363,7 +368,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         try {
           await this.ensurePageLoaded(page);
+          if(this.destroyed) return;
+
           const url = await this.getOrCreateUrl(page);
+          if(this.destroyed) return;
 
           if (!url) return;
 
@@ -374,6 +382,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (!img) return;
 
           await this.loadImage(img, url);
+          if(this.destroyed) return;
 
         } finally {
           this.loadingSet.delete(page.id!);
@@ -431,7 +440,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  get pages(): Page[] {
+  get pages(): PageMeta[] {
     return this.reader.pages();
   }
 
@@ -464,6 +473,18 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private updateVisiblePages(centerIndex: number) {
     const start = Math.max(0, centerIndex - 20);
     const end = Math.min(this.pages.length, centerIndex + 20);
+
+    const newIds = new Set(
+      this.pages.slice(start, end).map(p => p.id)
+    );
+
+    // revoke URLs that are no longer visible
+    this.pageUrls.forEach((url, id) => {
+      if (!newIds.has(id)) {
+        this.urlService.revokeUrl(url);
+        this.pageUrls.delete(id);
+      }
+    });
 
     this.visiblePages = this.pages.slice(start, end);
   }

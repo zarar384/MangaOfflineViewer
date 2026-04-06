@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Page } from '../models/page.model';
+import { Page, PageMeta } from '../models/page.model';
 
 // Centralized state manager for Manga Reader.
 // Provides reactive signals for reader state and settings, and methods to manipulate them.
@@ -15,7 +15,7 @@ export class ReaderService {
   private _chapterId = signal<number | null>(null);
 
   /** Pages of the current chapter */
-  private _pages = signal<Page[]>([]);
+  private _pages = signal<PageMeta[]>([]);
 
   /** Target current page for navigation (scroll target) */
   private _currentPageId = signal<number | undefined>(undefined);
@@ -86,7 +86,7 @@ export class ReaderService {
   open(params: {
     mangaId: number;
     chapterId: number;
-    pages: Page[];
+    pages: PageMeta[];
     currentPageId?: number;
   }): void {
     this._mangaId.set(params.mangaId);
@@ -123,7 +123,7 @@ export class ReaderService {
    * @param pages - new pages list
    * @param chapterId - optional new chapter id
    */
-  setPages(pages: Page[], chapterId?: number): void {
+  setPages(pages: PageMeta[], chapterId?: number): void {
     this._pages.set(pages);
 
     if (chapterId !== undefined) {

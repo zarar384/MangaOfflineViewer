@@ -3,7 +3,7 @@ import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Chapter } from '../../../core/models/chapter.model';
-import { Page } from '../../../core/models/page.model';
+import { Page, PageMeta } from '../../../core/models/page.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
@@ -23,7 +23,7 @@ export class ChapterItemComponent implements OnChanges {
 
   @Input({ required: true }) chapter!: Chapter;
 
-  pages: Page[] = [];
+  pages: PageMeta[] = [];
   pagesCount = 0;
   isOpen = false;
 
@@ -104,7 +104,9 @@ export class ChapterItemComponent implements OnChanges {
       return;
     }
 
-    this.pages = await this.pagesRepo.getByChapter(this.chapter.id);
+    const meta = await this.pagesRepo.getMetaByChapter(this.chapter.id);
+
+    this.pages = meta; // load metadata first for quick display
   }
 
   private async loadCount() {
