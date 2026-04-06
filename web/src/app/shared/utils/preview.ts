@@ -6,7 +6,7 @@ export async function createPreviewFromFirstPage(pages: Page[], preivewMaxSize: 
 
     try {
         const firstPage = pages[0];
-        return await createPreview(firstPage.src, preivewMaxSize);
+        return await createPreview(firstPage.src!, preivewMaxSize);
     } catch (error) {
         console.warn('Failed to create preview from first page:', error);
         return null;

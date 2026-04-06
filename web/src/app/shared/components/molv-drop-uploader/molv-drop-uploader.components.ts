@@ -110,7 +110,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     const urls = await Promise.all(
       this.pages.map(async p => ({
         name: p.name,
-        src: await this.urlService.createUrl(p.name ?? 'page', p.src)
+        src: await this.urlService.createUrl(p.name ?? 'page', p.src!)
       }))
     );
 

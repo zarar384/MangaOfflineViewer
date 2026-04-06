@@ -3,7 +3,7 @@ export interface Page {
   tabId: number;   // FK
   chapterId?: number | null; // FK, nullable
   chapterOrder?: number | null;
-  src:  Blob | string;
+  src:  Blob | string | null;
   name?: string;
   pageNumber?: number;
 }

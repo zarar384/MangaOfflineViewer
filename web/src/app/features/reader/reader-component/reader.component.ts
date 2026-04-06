@@ -5,6 +5,7 @@ import { ObjectUrlService } from '../../../core/services/object-url.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { isIOS } from '../../../shared/utils/constants';
+import { PagesRepository } from '../../../core/repositories/pages.repository';
 
 @Component({
   selector: 'manga-reader',
@@ -34,6 +35,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private currentlyLoading = 0;
 
   private isShifting = false; // prevent multiple window shifts
+  private preloading = new Set<number>(); // track pages being preloaded
+  private readonly PRELOAD_RADIUS = 3; // how many pages to preload around current
 
   @ViewChildren('imgRef')
   imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
@@ -41,7 +44,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   constructor(
     private urlService: ObjectUrlService,
     private loading: LoadingService,
-    public reader: ReaderService
+    public reader: ReaderService,
+    private pagesRepo: PagesRepository
   ) {
 
     // REACT: pages changed
@@ -53,6 +57,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.startIndex = 0;
 
       this.updateVisiblePages();
+
+      for (let i = 0; i < Math.min(3, this.visiblePages.length); i++) {
+        this.ensurePageLoaded(this.visiblePages[i]).then(() => {
+          this.createPageUrls([this.visiblePages[i]]);
+        });
+      }
 
       // cleanup old URLs + create new ones
       this.cleanupUnusedUrls(this.visiblePages);
@@ -315,7 +325,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   // IMAGE LOADING (lazy + priority)
 
   private setupObserver() {
-    this.observer = new IntersectionObserver((entries) => {
+    this.observer = new IntersectionObserver(async (entries) => {
 
       // sort by distance to viewport center (priority loading)
       const visibleEntries = entries
@@ -328,14 +338,28 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) break;
 
         const img = entry.target as HTMLImageElement;
-        const dataSrc = img.dataset['src'];
+        const pageId = Number(img.dataset['pageId']);
 
-        // load only if not loaded yet
-        if (dataSrc && (!img.src || img.src === '')) {
-          this.loadImage(img, dataSrc);
+        const page = this.pages.find(p => p.id === pageId);
+        if (!page) continue;
+
+        await this.ensurePageLoaded(page);
+        await this.createPageUrls([page]);
+
+        const src = this.getPageUrl(page);
+
+        if (src && (!img.src || img.src === '')) {
+          this.loadImage(img, src);
           this.observer.unobserve(img);
         }
+
+        //  preload nearby pages (priority loading)
+        const index = this.pages.findIndex(p => p.id === pageId);
+        if (index !== -1) {
+          this.preloadNearby(index);
+        }
       }
+
     }, {
       rootMargin: '800px', // preload before entering viewport
       threshold: 0.01
@@ -353,7 +377,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // observe only unloaded images
     const unloadedImages = this.imgRefs.filter(ref => {
       const img = ref.nativeElement;
-      return img.dataset['src'] && (!img.src || img.src === '');
+      return !img.src;
     });
 
     unloadedImages.forEach(ref => {
@@ -382,6 +406,54 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   // URL MANAGEMENT (blob handling)
+  
+  private async preloadNearby(centerIndex: number) {
+    const pages = this.pages;
+
+    const start = Math.max(0, centerIndex - this.PRELOAD_RADIUS);
+    const end = Math.min(pages.length - 1, centerIndex + this.PRELOAD_RADIUS);
+
+    const tasks: Promise<void>[] = [];
+
+    for (let i = start; i <= end; i++) {
+      const page = pages[i];
+
+      if (!page?.id) continue;
+
+      // already has 
+      if (page.src) continue;
+
+      // in progress
+      if (this.preloading.has(page.id)) continue;
+
+      this.preloading.add(page.id);
+
+      const task = this.ensurePageLoaded(page)
+        .then(() => {
+          // create URL for this page (if needed)
+          this.createPageUrls([page]);
+        })
+        .finally(() => {
+          this.preloading.delete(page.id!);
+        });
+
+      tasks.push(task);
+    }
+
+    // wait for all preloads to finish (optional, can be fire-and-forget)
+    await Promise.allSettled(tasks);
+  }
+
+  private async ensurePageLoaded(page: Page) {
+    if (page.src) return;
+
+    const full = await this.pagesRepo.get(page.id!);
+
+    if (full) {
+      page.src = full.src;
+      page.pageNumber = full.pageNumber;
+    }
+  }
 
   private async createPageUrls(pages: Page[]) {
     if (isIOS) return; // iOS handles blobs differently
@@ -440,88 +512,63 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.loading.show();
 
     const container = document.querySelector<HTMLElement>('.reader-container');
+
+    // no container => nothing to do
+    if (!container) {
+      this.loading.hide();
+      this.scrollInProgress = false;
+      return;
+    }
+
+    // skip if already near target (optional optimization)
     const current = this.getCurrentPage();
-
-    // already on page → skip
-    if (!container || current?.pageId === pageId) {
+    if (current?.pageId === pageId) {
       this.loading.hide();
       this.scrollInProgress = false;
       return;
     }
 
-    const index = this.pages.findIndex(p => p.id === pageId);
-    if (index === -1) {
+    // find target page in state
+    const page = this.pages.find(p => p.id === pageId);
+    if (!page) {
       this.loading.hide();
       this.scrollInProgress = false;
       return;
     }
 
-    // preload all images before target
-    for (let i = 0; i <= index; i++) {
-      const ref = this.imgRefs.find(r =>
-        Number(r.nativeElement.dataset['pageId']) === this.pages[i].id
-      );
-      if (ref) await this.loadImageAsync(ref.nativeElement);
-    }
+    // IMPORTANT:
+    // at this point jumpToPage already moved window
+    // so target page SHOULD exist in DOM
 
+    // ensure ONLY target page is loaded (not all previous)
+    await this.ensurePageLoaded(page);
+    await this.createPageUrls([page]);
+
+    // wait DOM update (imgRefs refresh)
     await new Promise(r => setTimeout(r, 50));
 
     const target = this.imgRefs.find(r =>
       Number(r.nativeElement.dataset['pageId']) === pageId
     )?.nativeElement;
 
+    // target still not in DOM → give up safely
     if (!target) {
       this.loading.hide();
       this.scrollInProgress = false;
       return;
     }
 
-    // scroll to exact position
+    // instant jump (no smooth → faster & no glitches)
     const top = target.offsetTop;
-    container.scrollTo({ top, behavior: 'smooth' });
+    container.scrollTo({ top, behavior: 'auto' });
 
-    await this.waitForScroll(container, top);
+    // preload around target (UX boost)
+    const index = this.pages.findIndex(p => p.id === pageId);
+    if (index !== -1) {
+      this.preloadNearby(index);
+    }
 
     this.loading.hide();
     this.scrollInProgress = false;
-  }
-
-  private loadImageAsync(img: HTMLImageElement): Promise<void> {
-    return new Promise(resolve => {
-      if (img.src && img.complete) return resolve();
-
-      const dataSrc = img.dataset['src'];
-
-      if (dataSrc && !img.src) {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-        img.src = dataSrc;
-      } else {
-        const onLoad = () => {
-          img.removeEventListener('load', onLoad);
-          resolve();
-        };
-        img.addEventListener('load', onLoad);
-      }
-    });
-  }
-
-  private waitForScroll(container: HTMLElement, target: number): Promise<void> {
-    return new Promise(resolve => {
-      const start = performance.now();
-
-      const check = () => {
-        if (Math.abs(container.scrollTop - target) <= 1) {
-          resolve();
-        } else if (performance.now() - start > 2000) {
-          console.warn('Scroll timeout');
-          resolve();
-        } else {
-          requestAnimationFrame(check);
-        }
-      };
-
-      requestAnimationFrame(check);
-    });
   }
 }

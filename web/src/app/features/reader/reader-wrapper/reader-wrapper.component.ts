@@ -44,10 +44,10 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     private exportService: ExportService,
     private loading: LoadingService,
     private reader: ReaderService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
-     // Restore UI settings from previous session
+    // Restore UI settings from previous session
     this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
     this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
@@ -58,23 +58,27 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-     // reload data when manga changes
+    // reload data when manga changes
     if (changes['activeManga'] && !changes['activeManga'].firstChange) {
       this.loadPages();
       this.loadBookmarks();
     }
   }
 
-
   async loadPages() {
     if (!this.activeManga) return;
 
     try {
-      const pages = await this.pagesRepo.getAll(this.activeManga);
-      this.pages = pages;
-      
+      const meta = await this.pagesRepo.getMeta(this.activeManga);
+
+      this.pages = meta.map(p => ({
+        id: p.id,
+        tabId: this.activeManga!,
+        pageNumber: p.pageNumber,
+        src: null
+      }));
       // Update reader state with new pages
-      this.reader.setPages(pages);
+      this.reader.setPages(this.pages);
 
     } catch (err) {
       console.error('Error loading pages', err);
@@ -100,7 +104,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
     }
   }
 
- // SETTINGS WINDOW: MAIN
+  // SETTINGS WINDOW: MAIN
   get pageNumbers(): { id: number, number: number }[] {
     return (this.pages ?? [])
       .map(p => ({ id: p.id, number: p.pageNumber }))

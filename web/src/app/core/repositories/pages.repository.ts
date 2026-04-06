@@ -70,6 +70,19 @@ export class PagesRepository {
       .toArray();
   }
 
+  // get only page ids to avoid loading src blobs into memory
+  async getMeta(tabId: number): Promise<Pick<Page, 'id' | 'pageNumber'>[]> {
+    const pages = await db.pages
+      .where('tabId')
+      .equals(tabId)
+      .sortBy('pageNumber');
+
+    return pages.map(p => ({
+      id: p.id,
+      pageNumber: p.pageNumber
+    }));
+  }
+
   async getByChapter(chapterId: number) {
     return db.pages
       .where('chapterId')
