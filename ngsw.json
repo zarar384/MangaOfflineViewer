@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1767563351106,
+  "timestamp": 1775483881524,
   "index": "/MangaOfflineViewer/MangaOfflineViewer/index.html",
   "assetGroups": [
     {
@@ -24,7 +24,34 @@
       "patterns": []
     }
   ],
-  "dataGroups": [],
+  "dataGroups": [
+    {
+      "name": "manga-previews",
+      "patterns": [
+        "\\/MangaOfflineViewer\\/previews\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 200,
+      "maxAge": 2592000000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    },
+    {
+      "name": "manga-images",
+      "patterns": [
+        "\\/MangaOfflineViewer\\/manga\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 500,
+      "maxAge": 2592000000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
   "hashTable": {},
   "navigationUrls": [
     {
