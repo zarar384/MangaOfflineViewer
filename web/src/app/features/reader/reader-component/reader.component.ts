@@ -1,4 +1,12 @@
-import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  QueryList,
+  ViewChildren,
+  ElementRef,
+  OnDestroy,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
@@ -12,34 +20,36 @@ import { PagesRepository } from '../../../core/repositories/pages.repository';
   templateUrl: './reader.component.html',
   styleUrls: ['./reader.component.css'],
   standalone: true,
-  imports: [CommonModule]
+  imports: [CommonModule],
 })
 export class ReaderComponent implements AfterViewInit, OnDestroy {
 
-  // WINDOWING CONFIG (virtualization)
-
-  private windowSize = 10;                      // how many pages we keep in DOM
-  private startIndex = 0;                       // start index of current window
-  private isJumping = false;                    // prevent double navigation
-  private currentIndex = 0;                     // current index within window
-
-  visiblePages: Page[] = [];
-
-  // IMAGE LOADING STATE
-
-  observer!: IntersectionObserver;
-
-  pageUrls: Map<number, string> = new Map(); // cache for blob URLs
-
-  private readonly MAX_CONCURRENT_LOAD = 8; // limit parallel image loading
-  private currentlyLoading = 0;
-
-  private preloading = new Set<number>(); // track pages being preloaded
-  private readonly PRELOAD_RADIUS = 3; // how many pages to preload around current
-  private loadingSet = new Set<number>(); // track pages currently loading (for UI feedback)
-
   @ViewChildren('imgRef')
   imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
+
+  private observer!: IntersectionObserver;
+
+  private isNavigating = false;
+
+  private pageUrls = new Map<number, string>();
+  private iosUrls = new Map<number, string>();
+
+  private pageIndexMap = new Map<number, number>();
+
+  private MAX_LOAD = 6;
+  private loadingCount = 0;
+
+  private loadingSet = new Set<number>();
+
+  private isLoaderVisible = false;
+
+  private focusPageId: number | null = null;
+
+  private CLEANUP_RADIUS = 10;
+
+  private loadToken = 0;
+
+  visiblePages: Page[] = [];
 
   constructor(
     private urlService: ObjectUrlService,
@@ -48,86 +58,378 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     private pagesRepo: PagesRepository
   ) {
 
-    // REACT: pages changed
+    // reset state when pages changed
     effect(() => {
       const pages = this.reader.pages();
-      if (!pages || pages.length === 0) return;
+      if (!pages?.length) return;
 
-      // reset window to start
-      this.startIndex = 0;
+      // build index map for O(1) access
+      this.pageIndexMap.clear();
+      pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
 
-      this.updateVisiblePages();
+      const startIndex = this.reader.currentPageId()
+        ? this.pageIndexMap.get(this.reader.currentPageId()!) ?? 0
+        : 0;
 
-      for (let i = 0; i < Math.min(3, this.visiblePages.length); i++) {
-        this.ensurePageLoaded(this.visiblePages[i]).then(() => {
-          this.createPageUrls([this.visiblePages[i]]);
-        });
+      // initialize virtual window
+      this.updateVisiblePages(startIndex);
+
+      this.loadingSet.clear();
+      this.loadingCount = 0;
+      this.focusPageId = null;
+
+      if (!this.isLoaderVisible) {
+        this.loading.show();
+        this.isLoaderVisible = true;
       }
 
-      // cleanup old URLs + create new ones
-      this.cleanupUnusedUrls(this.visiblePages);
-      this.createPageUrls(this.visiblePages);
+      this.loadToken++;
 
-      this.currentlyLoading = 0;
+      const container = document.querySelector('.reader-container');
+      if (container) container.scrollTop = 0;
 
-      // reset observer (DOM must be ready)
-      setTimeout(() => {
-        this.observer?.disconnect();
+      // wait DOM render
+      requestAnimationFrame(() => {
         this.setupObserver();
         this.observeImages();
       });
     });
 
-    // REACT: navigation (page change)
+    // navigation
     effect(() => {
       const pageId = this.reader.currentPageId();
       const pages = this.reader.pages();
-      const tick = this.reader.navTick(); // trigger signal
 
-      // skip if pageId does not belong to current pages (IOS can have old pageId after chapter change)
-      const exists = pages.some(p => p.id === pageId);
-      if (!exists || pages.length === 0) return;
+      if (!pageId || !pages.length) return;
 
-      if (!pageId) return;
-      if (this.isJumping) return;
-
-      this.isJumping = true;
-
-      setTimeout(async () => {
-        // move window to include target page
-        await this.jumpToPage(pageId);
-
-        // scroll to that page
-        await this.scrollToPage(pageId);
-
-        this.isJumping = false;
-      }, 50);
+      this.handleNavigation(pageId);
     });
   }
 
-  // LIFECYCLE
-
   ngAfterViewInit(): void {
     this.setupObserver();
-    this.observeImages();
 
-    // listen scroll for window shifting
-    const container = document.querySelector('.reader-container');
-    container?.addEventListener('scroll', () => this.onScroll());
-
-    // when DOM images change → reobserve
-    this.imgRefs.changes.subscribe(() => this.observeImages());
+    // re-observe when DOM changes
+    this.imgRefs.changes.subscribe(() => {
+      this.observeImages();
+    });
   }
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
 
-    // release all blob URLs (memory cleanup)
     this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
-    this.pageUrls.clear();
+    this.iosUrls.forEach(url => URL.revokeObjectURL(url));
   }
 
-  // DATA HELPERS
+  private setupObserver() {
+    this.observer?.disconnect();
+
+    this.observer = new IntersectionObserver(async (entries) => {
+
+      if (this.isNavigating) return;
+
+      const token = this.loadToken;
+
+      let centerY = window.innerHeight / 2;
+
+      if (this.focusPageId !== null) {
+        const el = this.imgRefs.find(r =>
+          Number(r.nativeElement.dataset['pageId']) === this.focusPageId
+        )?.nativeElement;
+
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          centerY = rect.top + rect.height / 2;
+        }
+      }
+
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => {
+          const aCenter = a.boundingClientRect.top + a.boundingClientRect.height / 2;
+          const bCenter = b.boundingClientRect.top + b.boundingClientRect.height / 2;
+
+          return Math.abs(aCenter - centerY) - Math.abs(bCenter - centerY);
+        })
+        .slice(0, this.MAX_LOAD * 2);
+
+      for (const entry of visible) {
+
+        if (token !== this.loadToken) return;
+
+        const img = entry.target as HTMLImageElement;
+        const id = Number(img.dataset['pageId']);
+
+        const globalIndex = this.pageIndexMap.get(id);
+
+        // update virtual window only when leaving range
+        if (globalIndex !== undefined) {
+
+          const first = this.visiblePages[0]?.id;
+          const last = this.visiblePages[this.visiblePages.length - 1]?.id;
+
+          if (
+            first === undefined ||
+            last === undefined ||
+            id < first ||
+            id > last
+          ) {
+            this.updateVisiblePages(globalIndex);
+          }
+        }
+
+        const page = this.visiblePages.find(p => p.id === id);
+        if (!page) continue;
+
+        if (this.loadingSet.has(id)) continue;
+        if (this.loadingCount >= this.MAX_LOAD) continue;
+
+        if (!this.isLoaderVisible) {
+          this.loading.show();
+          this.isLoaderVisible = true;
+        }
+
+        this.loadingSet.add(id);
+        this.loadingCount++;
+
+        try {
+
+          await this.ensurePageLoaded(page);
+
+          if (token !== this.loadToken) return;
+
+          const url = await this.getOrCreateUrl(page);
+
+          if (token !== this.loadToken) return;
+
+          if (!url) continue;
+
+          await this.loadImage(img, url);
+
+          this.cleanupFarImages(id);
+
+        } finally {
+          this.loadingSet.delete(id);
+          this.loadingCount--;
+
+          // hide loader when all done
+          if (this.loadingSet.size === 0 && this.isLoaderVisible) {
+            this.loading.hide();
+            this.isLoaderVisible = false;
+          }
+        }
+      }
+
+    }, {
+      rootMargin: '800px',
+      threshold: 0.01
+    });
+  }
+
+  private observeImages() {
+    // reset observer targets
+    this.observer.disconnect();
+
+    this.imgRefs.forEach(ref => {
+      this.observer.observe(ref.nativeElement);
+    });
+  }
+
+  private async loadImage(img: HTMLImageElement, url: string) {
+    return new Promise<void>((resolve) => {
+
+      if (img.src === url && img.complete) {
+        resolve();
+        return;
+      }
+
+      // fallback for iOS stuck loading
+      const timeout = setTimeout(resolve, 10000);
+
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+
+      img.src = url;
+    });
+  }
+
+  private async ensurePageLoaded(page: Page) {
+    if (page.src) return;
+
+    const full = await this.pagesRepo.get(page.id!);
+
+    if (full) {
+      page.src = full.src;
+      page.pageNumber = full.pageNumber;
+    }
+  }
+
+  private async getOrCreateUrl(page: Page): Promise<string> {
+    if (typeof page.src === 'string') return page.src;
+    if (!(page.src instanceof Blob) || page.id == null) return '';
+
+    if (isIOS) {
+      if (!this.iosUrls.has(page.id)) {
+        this.iosUrls.set(page.id, URL.createObjectURL(page.src));
+      }
+      return this.iosUrls.get(page.id)!;
+    }
+
+    if (!this.pageUrls.has(page.id)) {
+      const url = await this.urlService.createUrl(`${page.id}`, page.src);
+      this.pageUrls.set(page.id, url);
+    }
+
+    return this.pageUrls.get(page.id)!;
+  }
+
+  private cleanupFarImages(currentId: number) {
+    const pages = this.pages;
+
+    const currentIndex = this.pageIndexMap.get(currentId);
+    if (currentIndex === undefined) return;
+
+    const min = currentIndex - this.CLEANUP_RADIUS;
+    const max = currentIndex + this.CLEANUP_RADIUS;
+
+    this.imgRefs.forEach(ref => {
+      const img = ref.nativeElement;
+      const id = Number(img.dataset['pageId']);
+
+      const index = this.pageIndexMap.get(id);
+      if (index === undefined) return;
+
+      // remove far images from memory
+      if (index < min || index > max) {
+
+        if (img.src) img.src = '';
+
+        if (isIOS && this.iosUrls.has(id)) {
+          URL.revokeObjectURL(this.iosUrls.get(id)!);
+          this.iosUrls.delete(id);
+        }
+
+        if (this.pageUrls.has(id)) {
+          this.urlService.revokeUrl(this.pageUrls.get(id)!);
+          this.pageUrls.delete(id);
+        }
+
+        const page = pages[index];
+        if (page) page.src = null;
+
+        this.loadingSet.delete(id);
+      }
+    });
+  }
+
+  private async handleNavigation(pageId: number) {
+
+    this.isNavigating = true;
+    this.focusPageId = pageId;
+
+    if (!this.isLoaderVisible) {
+      this.loading.show();
+      this.isLoaderVisible = true;
+    }
+
+    await this.waitForImages();
+
+    const index = this.pageIndexMap.get(pageId);
+    if (index === undefined) return;
+
+    // update visible window before load
+    this.updateVisiblePages(index);
+
+    const pages = this.pages;
+    const start = Math.max(0, index - this.MAX_LOAD);
+    const end = Math.min(pages.length, index + this.MAX_LOAD + 1);
+
+    const toLoad = pages.slice(start, end);
+
+    await Promise.all(
+      toLoad.map(async (page) => {
+
+        if (this.loadingSet.has(page.id!)) return;
+
+        this.loadingSet.add(page.id!);
+
+        try {
+          await this.ensurePageLoaded(page);
+          const url = await this.getOrCreateUrl(page);
+
+          if (!url) return;
+
+          const img = this.imgRefs.find(r =>
+            Number(r.nativeElement.dataset['pageId']) === page.id
+          )?.nativeElement;
+
+          if (!img) return;
+
+          await this.loadImage(img, url);
+
+        } finally {
+          this.loadingSet.delete(page.id!);
+        }
+      })
+    );
+
+    const target = this.imgRefs.find(r =>
+      Number(r.nativeElement.dataset['pageId']) === pageId
+    )?.nativeElement;
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'auto',
+        block: 'start'
+      });
+    }
+
+    this.isNavigating = false;
+    this.focusPageId = null;
+
+    if (this.isLoaderVisible) {
+      this.loading.hide();
+      this.isLoaderVisible = false;
+    }
+  }
+
+  async scrollToPage(pageId: number) {
+
+    this.focusPageId = pageId;
+
+    if (!this.isLoaderVisible) {
+      this.loading.show();
+      this.isLoaderVisible = true;
+    }
+
+    let target: HTMLElement | undefined;
+    let attempts = 0;
+
+    while (attempts < 5 && !target) {
+      await new Promise(r => setTimeout(r, 50));
+
+      target = this.imgRefs.find(r =>
+        Number(r.nativeElement.dataset['pageId']) === pageId
+      )?.nativeElement;
+
+      attempts++;
+    }
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'auto',
+        block: 'center'
+      });
+    }
+  }
 
   get pages(): Page[] {
     return this.reader.pages();
@@ -145,365 +447,24 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     return this.reader.gap();
   }
 
-  // WINDOW MANAGEMENT
-
-  private updateVisiblePages() {
-    const pages = this.reader.pages();
-
-    const half = Math.floor(this.windowSize / 2);
-
-    const start = Math.max(0, this.currentIndex - half);
-    const end = Math.min(pages.length, this.currentIndex + half + 1);
-
-    this.startIndex = start;
-    this.visiblePages = pages.slice(start, end);
-  }
-  private async jumpToPage(pageId: number) {
-    const pages = this.reader.pages();
-
-    const index = pages.findIndex(p => p.id === pageId);
-    if (index === -1) return;
-
-    this.currentIndex = index;
-
-    // center page inside window
-    const half = 3;
-
-    this.startIndex = Math.max(0, index - half);
-
-    // prevent overflow
-    if (this.startIndex + this.windowSize > pages.length) {
-      this.startIndex = pages.length - this.windowSize;
-    }
-
-    if (this.startIndex < 0) this.startIndex = 0;
-
-    // IMPORTANT:
-    // update DOM BEFORE scroll so target page exists
-    this.updateVisiblePages();
-    this.refreshAfterWindowChange();
-
-    // wait DOM render
-    await new Promise(r => setTimeout(r, 50));
-  }
-
-  private refreshAfterWindowChange() {
-    // remove unused URLs + create new
-    this.cleanupUnusedUrls(this.visiblePages);
-    this.createPageUrls(this.visiblePages);
-
-    // reset observer (old elements are gone)
-    setTimeout(() => {
-      this.observeImages();
-    });
-  }
-
-  // SCROLL HANDLING
-
-  private onScroll() {
-    if (this.isJumping) return;
-
-    const current = this.getCurrentPage();
-    if (!current) return;
-
-    const index = this.pages.findIndex(p => p.id === current.pageId);
-    if (index === -1) return;
-
-    this.currentIndex = index;
-
-    this.updateVisiblePages();
-    this.refreshAfterWindowChange();
-  }
-
-  public getCurrentPage(): { pageId: number } | null {
-    const container = document.querySelector<HTMLElement>('.reader-container');
-    if (!container) return null;
-
-    let closest: number | null = null;
-    let min = Infinity;
-
-    // find image closest to top of viewport
-    this.imgRefs.forEach(ref => {
-      const img = ref.nativeElement;
-
-      if (!img.complete) return;
-
-      const distance = Math.abs(img.getBoundingClientRect().top);
-      const id = Number(img.dataset['pageId']);
-
-      if (distance < min) {
-        min = distance;
-        closest = id;
-      }
-    });
-
-    return closest == null ? null : { pageId: closest };
-  }
-
-  // IMAGE LOADING (lazy + priority)
-
-  private setupObserver() {
-    this.observer = new IntersectionObserver(async (entries) => {
-
-      // sort by distance to viewport center (priority loading)
-      const visibleEntries = entries
-        .filter(entry => entry.isIntersecting)
-        .sort((a, b) =>
-          Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top)
-        );
-
-      for (const entry of visibleEntries) {
-        if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) break;
-
-        const img = entry.target as HTMLImageElement;
-        const pageId = Number(img.dataset['pageId']);
-
-        if (this.loadingSet.has(pageId)) continue;
-
-        const page = this.pages.find(p => p.id === pageId);
-        if (!page) continue;
-
-        this.loadingSet.add(pageId);
-
-        this.ensurePageLoaded(page).then(() => {
-          this.createPageUrls([page]).then(() => {
-            const src = this.getPageUrl(page);
-
-            if (src && img.src !== src) {
-              this.loadImage(img, src, pageId);
-              this.observer.unobserve(img);
-            } else {
-              this.loadingSet.delete(pageId);
-            }
-          });
-        });
-
-        //  preload nearby pages (priority loading)
-        const index = this.pages.findIndex(p => p.id === pageId);
-        if (index !== -1) {
-          this.preloadNearby(index);
-        }
-      }
-
-    }, {
-      rootMargin: '800px', // preload before entering viewport
-      threshold: 0.01
-    });
-  }
-
-  private observeImages() {
-    if (!this.imgRefs || !this.observer) return;
-
-    // clear previous observers
-    this.imgRefs.forEach(ref => {
-      this.observer.unobserve(ref.nativeElement);
-    });
-
-    // observe only unloaded images
-    const unloadedImages = this.imgRefs.filter(ref => {
-      const img = ref.nativeElement;
-      return !img.src;
-    });
-
-    unloadedImages.forEach(ref => {
-      this.observer.observe(ref.nativeElement);
-    });
-  }
-
-  private loadImage(imgElement: HTMLImageElement, dataSrc: string, pageId: number) {
-    if (this.currentlyLoading >= this.MAX_CONCURRENT_LOAD) return;
-
-    if (!imgElement.src) {
-      this.currentlyLoading++;
-
-      imgElement.onload = () => {
-        this.currentlyLoading--;
-        this.loadingSet.delete(pageId);
-        setTimeout(() => this.observeImages(), 50);
-      };
-
-      imgElement.onerror = () => {
-        this.currentlyLoading--;
-        this.loadingSet.delete(pageId);
-        console.error('Failed to load image:', dataSrc);
-      };
-
-      imgElement.src = dataSrc;
-    }
-  }
-
-  // URL MANAGEMENT (blob handling)
-
-  private async preloadNearby(centerIndex: number) {
-    const pages = this.pages;
-
-    const start = Math.max(0, centerIndex - this.PRELOAD_RADIUS);
-    const end = Math.min(pages.length - 1, centerIndex + this.PRELOAD_RADIUS);
-
-    const tasks: Promise<void>[] = [];
-
-    for (let i = start; i <= end; i++) {
-      const page = pages[i];
-
-      if (!page?.id) continue;
-
-      // already has 
-      if (page.src) continue;
-
-      // in progress
-      if (this.preloading.has(page.id)) continue;
-
-      this.preloading.add(page.id);
-
-      const task = this.ensurePageLoaded(page)
-        .then(() => {
-          // create URL for this page (if needed)
-          this.createPageUrls([page]);
-        })
-        .finally(() => {
-          this.preloading.delete(page.id!);
-        });
-
-      tasks.push(task);
-    }
-
-    // wait for all preloads to finish (optional, can be fire-and-forget)
-    await Promise.allSettled(tasks);
-  }
-
-  private async ensurePageLoaded(page: Page) {
-    if (page.src) return;
-
-    const full = await this.pagesRepo.get(page.id!);
-
-    if (full) {
-      page.src = full.src;
-      page.pageNumber = full.pageNumber;
-    }
-  }
-
-  private async createPageUrls(pages: Page[]) {
-    if (isIOS) return; // iOS handles blobs differently
-
-    for (const page of pages) {
-      if (
-        page.src instanceof Blob &&
-        page.id !== undefined &&
-        !this.pageUrls.has(page.id)
-      ) {
-        const blobUrl = await this.urlService.createUrl(`${page.id}`, page.src);
-        this.pageUrls.set(page.id, blobUrl);
-      }
-    }
-  }
-
-  private cleanupUnusedUrls(newPages: Page[]) {
-    if (isIOS) {
-      this.pageUrls.clear();
-      return;
-    }
-
-    const newIds = new Set(newPages.map(p => p.id).filter(Boolean));
-
-    // remove URLs not in current window
-    this.pageUrls.forEach((url, id) => {
-      if (!newIds.has(id)) {
-        this.urlService.revokeUrl(url);
-        this.pageUrls.delete(id);
-      }
-    });
-  }
-
-  getPageUrl(page: Page): string {
-    if (isIOS) {
-      if (typeof page.src === 'string') return page.src;
-      if (page.src instanceof Blob) return URL.createObjectURL(page.src);
-      return '';
-    }
-
-    if (page.src instanceof Blob && page.id !== undefined) {
-      return this.pageUrls.get(page.id) || '';
-    }
-
-    return typeof page.src === 'string' ? page.src : '';
-  }
-
   trackByPage(page: Page, index: number) {
-    if (isIOS) {
-      return `${page.id}-${index}`;
-    }
-
-    return page.id;
+    return isIOS ? `${page.id}-${index}` : page.id;
   }
 
-  // SCROLL TO PAGE (navigation)
+  private async waitForImages(): Promise<void> {
+    let tries = 0;
 
-  private scrollInProgress = false;
-
-  async scrollToPage(pageId: number) {
-    if (this.scrollInProgress) return;
-
-    this.scrollInProgress = true;
-    this.loading.show();
-
-    const container = document.querySelector<HTMLElement>('.reader-container');
-
-    // no container => nothing to do
-    if (!container) {
-      this.loading.hide();
-      this.scrollInProgress = false;
-      return;
+    while (this.imgRefs.length === 0 && tries < 10) {
+      await new Promise(r => setTimeout(r, 30));
+      tries++;
     }
+  }
 
-    // skip if already near target (optional optimization)
-    const current = this.getCurrentPage();
-    if (current?.pageId === pageId) {
-      this.loading.hide();
-      this.scrollInProgress = false;
-      return;
-    }
+  // virtual window around current page
+  private updateVisiblePages(centerIndex: number) {
+    const start = Math.max(0, centerIndex - 20);
+    const end = Math.min(this.pages.length, centerIndex + 20);
 
-    // find target page in state
-    const page = this.pages.find(p => p.id === pageId);
-    if (!page) {
-      this.loading.hide();
-      this.scrollInProgress = false;
-      return;
-    }
-
-    // IMPORTANT:
-    // at this point jumpToPage already moved window
-    // so target page SHOULD exist in DOM
-
-    // ensure ONLY target page is loaded (not all previous)
-    await this.ensurePageLoaded(page);
-    await this.createPageUrls([page]);
-
-    // wait DOM update (imgRefs refresh)
-    await new Promise(r => setTimeout(r, 50));
-
-    const target = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === pageId
-    )?.nativeElement;
-
-    // target still not in DOM → give up safely
-    if (!target) {
-      this.loading.hide();
-      this.scrollInProgress = false;
-      return;
-    }
-
-    // instant jump (no smooth → faster & no glitches)
-    const top = target.offsetTop;
-    container.scrollTo({ top, behavior: 'auto' });
-
-    // preload around target (UX boost)
-    const index = this.pages.findIndex(p => p.id === pageId);
-    if (index !== -1) {
-      this.preloadNearby(index);
-    }
-
-    this.loading.hide();
-    this.scrollInProgress = false;
+    this.visiblePages = this.pages.slice(start, end);
   }
 }

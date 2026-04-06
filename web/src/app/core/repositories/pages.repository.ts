@@ -73,9 +73,12 @@ export class PagesRepository {
   // get only page ids to avoid loading src blobs into memory
   async getMeta(tabId: number): Promise<Pick<Page, 'id' | 'pageNumber'>[]> {
     const pages = await db.pages
-      .where('tabId')
-      .equals(tabId)
-      .sortBy('pageNumber');
+      .where('[tabId+chapterOrder+pageNumber]')
+      .between(
+        [tabId, Dexie.minKey, Dexie.minKey],
+        [tabId, Dexie.maxKey, Dexie.maxKey]
+      )
+      .sortBy('[tabId+chapterOrder+pageNumber]');
 
     return pages.map(p => ({
       id: p.id,

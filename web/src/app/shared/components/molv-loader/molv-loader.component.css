@@ -1,4 +1,4 @@
-.overlay {  position: fixed;  inset: 0;  background: rgba(30, 10, 40, 0.45); backdrop-filter: blur(6px);  display: flex;  justify-content: center;  align-items: center;  z-index: 9999;  backdrop-filter: blur(3px);}
+.overlay { pointer-events: all; position: fixed;  inset: 0;  background: rgba(30, 10, 40, 0.45); backdrop-filter: blur(6px);  display: flex;  justify-content: center;  align-items: center;  z-index: 9999;  backdrop-filter: blur(3px);}
 
 /* heart */
 .spinner {  width: 80px;  height: 80px;  position: relative;  animation: pulse 1.2s infinite ease-in-out;}

@@ -5,7 +5,7 @@
   </app-manga-navbar>
 
 
-  <div class="content">
+<div class="content" [class.reader-active]="viewMode === ViewMod.Single">
     @if(viewMode === ViewMod.Home)
     {
     <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
@@ -17,13 +17,13 @@
     <manga-page [activeManga]="selectedMangaId">
     </manga-page>
     }
-  </div>
 
   @if(viewMode === ViewMod.Single)
   {
   <app-manga-reader [activeManga]="selectedMangaId">
   </app-manga-reader>
   }
+  </div>
 
   <upload-file-window [isVisible]="showUploadWindow()" [tabId]="selectedMangaId" [viewMode]="viewMode"
     (closeWindow)="onUploadWindowClose()"></upload-file-window>
