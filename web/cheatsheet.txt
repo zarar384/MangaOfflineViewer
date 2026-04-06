@@ -11,8 +11,10 @@ http-server dist/MangaOfflineViewerAngular/MangaOfflineViewer -p 8080
 
 # GitHub Page
 ng build --configuration production-gh
-ng deploy 
-ng deploy --base-href=/MangaOfflineViewer/
+--ng deploy 
+--ng deploy --base-href=/MangaOfflineViewer/
+npx angular-cli-ghpages --dir=dist/MangaOfflineViewerAngular/MangaOfflineViewer
+OR npm run deploy:gh
 
 # Run Dev
 ng serve --hmr=false 
