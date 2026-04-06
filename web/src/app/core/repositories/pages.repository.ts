@@ -39,7 +39,7 @@ export const PAGES_SEED: Page[] = [
     pageNumber: 2,
     src: 'assets/favicon.ico?v=2'
   },
-    {
+  {
     id: 6,
     tabId: 1,
     chapterId: 3,
@@ -60,15 +60,38 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
-async getAll(tabId: number) {
-  return db.pages
-    .where('[tabId+chapterOrder+pageNumber]')
-    .between(
-      [tabId, Dexie.minKey, Dexie.minKey],
-      [tabId, Dexie.maxKey, Dexie.maxKey]
-    )
-    .toArray();
-}
+  async getAll(tabId: number) {
+    return db.pages
+      .where('[tabId+chapterOrder+pageNumber]')
+      .between(
+        [tabId, Dexie.minKey, Dexie.minKey],
+        [tabId, Dexie.maxKey, Dexie.maxKey]
+      )
+      .toArray();
+  }
+
+  async getByChapter(chapterId: number) {
+    return db.pages
+      .where('chapterId')
+      .equals(chapterId)
+      .sortBy('pageNumber');
+  }
+
+  async countByChapter(chapterId: number) {
+    return db.pages
+      .where('chapterId')
+      .equals(chapterId)
+      .count();
+  }
+
+  async getFirstPage(chapterId: number) {
+    const pages = await db.pages
+      .where('chapterId')
+      .equals(chapterId)
+      .sortBy('pageNumber');
+
+    return pages[0] ?? null;
+  }
 
   async delete(id: number) {
     return db.pages.delete(id);

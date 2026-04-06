@@ -20,12 +20,19 @@
 }
 
 .arrow {
-  cursor: pointer;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
   transition: transform 0.2s;
+  cursor: pointer;
+  margin-right: 6px;
 }
 
 .arrow.open {
-  transform: rotate(90deg);
+  transform: rotate(45deg);
 }
 
 .title-container {

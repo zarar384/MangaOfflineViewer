@@ -5,7 +5,7 @@
       <div class="molv-spinner small"></div>
       }
       @else {
-      <span class="arrow" (click)="toggle()" [class.open]="isOpen">▶</span>
+      <span class="arrow" (click)="toggle()" [class.open]="isOpen"></span>
       }
 
       <div class="title-container">
@@ -20,15 +20,17 @@
 
     <div class="right">
       <span class="count">
-        {{ pages.length }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
+        {{ pagesCount }} {{ pagesCount !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
       </span>
 
       @if(isEditMode) {
-      <button class="molv-btn molv-btn-green" (click)="saveAndClose()" [disabled]="filesProcessing" [class.disabled]="filesProcessing">
+      <button class="molv-btn molv-btn-green" (click)="saveAndClose()" [disabled]="filesProcessing"
+        [class.disabled]="filesProcessing">
         {{ 'save' | transloco }}
       </button>
 
-      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing" [class.disabled]="filesProcessing">
+      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
+        [class.disabled]="filesProcessing">
         {{ 'cancel' | transloco }}
       </button>
       }
@@ -54,7 +56,7 @@
     @else {
     <!-- pages -->
     <div class="page-item" *ngFor="let page of pages; let i = index" (click)="openPage(page.id!)">
-      {{ i + 1 }} {{ pages.length !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
+      {{ i + 1 }} {{ pagesCount  !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
     </div>
     }
   </div>

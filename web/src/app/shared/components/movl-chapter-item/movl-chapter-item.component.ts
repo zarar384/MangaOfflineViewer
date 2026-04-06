@@ -24,6 +24,7 @@ export class ChapterItemComponent implements OnChanges {
   @Input({ required: true }) chapter!: Chapter;
 
   pages: Page[] = [];
+  pagesCount = 0;
   isOpen = false;
 
   // Uploader
@@ -42,20 +43,27 @@ export class ChapterItemComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['chapter']?.currentValue) {
-      this.loadPages();
+      this.loadCount();
     }
   }
 
   toggle() {
     this.isOpen = !this.isOpen;
+
+    if (this.isOpen) {
+      this.loadPages();
+    } else {
+      this.pages = []; // free up memory
+    }
   }
 
-   upload(event: Event) {
+  upload(event: Event) {
     event.stopPropagation();
 
     this.isOpen = true;
     this.isEditMode = true;
     this.editTitle = this.chapter.title;
+    this.loadPages();
   }
 
   // Uploader 
@@ -64,12 +72,16 @@ export class ChapterItemComponent implements OnChanges {
     // this.loadPages();
   }
 
-  openChapter() {
+  async openChapter() {
+    const firstPage = await this.pagesRepo.getFirstPage(this.chapter.id!);
+
+    if (!firstPage) return;
+
     this.reader.open({
       mangaId: this.chapter.tabId!,
       chapterId: this.chapter.id!,
       pages: this.pages,
-      currentPageId: this.pages[0]?.id
+      currentPageId: firstPage.id!
     });
 
     this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
@@ -85,14 +97,23 @@ export class ChapterItemComponent implements OnChanges {
 
     this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
   }
+
   private async loadPages() {
     if (!this.chapter.id) {
       this.pages = [];
       return;
     }
 
-    const allTabPages = await this.pagesRepo.getAll(this.chapter.tabId);
-    this.pages = allTabPages.filter(page => page.chapterId === this.chapter.id);
+    this.pages = await this.pagesRepo.getByChapter(this.chapter.id);
+  }
+
+  private async loadCount() {
+    if (!this.chapter.id) {
+      this.pagesCount = 0;
+      return;
+    }
+
+    this.pagesCount = await this.pagesRepo.countByChapter(this.chapter.id);
   }
 
   // EDIT MODE ACTIONS
@@ -119,8 +140,9 @@ export class ChapterItemComponent implements OnChanges {
       // wait for save to complete before closing edit mode
       queueMicrotask(async () => {
         this.isEditMode = false;
-    await this.loadPages();
-        });
+        this.isOpen = false;
+        this.loadCount();
+      });
     }
     catch (err) {
       console.error('Error saving tab', err);

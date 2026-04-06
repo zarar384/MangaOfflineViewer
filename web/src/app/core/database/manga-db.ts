@@ -158,6 +158,7 @@ export class MangaDB extends Dexie {
 }
 
 export const db = new MangaDB();
+//db.delete();
 // RECREATE DB IF VERSION DB != DB_VERSION
 // db.open().then(async () => {
 //   console.log('Current DB version:', db.verno);
