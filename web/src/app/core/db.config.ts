@@ -8,4 +8,4 @@ export const STORE_CHAPTERS = 'chapters';
 
 export const PREVIEW_MAX_SIZE = 300;
 
-export const USE_SEEDS = true;
+export const USE_SEEDS = false;

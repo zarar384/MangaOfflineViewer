@@ -6,6 +6,7 @@ import { UiStateService } from '../../core/services/ui-state.service';
 import { MolvTabsComponent } from '../../shared/components/molv-tabs/molv-tabs.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
+import { ViewMod } from '../../shared/enums/viewmod.enum';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -39,7 +40,10 @@ export class NavbarComponent {
   );
 
   onTabSelected(tab: Tab) {
-    if (tab.id == this.selectedMangaId()) return;
+    var isChapterMode = tab.mode === ViewMod.Chapters;
+    var isSameManga = tab.id == this.selectedMangaId();
+
+    if (!isChapterMode && isSameManga) return;
 
     // clear any existing draft when selecting a different manga
     this.draftService.clear(); 
