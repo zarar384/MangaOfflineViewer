@@ -28,7 +28,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private pageIndexMap = new Map<number, number>();
 
-  private MAX_LOAD = 6;
+  private MAX_LOAD = 12;
   private loadingCount = 0;
 
   private loadingSet = new Set<number>();
@@ -37,7 +37,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private focusPageId: number | null = null;
 
-  private CLEANUP_RADIUS = 10;
+  private CLEANUP_RADIUS = 30;
 
   private loadToken = 0;
 
@@ -240,7 +240,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
     }, {
-      rootMargin: '800px',
+      rootMargin: '1200px',
       threshold: 0.01
     });
   }
@@ -456,10 +456,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     return this.reader.gap();
   }
 
-  trackByPage(page: Page, index: number) {
-    return isIOS ? `${page.id}-${index}` : page.id;
-  }
-
   private async waitForImages(): Promise<void> {
     let tries = 0;
 
@@ -471,8 +467,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   // virtual window around current page
   private updateVisiblePages(centerIndex: number) {
-    const start = Math.max(0, centerIndex - 20);
-    const end = Math.min(this.pages.length, centerIndex + 20);
+    const start = Math.max(0, centerIndex - 40);
+    const end = Math.min(this.pages.length, centerIndex + 40);
 
     const newIds = new Set(
       this.pages.slice(start, end).map(p => p.id)

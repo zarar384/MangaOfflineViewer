@@ -49,7 +49,7 @@
   <div class="pages" *ngIf="isOpen">
     @if(isEditMode) {
     <!-- uploader -->
-    <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$" [pages]="pages"
+    <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$" [chapterId]="chapter.id" [tabId]="chapter.tabId"
       (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event">
     </molv-drop-uploader>
     }

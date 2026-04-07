@@ -60,7 +60,11 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
-  async getAll(tabId: number) {
+  async getAll(tabId: number, chapterId?: number): Promise<Page[]> {
+    if (chapterId !== undefined) {
+      return this.getByChapter(chapterId);
+    }
+    
     return db.pages
       .where('[tabId+chapterOrder+pageNumber]')
       .between(

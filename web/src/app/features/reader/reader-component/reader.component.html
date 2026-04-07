@@ -2,7 +2,7 @@
      [class.page-mode]="readerMode === 'page'"
      [class.scroll-mode]="readerMode === 'scroll'">
 
-  @for (page of visiblePages; track trackByPage(page, $index)) {
+  @for (page of visiblePages; track page.id) {
     <div
          [style.transform]="readerMode === 'scroll' ? 'scale(' + readerZoom + ')' : 'scale(1)'"
          [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">

@@ -13,6 +13,7 @@ import { Subject, tap, finalize, from, Subscription, switchMap } from 'rxjs';
 import { TabsService } from '../../../core/services/tabs.service';
 import { isIOS } from '../../utils/constants';
 import { Chapter } from '../../../core/models/chapter.model';
+import { PagesRepository } from '../../../core/repositories/pages.repository';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -22,7 +23,8 @@ import { Chapter } from '../../../core/models/chapter.model';
   standalone: true
 })
 export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
-  @Input() pages: Page[] = [];
+  @Input() chapterId?: number;
+  @Input() tabId?: number;
   @Input() visible = true;
   @Input() saveAll$!: Subject<[Tab, Chapter | undefined]>;
   @Input() clearAll$!: Subject<void>;
@@ -31,6 +33,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   @Output() fileSelected = new EventEmitter<string>();
   @Output() filesProcessing = new EventEmitter<boolean>();
 
+  private pageRepo = inject(PagesRepository);
   private tabsRepo = inject(TabsRepository);
   private urlService = inject(ObjectUrlService);
   private mhtmlService = inject(MhtmlExtractorService);
@@ -40,6 +43,9 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   // subs
   private saveSub?: Subscription;
   private clearSub?: Subscription;
+
+
+  pages: Page[] = [];
 
   progress = signal(0);
   urls = signal<{ name?: string; src: string }[]>([]);
@@ -75,7 +81,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     }
 
     // pages
-    if (changes['pages']) {
+    if (changes['tabId'] || changes['chapterId']) {
       this.rebuildUrls();
     }
   }
@@ -107,8 +113,11 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   private async rebuildUrls() {
+    const pages = await this.pageRepo.getAll(this.tabId!, this.chapterId);
+    this.pages = pages;
+
     const urls = await Promise.all(
-      this.pages.map(async p => ({
+      pages.map(async (p) => ({
         name: p.name,
         src: await this.urlService.createUrl(p.name ?? 'page', p.src!)
       }))
