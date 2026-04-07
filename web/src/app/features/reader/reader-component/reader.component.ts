@@ -59,7 +59,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       if (!pages?.length) return;
 
       // clear old URLs
-      this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
+      this.pageUrls.forEach((url, id) => { this.urlService.revokeUrl(String(id)); });
       this.pageUrls.clear();
 
       // build index map for O(1) access
@@ -126,7 +126,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.observer?.disconnect();
 
     // revoke all URLs
-    this.pageUrls.forEach(url => this.urlService.revokeUrl(url));
+    this.pageUrls.forEach((url, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
   }
 
@@ -204,14 +204,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         try {
 
           await this.ensurePageLoaded(page);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
           if (token !== this.loadToken) return;
 
           const alreadyExists = this.pageUrls.has(page.id!);
 
           const url = await this.getOrCreateUrl(page);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
           if (token !== this.loadToken) {
             if (!alreadyExists && url) {
@@ -223,7 +223,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (!url) continue;
 
           await this.loadImage(img, url);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
           this.cleanupFarImages(id);
 
@@ -326,7 +326,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       if (index < min || index > max) {
 
         if (this.pageUrls.has(id)) {
-          this.urlService.revokeUrl(this.pageUrls.get(id)!);
+          this.urlService.revokeUrl(String(id));
           this.pageUrls.delete(id);
         }
 
@@ -368,10 +368,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         try {
           await this.ensurePageLoaded(page);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
           const url = await this.getOrCreateUrl(page);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
           if (!url) return;
 
@@ -382,7 +382,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (!img) return;
 
           await this.loadImage(img, url);
-          if(this.destroyed) return;
+          if (this.destroyed) return;
 
         } finally {
           this.loadingSet.delete(page.id!);
@@ -481,7 +481,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // revoke URLs that are no longer visible
     this.pageUrls.forEach((url, id) => {
       if (!newIds.has(id)) {
-        this.urlService.revokeUrl(url);
+        this.urlService.revokeUrl(String(id));
         this.pageUrls.delete(id);
       }
     });
