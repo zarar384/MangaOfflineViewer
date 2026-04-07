@@ -4,7 +4,6 @@ import { Page, PageMeta } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
-import { isIOS } from '../../../shared/utils/constants';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -160,7 +159,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
           return Math.abs(aCenter - centerY) - Math.abs(bCenter - centerY);
         })
-        .slice(0, this.MAX_LOAD * 2);
+        .slice(0, this.MAX_LOAD);
 
       for (const entry of visible) {
 
@@ -171,19 +170,24 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         const globalIndex = this.pageIndexMap.get(id);
 
-        // update virtual window only when leaving range
         if (globalIndex !== undefined) {
 
           const first = this.visiblePages[0]?.id;
           const last = this.visiblePages[this.visiblePages.length - 1]?.id;
 
+          const firstIndex = this.pageIndexMap.get(first!);
+          const lastIndex = this.pageIndexMap.get(last!);
+
+          // update only when reaching edge of window to prevent excessive updates
           if (
-            first === undefined ||
-            last === undefined ||
-            globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
-            globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
+            firstIndex === undefined ||
+            lastIndex === undefined ||
+            globalIndex < firstIndex + this.BUFFER ||
+            globalIndex > lastIndex - this.BUFFER
           ) {
-            this.updateVisiblePages(globalIndex);
+            this.preserveScroll(id, () => {
+              this.updateVisiblePages(globalIndex);
+            });
           }
         }
 
@@ -208,17 +212,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
           if (token !== this.loadToken) return;
 
-          const alreadyExists = this.pageUrls.has(page.id!);
-
           const url = await this.getOrCreateUrl(page);
           if (this.destroyed) return;
-
-          if (token !== this.loadToken) {
-            if (!alreadyExists && url) {
-              this.urlService.revokeUrl(url);
-            }
-            return;
-          }
 
           if (!url) continue;
 
@@ -231,7 +226,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadingSet.delete(id);
           this.loadingCount--;
 
-          // hide loader when all done
           if (this.loadingSet.size === 0 && this.isLoaderVisible) {
             this.loading.hide();
             this.isLoaderVisible = false;
@@ -240,7 +234,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
     }, {
-      rootMargin: '1200px',
+      rootMargin: '300px',
       threshold: 0.01
     });
   }
@@ -467,14 +461,26 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   // virtual window around current page
   private updateVisiblePages(centerIndex: number) {
+
     const start = Math.max(0, centerIndex - 40);
     const end = Math.min(this.pages.length, centerIndex + 40);
+
+    const currentStart = this.visiblePages[0]?.id;
+    const currentEnd = this.visiblePages[this.visiblePages.length - 1]?.id;
+
+    const newStartId = this.pages[start]?.id;
+    const newEndId = this.pages[end - 1]?.id;
+
+    // prevent unnecessary DOM updates
+    if (currentStart === newStartId && currentEnd === newEndId) {
+      return;
+    }
 
     const newIds = new Set(
       this.pages.slice(start, end).map(p => p.id)
     );
 
-    // revoke URLs that are no longer visible
+    // cleanup URLs outside window
     this.pageUrls.forEach((url, id) => {
       if (!newIds.has(id)) {
         this.urlService.revokeUrl(String(id));
@@ -483,5 +489,38 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
 
     this.visiblePages = this.pages.slice(start, end);
+  }
+
+  private preserveScroll(anchorId: number, callback: () => void) {
+
+    // find anchor element (current page or closest)
+    const anchorEl = this.imgRefs.find(r =>
+      Number(r.nativeElement.dataset['pageId']) === anchorId
+    )?.nativeElement;
+
+    if (!anchorEl) {
+      callback();
+      return;
+    }
+
+    // save position before DOM update
+    const prevTop = anchorEl.getBoundingClientRect().top;
+
+    callback();
+
+    // restore scroll after DOM update
+    requestAnimationFrame(() => {
+
+      const newEl = this.imgRefs.find(r =>
+        Number(r.nativeElement.dataset['pageId']) === anchorId
+      )?.nativeElement;
+
+      if (!newEl) return;
+
+      const newTop = newEl.getBoundingClientRect().top;
+      const delta = newTop - prevTop;
+
+      window.scrollBy(0, delta);
+    });
   }
 }
