@@ -1,5 +1,6 @@
 # Сlean Project
 rm -rf node_modules package-lock.json   
+Remove-Item -Force package-lock.json    
 Remove-Item -Recurse -Force node_modules
 npm cache clean --force    
 
