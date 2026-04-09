@@ -27,6 +27,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private pageIndexMap = new Map<number, number>();
 
+  private imgMap = new Map<number, HTMLImageElement>();
+
+  private visiblePagesMap = new Map<number, Page>();
+
   private MAX_LOAD = 12;
   private loadingCount = 0;
 
@@ -113,6 +117,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.imgRefs.changes
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
+
+        this.imgMap.clear();
+
+        this.imgRefs.forEach(ref => {
+          const el = ref.nativeElement;
+          const id = Number(el.dataset['pageId']);
+          this.imgMap.set(id, el);
+        });
+
         this.observeImages();
       });
   }
@@ -138,28 +151,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       const token = this.loadToken;
 
-      let centerY = window.innerHeight / 2;
+      if (!entries.some(e => e.isIntersecting)) return;
 
-      if (this.focusPageId !== null) {
-        const el = this.imgRefs.find(r =>
-          Number(r.nativeElement.dataset['pageId']) === this.focusPageId
-        )?.nativeElement;
+      const visible: IntersectionObserverEntry[] = [];
 
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          centerY = rect.top + rect.height / 2;
-        }
+      for (const e of entries) {
+        if (e.isIntersecting) visible.push(e);
+        if (visible.length >= this.MAX_LOAD) break;
       }
-
-      const visible = entries
-        .filter(e => e.isIntersecting)
-        .sort((a, b) => {
-          const aCenter = a.boundingClientRect.top + a.boundingClientRect.height / 2;
-          const bCenter = b.boundingClientRect.top + b.boundingClientRect.height / 2;
-
-          return Math.abs(aCenter - centerY) - Math.abs(bCenter - centerY);
-        })
-        .slice(0, this.MAX_LOAD);
 
       for (const entry of visible) {
 
@@ -191,7 +190,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           }
         }
 
-        const page = this.visiblePages.find(p => p.id === id);
+        const page = this.visiblePagesMap.get(id);
         if (!page) continue;
 
         if (this.loadingSet.has(id)) continue;
@@ -241,11 +240,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private observeImages() {
     // revoke old URLs that are no longer visible
-    this.imgRefs.forEach(ref => {
-      this.observer.unobserve(ref.nativeElement);
-    });
-
-    // reset observer targets
     this.observer.disconnect();
 
     // re-observe current images
@@ -255,27 +249,26 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private async loadImage(img: HTMLImageElement, url: string) {
-    return new Promise<void>((resolve) => {
 
-      if (img.src === url && img.complete) {
-        resolve();
-        return;
-      }
+    if (img.src === url && img.complete) return;
 
-      // fallback for iOS stuck loading
+    img.src = url;
+
+    if (img.complete) return;
+
+    await new Promise<void>((resolve) => {
+
       const timeout = setTimeout(resolve, 10000);
 
-      img.onload = () => {
+      const done = () => {
         clearTimeout(timeout);
+        img.onload = null;
+        img.onerror = null;
         resolve();
       };
 
-      img.onerror = () => {
-        clearTimeout(timeout);
-        resolve();
-      };
-
-      img.src = url;
+      img.onload = done;
+      img.onerror = done;
     });
   }
 
@@ -303,6 +296,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private cleanupFarImages(currentId: number) {
+    if (this.pageUrls.size === 0) return;
+
     const currentIndex = this.pageIndexMap.get(currentId);
     if (currentIndex === undefined) return;
 
@@ -369,9 +364,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
           if (!url) return;
 
-          const img = this.imgRefs.find(r =>
-            Number(r.nativeElement.dataset['pageId']) === page.id
-          )?.nativeElement;
+          const img = this.imgMap.get(page.id!);
 
           if (!img) return;
 
@@ -384,9 +377,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       })
     );
 
-    const target = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === pageId
-    )?.nativeElement;
+    const target = this.imgMap.get(pageId);
 
     if (target) {
       target.scrollIntoView({
@@ -419,9 +410,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     while (attempts < 5 && !target) {
       await new Promise(r => setTimeout(r, 50));
 
-      target = this.imgRefs.find(r =>
-        Number(r.nativeElement.dataset['pageId']) === pageId
-      )?.nativeElement;
+      target = this.imgMap.get(pageId);
 
       attempts++;
     }
@@ -476,9 +465,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const newIds = new Set(
-      this.pages.slice(start, end).map(p => p.id)
-    );
+    const newSlice = this.pages.slice(start, end);
+
+    const newIds = new Set(newSlice.map(p => p.id));
 
     // cleanup URLs outside window
     this.pageUrls.forEach((url, id) => {
@@ -488,15 +477,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    this.visiblePages = this.pages.slice(start, end);
+    this.visiblePages = newSlice;
+
+    this.visiblePagesMap.clear();
+    this.visiblePages.forEach(p => {
+      if (p.id != null) {
+        this.visiblePagesMap.set(p.id, p);
+      }
+    });
   }
 
   private preserveScroll(anchorId: number, callback: () => void) {
 
     // find anchor element (current page or closest)
-    const anchorEl = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === anchorId
-    )?.nativeElement;
+    const anchorEl = this.imgMap.get(anchorId);
 
     if (!anchorEl) {
       callback();
@@ -511,9 +505,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // restore scroll after DOM update
     requestAnimationFrame(() => {
 
-      const newEl = this.imgRefs.find(r =>
-        Number(r.nativeElement.dataset['pageId']) === anchorId
-      )?.nativeElement;
+      const newEl = this.imgMap.get(anchorId);
 
       if (!newEl) return;
 

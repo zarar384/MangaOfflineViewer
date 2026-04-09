@@ -15,8 +15,6 @@ import { LoadingService } from './core/services/loading.service';
   imports: [LayoutComponent, MolvLoaderComponent]
 })
 export class AppComponent {
-  private readonly VERSION_KEY = 'app_version';
-
   constructor(private updates: SwUpdate, private seedService: SeedService, private loading: LoadingService) {
     if (this.updates.isEnabled) {
       this.updates.versionUpdates.subscribe(event => {
