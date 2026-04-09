@@ -61,33 +61,42 @@ export class PagesRepository {
   }
 
   async getAll(tabId: number, chapterId?: number): Promise<Page[]> {
-    if (chapterId !== undefined) {
-      return this.getByChapter(chapterId);
+    try {
+      if (chapterId !== undefined) {
+        return this.getByChapter(chapterId);
+      }
+
+      return await db.pages
+        .where('[tabId+chapterOrder+pageNumber]')
+        .between(
+          [tabId, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
+          [tabId, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+        )
+        .toArray();
+
+    } catch (e) {
+      console.error('Dexie getAll error', e);
+      return [];
     }
-    
-    return db.pages
-      .where('[tabId+chapterOrder+pageNumber]')
-      .between(
-        [tabId, Dexie.minKey, Dexie.minKey],
-        [tabId, Dexie.maxKey, Dexie.maxKey]
-      )
-      .toArray();
   }
 
   // get only page ids to avoid loading src blobs into memory
   async getMeta(tabId: number): Promise<PageMeta[]> {
-    const pages = await db.pages
+    const result: PageMeta[] = [];
+
+    await db.pages
       .where('[tabId+chapterOrder+pageNumber]')
       .between(
-        [tabId, Dexie.minKey, Dexie.minKey],
-        [tabId, Dexie.maxKey, Dexie.maxKey]
+        [tabId, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
+        [tabId, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
       )
-      .sortBy('[tabId+chapterOrder+pageNumber]');
+      .each(p => {
+        result.push({
+          ...p,
+        });
+      });
 
-    return pages.map(p => ({
-      ...p,
-      src: null
-    }));
+    return result;
   }
 
   async getMetaByChapter(chapterId: number): Promise<PageMeta[]> {
