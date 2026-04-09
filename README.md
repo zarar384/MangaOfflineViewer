@@ -10,7 +10,9 @@ IndexedDB + Dexie
 Offline-first PWA for reading manga.  
 Primary focus: deterministic client-side behavior, local persistence, and minimal backend dependency.
 
-[Open Live App](https://zarar384.github.io/MangaOfflineViewer/)
+[Open Live App (GitHub Pages)](https://zarar384.github.io/MangaOfflineViewer/)
+
+[Open Live App (Netlify)](https://manga-offline-viewer.netlify.app/)
 
 [Watch the demo](https://youtu.be/-3GngfbSlKk)
 
