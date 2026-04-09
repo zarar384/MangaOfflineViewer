@@ -2,17 +2,27 @@
      [class.page-mode]="readerMode === 'page'"
      [class.scroll-mode]="readerMode === 'scroll'">
 
-  @for (page of visiblePages; track page.id) {
-    <div
-         [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">
+    @for (page of visiblePages; track page.id) {
+      <div class="image-container"
+           [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">
+    
+        <img
+          #imgRef
+          class="reader-img"
+          [style.width.%]="readerMode === 'scroll' ? readerZoom * 100 : 100"
+          [attr.data-page-id]="page.id"
+          [alt]="'page ' + page.id"
+        />
+      </div>
+    }
 
-      <img
-        #imgRef
-        class="reader-img"
-        [style.width.%]="readerMode === 'scroll' ? readerZoom * 100 : 100"
-        [attr.data-page-id]="page.id"
-        [alt]="'page ' + page.id"
-      />
+    @if(hasNextChapter) { 
+    <div class="next-chapter-container">
+      <button
+        class="molv-btn molv-btn-pink"
+        (click)="goToNextChapter()">
+        NEXT CHAPTER
+      </button>
     </div>
   }
 </div>

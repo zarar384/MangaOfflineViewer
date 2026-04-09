@@ -151,6 +151,15 @@ export class MangaDB extends Dexie {
       chapters: '++id, tabId, order, createdAt, [tabId+order]'
     });
 
+    // v8
+    this.version(8).stores({
+      tabs: '++id, name, updatedAt, description, mode',
+      pages: '++id, tabId, chapterId, chapterOrder, pageNumber, name, [tabId+chapterOrder+pageNumber], [tabId+chapterId]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, createdAt, [tabId+order]'
+    });
+
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({

@@ -19,6 +19,10 @@ export class ReaderService {
 
   /** Target current page for navigation (scroll target) */
   private _currentPageId = signal<number | undefined>(undefined);
+  
+  /** Bookmark for the current page */
+  private _currentPageBookmark = signal<number | undefined>(undefined);
+
   /** Navigation trigger to force scroll even if pageId doesn't change */
   private _navTick = signal(0);
 
@@ -65,6 +69,9 @@ export class ReaderService {
   /** Returns current gap between pages */
   readonly gap = computed(() => this._gap());
 
+  /** Returns current page for bookmark */
+  readonly currentPageBookmark = computed(() => this._currentPageBookmark());
+  
   setSettings(settings: {
     mode?: 'scroll' | 'page';
     zoom?: number;
@@ -89,11 +96,12 @@ export class ReaderService {
     pages: PageMeta[];
     currentPageId?: number;
   }): void {
+    this._isOpen.set(true);
     this._mangaId.set(params.mangaId);
     this._chapterId.set(params.chapterId);
     this._pages.set(params.pages);
     this._currentPageId.set(params.currentPageId);
-    this._isOpen.set(true);
+    this._currentPageBookmark.set(params.currentPageId);
   }
 
   // Close reader and reset state
@@ -103,6 +111,7 @@ export class ReaderService {
     this._chapterId.set(null);
     this._pages.set([]);
     this._currentPageId.set(undefined);
+    this._currentPageBookmark.set(undefined);
   }
 
   /**
@@ -111,7 +120,6 @@ export class ReaderService {
    * @param pageId - target page identifier
    */
   goToPage(pageId: number): void {
-    if(pageId === this._currentPageId())  return; // no need to navigate if already on target page
     // if (!this._isOpen()) return;
     this._currentPageId.set(pageId);
     this._navTick.update(v => v + 1); // trigger navigation even if pageId is the same
@@ -136,6 +144,11 @@ export class ReaderService {
     }
   }
 
+  // Directly set current page id (e.g., after loading new chapter)
+  setCurrentPageBookmark(pageId: number): void {
+    this._currentPageBookmark.set(pageId);
+  }
+
   // Returns current state snapshot (for imperative use only)
   getSnapshot() {
     return {
@@ -143,6 +156,7 @@ export class ReaderService {
       chapterId: this._chapterId(),
       pages: this._pages(),
       currentPageId: this._currentPageId(),
+      currentPageBookmark: this._currentPageBookmark(),
       isOpen: this._isOpen()
     };
   }

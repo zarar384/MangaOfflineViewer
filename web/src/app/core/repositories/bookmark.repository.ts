@@ -14,7 +14,22 @@ export class BookmarksRepository {
     return db.bookmarks.get(id);
   }
 
- async getAll(tabId: number) {
+  async exists(tabId: number, pageId: number) {
+  const bookmark = await db.bookmarks
+    .where('[tabId+pageId]')
+    .equals([tabId, pageId])
+    .first();
+
+  return !!bookmark;
+}
+  
+  async getAll(tabId: number, chapterId?: number | undefined) {
+    if (chapterId !== undefined) {
+      return db.bookmarks
+      .where('[tabId+chapterId]')
+      .equals([tabId, chapterId]).sortBy('id');
+    }
+
     return db.bookmarks.where('tabId').equals(tabId).sortBy('id');
   }
 

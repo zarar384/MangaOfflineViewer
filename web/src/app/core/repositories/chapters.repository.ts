@@ -100,6 +100,24 @@ export class ChaptersRepository {
     return chapters[chapters.length - 1].order + 1;
   }
 
+  async getNextChapter(currentChapterId: number): Promise<Chapter | undefined> {
+    const currentChapter = await this.get(currentChapterId);
+    if (!currentChapter) return undefined;
+
+    const nextChapter = await db.chapters
+      .where('tabId')
+      .equals(currentChapter.tabId)
+      .and(chapter => chapter.order > currentChapter.order)
+      .sortBy('order');
+
+    return nextChapter[0];
+  }
+
+  async hasNextChapter(currentChapterId: number): Promise<boolean> {
+    const nextChapter = await this.getNextChapter(currentChapterId);
+    return !!nextChapter; // to boolean
+  }
+
   async reorder(tabId: number, reordered: Chapter[]): Promise<void> {
     await db.transaction('rw', db.chapters, async () => {
       for (let i = 0; i < reordered.length; i++) {

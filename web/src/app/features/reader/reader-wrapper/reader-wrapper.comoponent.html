@@ -1,17 +1,13 @@
 <reader-settings-window
   [isVisible]="showSettingsWindow" 
   (hideWindow)="onSettingsWindowHide()"
-  (saveBookmarkClicked)="saveBookmark()"
   (goToBookmarkClicked)="goToBookmark($event)"
   (goToPageClicked)="goToPage($event)"
   (exportButtonClicked)="onExportButtonClicked($event)"
-  [bookmarks]="bookmarks"
-  [pages]="pageNumbers"
   [(gapLevel)]="gap"
   [(mode)]="mode"
   [(zoomLevel)]="zoom"
   [(downloadMod)]="downloadMod"
-  [(selectedBookmarkId)]="selectedBookmarkId"
 >
 </reader-settings-window>
 

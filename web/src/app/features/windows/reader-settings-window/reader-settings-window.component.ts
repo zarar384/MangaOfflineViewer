@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, effect, EventEmitter, Input, Output } from '@angular/core';
 import { Bookmark } from '../../../core/models/bookmark';
 import { Tab } from '../../../core/models/tab.model';
 import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
@@ -10,6 +10,7 @@ import { WindowComponent } from '../../../shared/components/window/window.compon
 import { FormsModule } from '@angular/forms';
 import { ReaderService } from '../../../core/services/reader.service';
 import { PageMeta } from '../../../core/models/page.model';
+import { numericNameSort } from 'src/app/shared/utils/file-parsing';
 
 @Component({
   selector: 'reader-settings-window',
@@ -24,9 +25,6 @@ export class ReaderSettingsWindowComponent {
   @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
-  @Input() bookmarks: Bookmark[] = [];
-  @Input() pages: PageMeta[] = [];
-  @Input() selectedBookmarkId: number | null = null;
   @Input() selectedPageNumber: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
@@ -38,16 +36,26 @@ export class ReaderSettingsWindowComponent {
   @Output() downloadModChange = new EventEmitter<'mhtml' | 'zip'>();
 
   @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
-  @Output() saveBookmarkClicked = new EventEmitter<void>();
   @Output() goToBookmarkClicked = new EventEmitter<number>();
   @Output() goToPageClicked = new EventEmitter<number>();
 
   activeTab: 'home' | 'bookmarks' = 'home';
-
+  bookmarks: Bookmark[] = [];
+  selectedBookmarkId: number | null = null;
+  
   constructor(
-    private uiState: UiStateService, 
+    private uiState: UiStateService,
     private bookmarksRepo: BookmarksRepository,
-   private reader: ReaderService) { }
+    private reader: ReaderService) {
+
+    effect(() => {
+      const chapterId = this.reader.chapterId();
+
+      if (!chapterId) return;
+
+      Promise.resolve().then(() => this.loadBookmarks());
+    });
+  }
 
   onWindowHide() {
     this.hideWindow.emit();
@@ -95,7 +103,7 @@ export class ReaderSettingsWindowComponent {
     this.uiState.saveState({ readerGap: this.gapLevel });
 
     this.reader.setSettings({ gap: this.gapLevel });
-    
+
     this.gapLevelChange.emit(value);
   }
 
@@ -124,7 +132,7 @@ export class ReaderSettingsWindowComponent {
 
   get pageOptions() {
     const options = [{ value: 0, label: 'Select' }];
-    var pages = (this.pages).map(n => ({
+    var pages = (this.reader.pages()).map(n => ({
       value: n.pageNumber!,
       label: `${n.pageNumber}`
     }));
@@ -154,7 +162,7 @@ export class ReaderSettingsWindowComponent {
 
   goToBookmark() {
     var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
-    var page = this.pages.find(p => p.id === bookmark?.pageId);
+    var page = this.reader.pages().find(p => p.id === bookmark?.pageId);
     this.selectedPageNumber = page ? page?.pageNumber! : null;
     this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
@@ -178,6 +186,40 @@ export class ReaderSettingsWindowComponent {
     }
   }
 
+    // SETTINGS WINDOW: BOOKMARKS
+  async saveBookmark() {
+    // Get current page from reader state
+    const reader = this.reader.getSnapshot();
+    if (!reader || !reader.currentPageBookmark) return;
+
+    // Load all bookmarks for current manga
+    try {
+      const page = this.reader.pages().find(p => p.id === reader.currentPageBookmark);
+      if (!page || page.pageNumber === undefined) return;
+
+      // check if bookmark for this page already exists
+      var existingBookmark = await this.bookmarksRepo.exists(reader.mangaId!, page.id!);
+
+      if (existingBookmark) {
+        console.log(`Bookmark for page ${page.pageNumber} already exists`);
+        return;
+      }
+
+      await this.bookmarksRepo.put({
+        tabId: reader.mangaId!,
+        pageId: page.id!,
+        chapterId: reader.chapterId ?? null,
+        createdAt: Date.now(),
+        title: `Page ${page.pageNumber}`
+      });
+
+      this.loadBookmarks();
+    } catch (err) {
+      console.log('Error while saving bookmark', err);
+    }
+  }
+
+
   async deleteBookmark(bookmark: Bookmark) {
     if (!bookmark.id) return;
 
@@ -192,6 +234,26 @@ export class ReaderSettingsWindowComponent {
 
     } catch (err) {
       console.error('Failed to delete bookmark', err);
+    }
+  }
+
+  async loadBookmarks() {
+    const reader = this.reader.getSnapshot();
+    if (!reader.mangaId) return;
+
+    try {
+      const bookmarks = await this.bookmarksRepo.getAll(reader.mangaId, reader?.chapterId || undefined);
+
+      this.bookmarks = bookmarks.sort((a, b) =>
+        numericNameSort(`${a}`, `${b}`)
+      );
+
+      if (reader.currentPageBookmark) {
+        this.selectedBookmarkId = bookmarks.find(b => b.tabId === reader.mangaId && b.pageId === reader.currentPageBookmark)?.id || null;
+      }
+
+    } catch (err) {
+      console.log(`Error loading bookmarks for manga ${reader.mangaId}`, err);
     }
   }
 }
