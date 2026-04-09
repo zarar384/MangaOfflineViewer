@@ -69,8 +69,8 @@ export class PagesRepository {
       return await db.pages
         .where('[tabId+chapterOrder+pageNumber]')
         .between(
-          [tabId, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
-          [tabId, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+          [tabId, Dexie.minKey, Dexie.minKey],
+          [tabId, Dexie.maxKey, Dexie.maxKey]
         )
         .toArray();
 
@@ -87,8 +87,8 @@ export class PagesRepository {
     await db.pages
       .where('[tabId+chapterOrder+pageNumber]')
       .between(
-        [tabId, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
-        [tabId, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+        [tabId, Dexie.minKey, Dexie.minKey],
+        [tabId, Dexie.maxKey, Dexie.maxKey]
       )
       .each(p => {
         result.push({
