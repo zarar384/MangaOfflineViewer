@@ -265,7 +265,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
             globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
           ) {
-            this.updateVisiblePages(globalIndex);
+            this.preserveScroll(id, () => {
+              this.updateVisiblePages(globalIndex);
+            });
           }
         }
 
@@ -562,6 +564,27 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       tries++;
     }
   }
+
+  // keeps scroll stable when DOM changes
+  // prevents visible jumps during window shift
+  private preserveScroll(anchorId: number, callback: () => void) {
+    const anchorEl = this.imgRefs.find(r =>
+      Number(r.nativeElement.dataset['pageId']) === anchorId
+    )?.nativeElement;
+    if (!anchorEl) { callback(); return; }
+
+    const prevTop = anchorEl.getBoundingClientRect().top;
+    callback();
+
+    requestAnimationFrame(() => {
+      const newEl = this.imgRefs.find(r =>
+        Number(r.nativeElement.dataset['pageId']) === anchorId
+      )?.nativeElement;
+      if (!newEl) return;
+      window.scrollBy(0, newEl.getBoundingClientRect().top - prevTop);
+    });
+  }
+
 
   // updates virtual window around current index
   private updateVisiblePages(centerIndex: number) {
