@@ -222,6 +222,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private setupObserver() {
     this.observer?.disconnect();
 
+    // preload ~1.5(1200px) screens ahead so images load before they enter viewport
+    const margin = Math.round(window.innerHeight * 1.5);
+
     this.observer = new IntersectionObserver(async (entries) => {
 
       const token = this.loadToken;
@@ -242,7 +245,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         // check if window shift is needed
         // happens near edges of current virtual window
-        if (globalIndex !== undefined) {
+        if (globalIndex !== undefined && entry.isIntersecting) {
           const first = this.visiblePages[0]?.id;
           const last = this.visiblePages[this.visiblePages.length - 1]?.id;
           const firstIndex = this.pageIndexMap.get(first!);
@@ -308,7 +311,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         }
       }
 
-    }, { rootMargin: '300px', threshold: 0.01 });
+    }, {
+      rootMargin: `${margin}px`,
+      threshold: 0.01
+    });
   }
 
   // attaches observer to current DOM elements

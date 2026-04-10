@@ -65,7 +65,7 @@ export class PagesRepository {
       if (!tabId) return [];
 
       if (chapterId !== undefined) {
-        return this.getByChapter(chapterId);
+        return this.getByChapter(tabId, chapterId);
       }
 
       return await db.pages
@@ -87,29 +87,29 @@ export class PagesRepository {
     const result: PageMeta[] = [];
 
     try {
-    if (!tabId) return result;
+      if (!tabId) return result;
 
-    if (chapterId !== undefined) {
-      const pages = await this.getByChapter(chapterId);
+      if (chapterId !== undefined) {
+        const pages = await this.getByChapter(tabId, chapterId);
 
-      return pages.map(p => ({
-        ...p
-      }));
-    }
+        return pages.map(p => ({
+          ...p
+        }));
+      }
 
-    await db.pages
-      .where('[tabId+chapterOrder+pageNumber]')
-      .between(
-        [tabId, Dexie.minKey, Dexie.minKey],
-        [tabId, Dexie.maxKey, Dexie.maxKey]
-      )
-      .each(p => {
-        result.push({
-          ...p,
+      await db.pages
+        .where('[tabId+chapterOrder+pageNumber]')
+        .between(
+          [tabId, Dexie.minKey, Dexie.minKey],
+          [tabId, Dexie.maxKey, Dexie.maxKey]
+        )
+        .each(p => {
+          result.push({
+            ...p,
+          });
         });
-      });
 
-    return result;
+      return result;
     }
     catch (e) {
       console.error('Dexie getMeta error', e);
@@ -130,10 +130,10 @@ export class PagesRepository {
   }
 
 
-  async getByChapter(chapterId: number) {
+  async getByChapter(tabId: number, chapterId: number) {
     return db.pages
-      .where('chapterId')
-      .equals(chapterId)
+      .where('[tabId+chapterId]')
+      .equals([tabId, chapterId])
       .sortBy('pageNumber');
   }
 

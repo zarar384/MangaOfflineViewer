@@ -23,3 +23,54 @@ ng serve --open
 
 --open - open browswer
 --hmr - Hot Module Replacement - Hot Reload
+
+
+# Reader Image Loading Flow (ReaderComponent + ReaderService)
+
+1. ChapterItemComponent: User clicks "read" (openChapter)
+
+2. Load only metadata (no images)
+   pagesRepo.getMetaByChapter() returns PageMeta[]
+
+3. Open reader with metadata
+   reader.open stores pages in state
+
+4. ReaderComponent reacts to state change
+   build index map and take slice (~80 pages) as visiblePages
+
+5. Render img elements without src
+
+6. IntersectionObserver starts watching images
+
+7. When image enters viewport
+   load full page data via pagesRepo.get(id)
+   set page.src on the same object
+
+8. If src is Blob, create object URL and cache it
+
+9. Set img.src and wait until it loads
+
+10. Limit number of parallel loads (MAX_LOAD = 12)
+
+11. Remove images far from current position to free memory
+
+12. On scroll, shift visible window (update visiblePages)
+
+13. Near start or end, load previous or next chapter and merge pages
+
+14. Merge logic:
+   - next chapter:
+     take last N pages from current pages (TAIL_PAGES = 10)
+     + append new pages from next chapter (without duplicates)
+
+   - previous chapter:
+     take new pages from previous chapter (without duplicates)
+     + append first N pages from current pages (TAIL_PAGES = 10)
+
+   - result replaces pages in ReaderService
+
+15. After setPages:
+   - component reinitializes (effect runs again)
+   - index map rebuilt
+   - visible window recalculated
+   - loading restarts with new token
