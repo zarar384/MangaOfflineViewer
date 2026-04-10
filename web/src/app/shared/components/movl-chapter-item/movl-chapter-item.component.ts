@@ -72,26 +72,34 @@ export class ChapterItemComponent implements OnChanges {
     // this.loadPages();
   }
 
-  async openChapter() {
-    const firstPage = await this.pagesRepo.getFirstPage(this.chapter.id!);
+async openChapter() {
+  if (!this.chapter.id) return;
 
-    if (!firstPage) return;
-
-    this.reader.open({
-      mangaId: this.chapter.tabId!,
-      chapterId: this.chapter.id!,
-      pages: this.pages,
-      currentPageId: firstPage.id!
-    });
-
-    this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
+  // If pages are not loaded yet, load them before opening reader
+  if (!this.pages.length) {
+    await this.loadPages();
   }
+
+  // open first page current chapter in reader
+  const firstPage = this.pages[0];
+
+  if (!firstPage) return;
+
+  this.reader.open({
+    mangaId: this.chapter.tabId!,
+    chapterId: this.chapter.id!,
+    pages: this.pages, // chapter pages 
+    currentPageId: firstPage.id!
+  });
+
+  this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
+}
 
   openPage(pageId: number) {
     this.reader.open({
       mangaId: this.chapter.tabId!,
       chapterId: this.chapter.id!,
-      pages: this.pages,
+      pages: this.pages, // chapter pages 
       currentPageId: pageId
     });
 

@@ -113,6 +113,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   private async rebuildUrls() {
+    if(!this.tabId) return;
+
     const pages = await this.pageRepo.getAll(this.tabId!, this.chapterId);
     this.pages = pages;
 

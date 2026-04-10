@@ -117,6 +117,11 @@ export class ReaderService {
     this._navTick.update(v => v + 1); // trigger navigation even if pageId is the same
   }
 
+  // Methods to update reader state (can be called from outside)
+  setCurrentPage(pageId: number): void {
+    this._currentPageId.set(pageId);
+  }
+
   /**
    * Replace current pages (e.g., when switching chapter)
    *

@@ -62,6 +62,8 @@ export class PagesRepository {
 
   async getAll(tabId: number, chapterId?: number): Promise<Page[]> {
     try {
+      if (!tabId) return [];
+
       if (chapterId !== undefined) {
         return this.getByChapter(chapterId);
       }
@@ -81,8 +83,19 @@ export class PagesRepository {
   }
 
   // get only page ids to avoid loading src blobs into memory
-  async getMeta(tabId: number): Promise<PageMeta[]> {
+  async getMeta(tabId: number, chapterId?: number): Promise<PageMeta[]> {
     const result: PageMeta[] = [];
+
+    try {
+    if (!tabId) return result;
+
+    if (chapterId !== undefined) {
+      const pages = await this.getByChapter(chapterId);
+
+      return pages.map(p => ({
+        ...p
+      }));
+    }
 
     await db.pages
       .where('[tabId+chapterOrder+pageNumber]')
@@ -97,6 +110,11 @@ export class PagesRepository {
       });
 
     return result;
+    }
+    catch (e) {
+      console.error('Dexie getMeta error', e);
+      return [];
+    }
   }
 
   async getMetaByChapter(chapterId: number): Promise<PageMeta[]> {

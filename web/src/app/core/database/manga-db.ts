@@ -164,7 +164,7 @@ export const db = new MangaDB();
 //   console.log('Current DB version:', db.verno);
 
 //   if (db.verno !== DB_VERSION) {
-//     console.warn('DB version mismatch → recreating');
+//     console.warn('DB version mismatch => recreating');
 
 //     await db.delete();
 

@@ -72,7 +72,7 @@ export class ReaderWrapperComoponent implements OnInit, OnChanges {
       this.pages = await this.pagesRepo.getMeta(this.activeManga);
 
       // Update reader state with new pages
-      this.reader.setPages(this.pages);
+      // this.reader.setPages(this.pages);
 
     } catch (err) {
       console.error('Error loading pages', err);
