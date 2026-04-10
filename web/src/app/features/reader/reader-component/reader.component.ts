@@ -242,7 +242,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.reader.setCurrentPageBookmark(id);
         }
       }
-
+      let windowUpdated = false;
       for (const entry of visible) {
 
         // cancel outdated async work
@@ -254,7 +254,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const globalIndex = this.pageIndexMap.get(id);
 
         // check if virtual window needs update
-        if (globalIndex !== undefined) {
+        if (globalIndex !== undefined && !windowUpdated) {
 
           const first = this.visiblePages[0]?.id;
           const last = this.visiblePages[this.visiblePages.length - 1]?.id;
@@ -268,6 +268,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             this.preserveScroll(id, () => {
               this.updateVisiblePages(globalIndex);
             });
+
+            windowUpdated = true;
           }
         }
 
