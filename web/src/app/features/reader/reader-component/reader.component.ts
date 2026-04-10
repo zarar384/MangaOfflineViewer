@@ -87,7 +87,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /**
    * threshold before shifting virtual window
    */
-  private BUFFER = 5; // number of pages from edge to trigger window update
+  private BUFFER = 15; // number of pages from edge to trigger window update
 
   /**
    * currently rendered subset of pages
@@ -234,7 +234,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         .slice(0, this.MAX_LOAD * 2);
 
       // update current page bookmark based on center
-      if (!this.isNavigating && visible.length > 0) {
+      if (!this.isNavigating && this.focusPageId === null && visible.length > 0) {
         const centerEntry = visible[0];
         const id = Number((centerEntry.target as HTMLImageElement).dataset['pageId']);
 
@@ -332,8 +332,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
     }, {
-      rootMargin: isIOS? '600px': '1200px',
-      threshold: isIOS? 0.1 : 0.01
+      rootMargin: isIOS ? '600px' : '1200px',
+      threshold: isIOS ? 0.1 : 0.01
     });
   }
 
@@ -449,11 +449,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // update window before loading
     this.updateVisiblePages(index);
 
+    await new Promise(r => requestAnimationFrame(r));
+    await this.waitForImages();
+
     const pages = this.visiblePages;
     const start = Math.max(0, index - this.MAX_LOAD);
-    const end = Math.min(pages.length, index + this.MAX_LOAD + 1);
+    const end = Math.min(this.pages.length, index + this.MAX_LOAD + 1);
 
-    const toLoad = pages.slice(start, end);
+    const toLoad = this.pages.slice(start, end);
 
     // preload nearby pages
     await Promise.all(
@@ -488,14 +491,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     );
 
     // scroll to target page
-    const target = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === pageId
-    )?.nativeElement;
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'auto',
-        block: 'start'
+    const container = document.querySelector('.reader-container') as HTMLElement;
+
+    const target = await this.waitForTarget(pageId);
+
+    if (target && container) {
+      const top = target.offsetTop - container.offsetTop;
+
+      container.scrollTo({
+        top,
+        behavior: 'auto'
       });
     }
 
@@ -524,17 +532,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     while (attempts < 5 && !target) {
       await new Promise(r => setTimeout(r, 50));
 
-      target = this.imgRefs.find(r =>
-        Number(r.nativeElement.dataset['pageId']) === pageId
-      )?.nativeElement;
+      target = await this.waitForTarget(pageId);
 
       attempts++;
     }
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'auto',
-        block: 'center'
+    const container = document.querySelector('.reader-container') as HTMLElement;
+
+    if (target && container) {
+      const top =
+        target.offsetTop - container.offsetTop;
+
+      container.scrollTo({
+        top,
+        behavior: 'auto'
       });
     }
   }
@@ -590,14 +601,57 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   // updates virtual window around current index
   private updateVisiblePages(centerIndex: number) {
-    const start = Math.max(0, centerIndex - 40);
-    const end = Math.min(this.pages.length, centerIndex + 40);
+    const WINDOW = 60;
+    const JUMP_THRESHOLD = 50;
 
-    const newIds = new Set(
-      this.pages.slice(start, end).map(p => p.id)
-    );
+    // if there's no window yet — just create it
+    if (!this.visiblePages.length) {
+      this.visiblePages = this.pages.slice(
+        Math.max(0, centerIndex - WINDOW),
+        Math.min(this.pages.length, centerIndex + WINDOW)
+      );
+      return;
+    }
 
-    // revoke URLs outside window
+    const firstId = this.visiblePages[0]?.id;
+    const lastId = this.visiblePages[this.visiblePages.length - 1]?.id;
+
+    const firstIndex = this.pageIndexMap.get(firstId!);
+    const lastIndex = this.pageIndexMap.get(lastId!);
+
+    if (firstIndex === undefined || lastIndex === undefined) return;
+
+    const currentCenter = Math.floor((firstIndex + lastIndex) / 2);
+    const distance = Math.abs(centerIndex - currentCenter);
+
+    const start = Math.max(0, centerIndex - WINDOW);
+    const end = Math.min(this.pages.length, centerIndex + WINDOW);
+    const newSlice = this.pages.slice(start, end);
+
+    // jump if distance is too big to avoid long processing and many URL revokes
+    if (distance >= JUMP_THRESHOLD) {
+
+      // reset URLs to avoid leaks (will be recreated on demand)
+      this.pageUrls.forEach((url, id) => {
+        this.urlService.revokeUrl(String(id));
+      });
+      this.pageUrls.clear();
+
+      this.visiblePages = newSlice;
+      return;
+    }
+
+    // scroll preservation logic when shifting window
+    if (
+      this.visiblePages.length === newSlice.length &&
+      this.visiblePages.every((p, i) => p.id === newSlice[i].id)
+    ) {
+      return;
+    }
+
+    const newIds = new Set(newSlice.map(p => p.id));
+
+    // delete only URLs that are no longer visible to preserve cache for nearby pages
     this.pageUrls.forEach((url, id) => {
       if (!newIds.has(id)) {
         this.urlService.revokeUrl(String(id));
@@ -605,7 +659,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    this.visiblePages = this.pages.slice(start, end);
+    this.visiblePages = newSlice;
   }
 
   // checks if last page is visible
@@ -631,5 +685,24 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       currentPageId: pages[0]?.id
     });
 
+  }
+
+  // waits until target page element is rendered in DOM
+  private async waitForTarget(pageId: number): Promise<HTMLElement | undefined> {
+    let attempts = 0;
+
+    while (attempts < 20) {
+      await new Promise(r => requestAnimationFrame(r));
+
+      const el = this.imgRefs.find(r =>
+        Number(r.nativeElement.dataset['pageId']) === pageId
+      )?.nativeElement;
+
+      if (el) return el;
+
+      attempts++;
+    }
+
+    return undefined;
   }
 }

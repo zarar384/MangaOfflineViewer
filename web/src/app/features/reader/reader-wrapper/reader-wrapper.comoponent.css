@@ -2,4 +2,4 @@
 .reader-container-wrapper::-webkit-scrollbar {  display: none; }
 
 /* ADAPT */
-@media (max-width: 768px) {  .reader-container-wrapper {    padding: 8px;  }}
+/* @media (max-width: 768px) {  .reader-container-wrapper {    padding: 8px;  }} */

@@ -1,5 +1,4 @@
 /* NAVBAR */
-.tabs-row {    display: flex;    align-items: center;    justify-content: space-between;    height: 48px;    margin-bottom: 12px;    gap: 6px;    flex-wrap: nowrap;}
 .tabs-left {    display: flex;    flex: 1 1 auto;    overflow: hidden;}
 .tabs-right {    display: flex;    align-items: center;    gap: 6px;    flex: 0 0 auto;}
 

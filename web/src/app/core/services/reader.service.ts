@@ -92,7 +92,7 @@ export class ReaderService {
    */
   open(params: {
     mangaId: number;
-    chapterId: number;
+    chapterId: number | null;
     pages: PageMeta[];
     currentPageId?: number;
   }): void {
