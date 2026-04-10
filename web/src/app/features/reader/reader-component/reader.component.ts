@@ -332,8 +332,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
     }, {
-      rootMargin: '1200px',
-      threshold: 0.01
+      rootMargin: isIOS? '600px': '1200px',
+      threshold: isIOS? 0.01 : 0.01
     });
   }
 
