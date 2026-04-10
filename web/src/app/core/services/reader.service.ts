@@ -102,6 +102,7 @@ export class ReaderService {
     this._pages.set(params.pages);
     this._currentPageId.set(params.currentPageId);
     this._currentPageBookmark.set(params.currentPageId);
+    // this._navTick.update(v => v + 1); // trigger navigation
   }
 
   // Close reader and reset state

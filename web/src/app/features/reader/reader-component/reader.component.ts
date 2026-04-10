@@ -163,7 +163,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     // reacts to navigation (page change)
     effect(() => {
-      const tick = this.reader.navTick();
       const pageId = this.reader.currentPageId();
       const pages = this.reader.pages();
 
@@ -452,11 +451,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     await new Promise(r => requestAnimationFrame(r));
     await this.waitForImages();
 
-    const pages = this.visiblePages;
-    const start = Math.max(0, index - this.MAX_LOAD);
-    const end = Math.min(this.pages.length, index + this.MAX_LOAD + 1);
+    const PRELOAD_BEFORE = this.MAX_LOAD * 2;
+    const PRELOAD_AFTER = this.MAX_LOAD;
 
-    const toLoad = this.pages.slice(start, end);
+    const start = Math.max(0, index - PRELOAD_BEFORE);
+    const end = Math.min(this.visiblePages.length, index + PRELOAD_AFTER);
+
+    const toLoad = this.visiblePages.slice(start, end);
 
     // preload nearby pages
     await Promise.all(
@@ -604,12 +605,25 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const WINDOW = 60;
     const JUMP_THRESHOLD = 50;
 
-    // if there's no window yet — just create it
+    let start = centerIndex - WINDOW;
+    let end = centerIndex + WINDOW;
+
+    // if we hit the end => shift window up
+    if (end >= this.pages.length) {
+      end = this.pages.length;
+      start = Math.max(0, end - WINDOW * 2);
+    }
+
+    // if we hit the start => shift window down
+    if (start <= 0) {
+      start = 0;
+      end = Math.min(this.pages.length, WINDOW * 2);
+    }
+
+    const newSlice = this.pages.slice(start, end);
+
     if (!this.visiblePages.length) {
-      this.visiblePages = this.pages.slice(
-        Math.max(0, centerIndex - WINDOW),
-        Math.min(this.pages.length, centerIndex + WINDOW)
-      );
+      this.visiblePages = newSlice;
       return;
     }
 
@@ -619,19 +633,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const firstIndex = this.pageIndexMap.get(firstId!);
     const lastIndex = this.pageIndexMap.get(lastId!);
 
-    if (firstIndex === undefined || lastIndex === undefined) return;
+    // 🔥 ключевой фикс
+    if (firstIndex === undefined || lastIndex === undefined) {
+      this.visiblePages = newSlice;
+      return;
+    }
 
     const currentCenter = Math.floor((firstIndex + lastIndex) / 2);
     const distance = Math.abs(centerIndex - currentCenter);
 
-    const start = Math.max(0, centerIndex - WINDOW);
-    const end = Math.min(this.pages.length, centerIndex + WINDOW);
-    const newSlice = this.pages.slice(start, end);
-
-    // jump if distance is too big to avoid long processing and many URL revokes
     if (distance >= JUMP_THRESHOLD) {
-
-      // reset URLs to avoid leaks (will be recreated on demand)
       this.pageUrls.forEach((url, id) => {
         this.urlService.revokeUrl(String(id));
       });
@@ -641,7 +652,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // scroll preservation logic when shifting window
     if (
       this.visiblePages.length === newSlice.length &&
       this.visiblePages.every((p, i) => p.id === newSlice[i].id)
@@ -651,7 +661,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     const newIds = new Set(newSlice.map(p => p.id));
 
-    // delete only URLs that are no longer visible to preserve cache for nearby pages
     this.pageUrls.forEach((url, id) => {
       if (!newIds.has(id)) {
         this.urlService.revokeUrl(String(id));
@@ -661,7 +670,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.visiblePages = newSlice;
   }
-
   // checks if last page is visible
   get isLastPage(): boolean {
     const pages = this.pages;

@@ -18,6 +18,5 @@ app-root { display:block; }
 ::-webkit-scrollbar-thumb:hover {  background: linear-gradient(    180deg,    rgba(210,170,255,1),    rgba(170,110,255,1)  );  box-shadow: 0 0 10px rgba(200,160,255,0.9);}
 ::-webkit-scrollbar-corner {  background: transparent;}
 
-
 /* NAVBAR */
 .tabs-row {    display: flex;    align-items: center;    justify-content: space-between;    height: 48px;    margin-bottom: 0px;    gap: 6px;    flex-wrap: nowrap;}
