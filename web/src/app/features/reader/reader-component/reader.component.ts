@@ -333,7 +333,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     }, {
       rootMargin: isIOS? '600px': '1200px',
-      threshold: isIOS? 0.01 : 0.01
+      threshold: isIOS? 0.1 : 0.01
     });
   }
 
