@@ -28,13 +28,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /** Intersection observer for lazy loading */
   private observer!: IntersectionObserver;
 
-    /**
+  /**
    * Set of page ids currently being observed.
    * Used to add only NEW elements to the observer without disconnecting it,
    * which would cancel all pending intersection callbacks.
    */
   private observedPageIds = new Set<number>();
-  
+
   /** Blocks observer logic during programmatic navigation */
   private isNavigating = false;
 
@@ -105,6 +105,24 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private fetchingNext = false;
   private fetchingPrev = false;
 
+  /**
+   * Manual scroll listener for upward scroll preloading.
+   *
+   * IntersectionObserver with rootMargin does not reliably fire callbacks
+   * for elements above the viewport during upward scroll on some browsers.
+   * This listener imperatively checks which unloaded images are close to
+   * the viewport on every scroll event and loads them directly.
+   *
+   * Attached to the reader-container element.
+   */
+  private scrollPreloadListener: (() => void) | null = null;
+
+  /**
+   * Throttle flag for the scroll preload listener.
+   * Prevents running the check on every single scroll event.
+   */
+  private scrollPreloadThrottled = false;
+
   constructor(
     private urlService: ObjectUrlService,
     private loading: LoadingService,
@@ -144,8 +162,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.updateVisiblePages(anchorIndex);
         });
 
-        // additive observe: only new elements, no disconnect
-        requestAnimationFrame(() => { this.observeNewImages(); });
+        requestAnimationFrame(() => {
+          this.observeNewImages();
+
+          // After prev-merge, new elements land above the viewport.
+          // The observer may not fire for them because their intersection
+          // state didn't change from the browser's perspective (they went
+          // from "not in DOM" to "above viewport" without crossing the edge).
+          // Manually trigger a load pass for everything near the viewport.
+          this.loadVisibleRange();
+        });
         return;
       }
 
@@ -180,6 +206,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         // full observer reset only on clean open
         this.setupObserver();
         this.observeAllImages();
+        this.setupScrollPreloadListener();
 
         // user opened reader in a chapter other than the first one
         // try to load adjacent chapters immediately
@@ -223,6 +250,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.destroyed = true;
     this.observer?.disconnect();
     this.observedPageIds.clear();
+    this.teardownScrollPreloadListener();
     this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
   }
@@ -416,7 +444,115 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
 
-  // CHAPTER TRACKING 
+  // SCROLL PRELOAD 
+
+  /**
+   * Attaches a scroll listener to the reader container that manually checks
+   * for unloaded images within a preload distance of the viewport and loads
+   * them imperatively — complementing the IntersectionObserver which does
+   * not reliably preload elements above the viewport during upward scroll
+   * on some browsers (notably Safari).
+   */
+  private setupScrollPreloadListener() {
+    this.teardownScrollPreloadListener();
+
+    const container = document.querySelector('.reader-container') as HTMLElement;
+    if (!container) return;
+
+    this.scrollPreloadListener = () => {
+      if (this.scrollPreloadThrottled || this.isNavigating) return;
+
+      this.scrollPreloadThrottled = true;
+
+      requestAnimationFrame(() => {
+        this.loadVisibleRange();
+        this.scrollPreloadThrottled = false;
+      });
+    };
+
+    container.addEventListener('scroll', this.scrollPreloadListener, { passive: true });
+  }
+
+  private teardownScrollPreloadListener() {
+    if (!this.scrollPreloadListener) return;
+
+    const container = document.querySelector('.reader-container') as HTMLElement;
+    container?.removeEventListener('scroll', this.scrollPreloadListener!);
+    this.scrollPreloadListener = null;
+  }
+
+  /**
+   * Scans all visible img refs and imperatively loads any image within
+   * PRELOAD_PX of the viewport that hasn't been loaded yet.
+   *
+   * Complements the observer's rootMargin preloading, which is unreliable
+   * for upward scroll on some browsers.
+   */
+  private loadVisibleRange() {
+    const PRELOAD_PX = 1200;
+    const token = this.loadToken;
+
+    this.imgRefs.forEach(ref => {
+      if (this.destroyed) return;
+      if (token !== this.loadToken) return;
+
+      const img = ref.nativeElement;
+      const id = Number(img.dataset['pageId']);
+
+      // skip already loaded images
+      if (img.src && img.complete && img.naturalHeight > 0) return;
+      if (this.loadingSet.has(id)) return;
+      if (this.loadingCount >= this.MAX_LOAD) return;
+
+      const rect = img.getBoundingClientRect();
+
+      // check if within preload range (above or below viewport)
+      const inRange =
+        rect.bottom >= -PRELOAD_PX &&
+        rect.top <= window.innerHeight + PRELOAD_PX;
+
+      if (!inRange) return;
+
+      const page = this.visiblePages.find(p => p.id === id);
+      if (!page) return;
+
+      // load imperatively — same pipeline as the observer
+      this.loadingSet.add(id);
+      this.loadingCount++;
+
+      if (!this.isLoaderVisible) {
+        this.loading.show();
+        this.isLoaderVisible = true;
+      }
+
+      this.ensurePageLoaded(page)
+        .then(() => {
+          if (this.destroyed || token !== this.loadToken) return;
+          return this.getOrCreateUrl(page);
+        })
+        .then(url => {
+          if (!url || this.destroyed || token !== this.loadToken) return;
+          return this.loadImage(img, url);
+        })
+        .then(() => {
+          if (this.destroyed) return;
+          this.cleanupFarImages(id);
+        })
+        .catch(() => { /* silent — observer will retry on next scroll */ })
+        .finally(() => {
+          this.loadingSet.delete(id);
+          this.loadingCount--;
+
+          if (this.loadingSet.size === 0 && this.isLoaderVisible) {
+            this.loading.hide();
+            this.isLoaderVisible = false;
+          }
+        });
+    });
+  }
+
+
+  // ─── CHAPTER TRACKING ─────────────────────────────────────────────────────
 
   /**
    * Rebuilds chapter ranges from the current pages buffer.
