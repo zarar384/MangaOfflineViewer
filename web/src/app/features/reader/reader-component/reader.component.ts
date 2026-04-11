@@ -173,6 +173,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       requestAnimationFrame(() => {
         this.setupObserver();
         this.observeImages();
+
+        // user opened reader in a chapter other than the first one
+        // try to load adjacent chapters immediately
+        if (this.reader.isOpen()) {
+          this.reader.resetIsOpen();
+
+          this.tryLoadAdjacentChapters(startIndex);
+        }
       });
     });
 
