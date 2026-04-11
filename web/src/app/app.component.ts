@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { LayoutComponent } from './features/layout/layout.component';
 import { MolvLoaderComponent } from './shared/components/molv-loader/molv-loader.component';
 import { SwUpdate } from '@angular/service-worker';
@@ -15,13 +15,19 @@ import { LoadingService } from './core/services/loading.service';
   imports: [LayoutComponent, MolvLoaderComponent]
 })
 export class AppComponent {
-  constructor(private updates: SwUpdate, private seedService: SeedService, private loading: LoadingService) {
-    if (this.updates.isEnabled) {
+
+  private updates = inject(SwUpdate, { optional: true });
+
+  constructor(
+    private seedService: SeedService,
+    private loading: LoadingService
+  ) {
+    if (this.updates?.isEnabled) {
       this.updates.versionUpdates.subscribe(event => {
         console.log('[SW]', event.type);
 
         if (event.type === 'VERSION_READY') {
-          this.updates.activateUpdate().then(() => {
+          this.updates?.activateUpdate().then(() => {
             // document.location.reload();
           });
         }
@@ -33,7 +39,6 @@ export class AppComponent {
     try {
       this.loading.show();
       await this.seedService.seedIfNeeded();
-
     } finally {
       this.loading.hide();
     }

@@ -40,8 +40,8 @@ if (!isDevMode()) {
 bootstrapApplication(AppComponent, {
   providers
 }).then(appRef => {
-  const updates = appRef.injector.get(SwUpdate);
-  updates.unrecoverable.subscribe(() => {
+  const updates = appRef.injector.get(SwUpdate, null);
+  updates?.unrecoverable.subscribe(() => {
     // ignore errors for now
   });
 });

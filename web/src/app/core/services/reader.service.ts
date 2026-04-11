@@ -91,9 +91,10 @@ export class ReaderService {
     chapterId: number | null;
     pages: PageMeta[];
     currentPageId?: number;
+    isOpen?: boolean;
   }): void {
     this._pagesUpdateKind.set('open');
-    this._isOpen.set(true);
+    this._isOpen.set(params.isOpen ?? true);
     this._mangaId.set(params.mangaId);
     this._chapterId.set(params.chapterId);
     this._pages.set(params.pages);
@@ -137,6 +138,16 @@ export class ReaderService {
    */
   setChapterId(chapterId: number): void {
     this._chapterId.set(chapterId);
+  }
+
+  /* Reset after check if pages is valid */
+  resetIsOpen() {
+    this._isOpen.set(false);
+  }
+
+  /* Set pages */
+  setPages(pages: PageMeta[]) {
+    this._pages.set(pages);
   }
 
   /**

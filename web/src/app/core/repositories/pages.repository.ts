@@ -117,6 +117,53 @@ export class PagesRepository {
     }
   }
 
+  async getMetaByChapterWithPrevPages(tabId: number, chapterId: number, takeFromPrevious: number): Promise<PageMeta[]> {
+    const chapter = await db.chapters.get(chapterId);
+
+    if (!chapter) {
+      return [];
+    }
+    const chapterOrder = chapter.order;
+    const currentPagesPromise = this.getByChapterOrder(tabId, chapterOrder);
+
+    const prevChapterOrderPromise = db.chapters
+      .where('[tabId+order]')
+      .between(
+        [tabId, Dexie.minKey],
+        [tabId, chapterOrder],
+        true,
+        false
+      )
+      .last()
+      .then(ch => ch?.order ?? null);
+
+    // wait both
+    const [currentPages, prevOrder] = await Promise.all([
+      currentPagesPromise,
+      prevChapterOrderPromise
+    ]);
+
+    // previos doesn't exist 
+    if (prevOrder == null || takeFromPrevious <= 0) {
+      return currentPages;
+    }
+
+    // take only needed amount of pages from previous chapter and merge with current
+    const prevPages = await db.pages
+      .where('[tabId+chapterOrder+pageNumber]')
+      .between(
+        [tabId, prevOrder, Dexie.minKey],
+        [tabId, prevOrder, Dexie.maxKey]
+      )
+      .reverse()                // last pages first
+      .limit(takeFromPrevious)
+      .toArray();
+
+    prevPages.reverse();
+
+    return prevPages.concat(currentPages);
+  }
+
   async getMetaByChapter(chapterId: number): Promise<PageMeta[]> {
     const pages = await db.pages
       .where('chapterId')
@@ -129,6 +176,12 @@ export class PagesRepository {
     }));
   }
 
+  async getByChapterOrder(tabId: number, chapterOrder: number) {
+    return db.pages
+      .where('[tabId+chapterOrder]')
+      .equals([tabId, chapterOrder])
+      .sortBy('pageNumber');
+  }
 
   async getByChapter(tabId: number, chapterId: number) {
     return db.pages

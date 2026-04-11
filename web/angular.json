@@ -40,6 +40,13 @@
             "webWorkerTsConfig": "tsconfig.worker.json"
           },
           "configurations": {
+            "development": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
             "production-local": {
               "serviceWorker": true,
               "ngswConfigPath": "ngsw-config.local.json",
@@ -74,6 +81,11 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "MangaOfflineViewerAngular:build"
+          },
+          "configurations": {
+            "development": {
+              "buildTarget": "MangaOfflineViewerAngular:build:development"
+            }
           }
         },
         "deploy": {

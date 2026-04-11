@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Dexie } from 'dexie';
 import { db } from '../database/manga-db';
 import { Chapter } from '../models/chapter.model';
 
@@ -104,27 +105,30 @@ export class ChaptersRepository {
     const currentChapter = await this.get(currentChapterId);
     if (!currentChapter) return undefined;
 
-    const nextChapter = await db.chapters
-      .where('tabId')
-      .equals(currentChapter.tabId)
-      .and(chapter => chapter.order > currentChapter.order)
-      .sortBy('order');
-
-    return nextChapter[0];
+    return db.chapters
+      .where('[tabId+order]')
+      .between(
+        [currentChapter.tabId, currentChapter.order],
+        [currentChapter.tabId, Dexie.maxKey],
+        false,
+        true
+      )
+      .first();
   }
 
   async getPrevChapter(currentChapterId: number): Promise<Chapter | undefined> {
     const currentChapter = await this.get(currentChapterId);
     if (!currentChapter) return undefined;
 
-    const prevChapter = await db.chapters
-      .where('tabId')
-      .equals(currentChapter.tabId)
-      .and(chapter => chapter.order < currentChapter.order)
-      .reverse()
-      .sortBy('order');
-
-    return prevChapter[0];
+    return db.chapters
+      .where('[tabId+order]')
+      .between(
+        [currentChapter.tabId, Dexie.minKey],
+        [currentChapter.tabId, currentChapter.order],
+        true,
+        false
+      )
+      .last();
   }
 
 
