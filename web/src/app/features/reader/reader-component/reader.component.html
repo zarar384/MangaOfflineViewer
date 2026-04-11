@@ -5,7 +5,7 @@
     @for (page of visiblePages; track page.id) {
       <div class="image-container"
            [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">
-    
+
         <img
           #imgRef
           class="reader-img"
@@ -16,15 +16,4 @@
       </div>
     }
 
-    @if(hasNextChapter) { 
-      <div class="end-space">
-        <div class="next-chapter-container">
-          <button
-            class="molv-btn molv-btn-pink"
-            (click)="goToNextChapter()">
-            NEXT CHAPTER
-          </button>
-        </div>
-      </div>
-    }
 </div>

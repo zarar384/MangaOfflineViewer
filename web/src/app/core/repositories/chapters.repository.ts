@@ -113,9 +113,29 @@ export class ChaptersRepository {
     return nextChapter[0];
   }
 
+  async getPrevChapter(currentChapterId: number): Promise<Chapter | undefined> {
+    const currentChapter = await this.get(currentChapterId);
+    if (!currentChapter) return undefined;
+
+    const prevChapter = await db.chapters
+      .where('tabId')
+      .equals(currentChapter.tabId)
+      .and(chapter => chapter.order < currentChapter.order)
+      .reverse()
+      .sortBy('order');
+
+    return prevChapter[0];
+  }
+
+
   async hasNextChapter(currentChapterId: number): Promise<boolean> {
     const nextChapter = await this.getNextChapter(currentChapterId);
     return !!nextChapter; // to boolean
+  }
+
+  async hasPrevChapter(currentChapterId: number): Promise<boolean> {
+    const prevChapter = await this.getPrevChapter(currentChapterId);
+    return !!prevChapter; // to boolean
   }
 
   async reorder(tabId: number, reordered: Chapter[]): Promise<void> {
