@@ -14,6 +14,9 @@ export class UiStateService {
   private refreshTabsSignal = signal(0);
 
   // signals
+  private updateAvailableSignal = signal(false);
+  updateAvailable = this.updateAvailableSignal.asReadonly();
+
   private editModeSignal = signal<boolean>(false);
   editMode = this.editModeSignal.asReadonly();
 
@@ -139,5 +142,14 @@ export class UiStateService {
   setSelectedManga(id: number | null) {
     this.selectedMangaIdSignal.set(id);
     this.saveState({ selectedMangaId: id });
+  }
+
+  // SW UPDATE AVAILABLE
+  setUpdateAvailable(value: boolean) {
+    this.updateAvailableSignal.set(value);
+  }
+
+  clearUpdate() {
+    this.updateAvailableSignal.set(false);
   }
 }

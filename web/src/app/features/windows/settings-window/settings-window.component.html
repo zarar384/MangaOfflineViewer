@@ -1,24 +1,19 @@
-<app-window
-  [visible]="isVisible"
-  title="Settings Mangas"
-  [width]="'500px'"
-  [height]="'400px'"
-  position="bottom-right"
-  [showClose]="false"
-  [showHide]="true"
-  [blockBackground]="false"
-  [showTransparency]="true"
-  (hide)="onWindowHide()">
+<app-window [visible]="isVisible" title="Settings Mangas" [width]="'500px'" [height]="'400px'" position="bottom-right"
+  [showClose]="false" [showHide]="true" [blockBackground]="false" [showTransparency]="true" (hide)="onWindowHide()">
   <div>
     <div class="controls">
       <div class="setting-left">
         <span class="setting-label">{{'language' | transloco}}</span>
         <molv-dropdown [(value)]="language" (valueChange)="onLangChange($event)" [options]="[
-                        { value: 1, label: 'ENG' },
-                        { value: 2, label: 'CZ' },
-                        { value: 3, label: 'RU' }
-                      ]">
+            { value: 'en', label: 'ENG' },
+            { value: 'cs', label: 'CZ' },
+            { value: 'ru', label: 'RU' }
+          ]">
         </molv-dropdown>
+      </div>
+      <div class="setting-left">
+        <span class="setting-label">{{'update' | transloco}}</span>
+        <button class="molv-btn molv-btn-pink" [disabled]="!updateAvailable()" (click)="updateApp()"> Update </button>
       </div>
     </div>
   </div>

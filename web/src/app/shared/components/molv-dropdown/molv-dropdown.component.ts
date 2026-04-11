@@ -13,8 +13,7 @@ export class MolvDropdownComponent {
 
   onChange(e: Event) {
     const val = (e.target as HTMLSelectElement).value;
-    const valNumber: number | null = val === '' ? null : +val;
-    this.value = valNumber;
-    this.valueChange.emit(valNumber);
+    this.value = val;
+    this.valueChange.emit(val);
   }
 }

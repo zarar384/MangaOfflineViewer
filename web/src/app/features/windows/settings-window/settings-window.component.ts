@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguageService } from '../../../core/services/language.service';
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { MolvModule } from '../../../shared/components/molv-module.component';
 import { WindowComponent } from '../../../shared/components/window/window.component';
+import { SwUpdate } from '@angular/service-worker';
 
 @Component({
   selector: 'settings-window',
@@ -17,9 +18,15 @@ export class SettingsWindowComponent {
   @Input() isVisible = false;
   @Output() hideWindow = new EventEmitter<void>();
 
+  private updates = inject(SwUpdate, { optional: true });
+  private uiState = inject(UiStateService);
+
   language = 'en';
 
-  constructor(private langService: LanguageService, private uiState: UiStateService) {
+  updateAvailable = this.uiState.updateAvailable;
+
+  constructor(
+    private langService: LanguageService) {
     this.language = this.uiState.getValue<string>('language') || this.langService.getLang();
   }
 
@@ -28,21 +35,19 @@ export class SettingsWindowComponent {
   }
 
   // LANGUAGE SETTINGS
-  onLangChange(value: number) {
-    // TODO: refactor with enum
-    const map: Record<typeof value, 'en' | 'cs' | 'ru'> = {
-      1: 'en',
-      2: 'cs',
-      3: 'ru'
-    };
-    const lang = map[value];
-
-    if (!lang) {
-      return;
-    }
-
+  onLangChange(lang: 'en' | 'cs' | 'ru') {
     this.language = lang;
     this.langService.setLang(lang);
     this.uiState.saveState({ language: lang });
+  }
+
+  // SW UPDATE 
+  async updateApp() {
+    if (!this.updates?.isEnabled) return;
+
+    await this.updates.activateUpdate();
+    this.uiState.clearUpdate();
+
+    document.location.reload();
   }
 }
