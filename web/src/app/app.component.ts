@@ -28,7 +28,7 @@ export class AppComponent {
 
         if (event.type === 'VERSION_READY') {
           this.updates?.activateUpdate().then(() => {
-            // document.location.reload();
+            document.location.reload();
           });
         }
       });
