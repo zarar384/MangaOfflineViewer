@@ -28,6 +28,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /** Intersection observer for lazy loading */
   private observer!: IntersectionObserver;
 
+    /**
+   * Set of page ids currently being observed.
+   * Used to add only NEW elements to the observer without disconnecting it,
+   * which would cancel all pending intersection callbacks.
+   */
+  private observedPageIds = new Set<number>();
+  
   /** Blocks observer logic during programmatic navigation */
   private isNavigating = false;
 
@@ -137,7 +144,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.updateVisiblePages(anchorIndex);
         });
 
-        requestAnimationFrame(() => { this.observeImages(); });
+        // additive observe: only new elements, no disconnect
+        requestAnimationFrame(() => { this.observeNewImages(); });
         return;
       }
 
@@ -160,10 +168,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.fetchingNext = false;
       this.fetchingPrev = false;
 
-      if (!this.isLoaderVisible) {
-        this.loading.show();
-        this.isLoaderVisible = true;
-      }
+      this.loading.show();
+      this.isLoaderVisible = true;
 
       this.loadToken++;
 
@@ -171,8 +177,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       if (container) container.scrollTop = 0;
 
       requestAnimationFrame(() => {
+        // full observer reset only on clean open
         this.setupObserver();
-        this.observeImages();
+        this.observeAllImages();
 
         // user opened reader in a chapter other than the first one
         // try to load adjacent chapters immediately
@@ -204,7 +211,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.imgRefs.changes
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => { this.observeImages(); });
+      .subscribe(() => {
+        // only observe elements that aren't watched yet
+        this.observeNewImages();
+      });
   }
 
   private destroyed = false;
@@ -212,6 +222,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     this.observer?.disconnect();
+    this.observedPageIds.clear();
     this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
   }
@@ -221,6 +232,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private setupObserver() {
     this.observer?.disconnect();
+    this.observedPageIds.clear();
 
     this.observer = new IntersectionObserver(async (entries) => {
 
@@ -358,11 +370,53 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  private observeImages() {
-    this.imgRefs.forEach(ref => { this.observer.unobserve(ref.nativeElement); });
-    this.observer.disconnect();
-    this.imgRefs.forEach(ref => { this.observer.observe(ref.nativeElement); });
+  /**
+   * Attaches observer to ALL current img elements.
+   * Only called on clean open (full observer reset).
+   * Clears observedPageIds so the additive path works correctly after.
+   */
+  private observeAllImages() {
+    this.observedPageIds.clear();
+
+    this.imgRefs.forEach(ref => {
+      const id = Number(ref.nativeElement.dataset['pageId']);
+      this.observer.observe(ref.nativeElement);
+      this.observedPageIds.add(id);
+    });
   }
+
+  /**
+   * Attaches observer ONLY to img elements not yet observed.
+   * Used after merges and DOM changes - does NOT disconnect the observer,
+   * preserving pending intersection callbacks for off-screen elements
+   * (e.g. pages above viewport preloaded via rootMargin).
+   */
+  private observeNewImages() {
+    this.imgRefs.forEach(ref => {
+      const id = Number(ref.nativeElement.dataset['pageId']);
+
+      if (!this.observedPageIds.has(id)) {
+        this.observer.observe(ref.nativeElement);
+        this.observedPageIds.add(id);
+      }
+    });
+
+    // unobserve elements that are no longer in the DOM
+    // (pages that left the virtual window)
+    const currentIds = new Set(
+      this.imgRefs.map(r => Number(r.nativeElement.dataset['pageId']))
+    );
+
+    this.observedPageIds.forEach(id => {
+      if (!currentIds.has(id)) {
+        this.observedPageIds.delete(id);
+        // element is already removed from DOM, observer auto-drops it
+      }
+    });
+  }
+
+
+  // CHAPTER TRACKING 
 
   /**
    * Rebuilds chapter ranges from the current pages buffer.
@@ -475,12 +529,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             // register before merging to block duplicate fetches
             this.loadedChapterIds.add(next.id!);
 
-            // record page range for boundary detection
-            this.chapterPageRanges.set(next.id!, {
-              first: newPages[0].id!,
-              last: newPages[newPages.length - 1].id!,
-            });
-
             this.reader.mergePages(newPages, 'next');
 
             this.fetchingNext = false;
@@ -505,11 +553,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             if (!newPages?.length) { this.fetchingPrev = false; return; }
 
             this.loadedChapterIds.add(prev.id!);
-
-            this.chapterPageRanges.set(prev.id!, {
-              first: newPages[0].id!,
-              last: newPages[newPages.length - 1].id!,
-            });
 
             this.reader.mergePages(newPages, 'prev');
 
