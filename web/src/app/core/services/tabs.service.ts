@@ -5,6 +5,10 @@ import { Tab } from '../models/tab.model';
 import { UiStateService } from './ui-state.service';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { DEFAULT_PREVIEW } from '../../../assets/assets.config';
+import { PageMeta } from '../models/page.model';
+import { ReaderService } from './reader.service';
+import { PagesRepository } from '../repositories/pages.repository';
+import { MangaDraftService } from './manga-draft.service';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -25,7 +29,10 @@ export class TabsService {
   constructor(
     private repo: TabsRepository,
     private url: ObjectUrlService,
-    private uiState: UiStateService
+    private uiState: UiStateService,
+    private pagesRepo: PagesRepository,
+    private reader: ReaderService,
+    private draftService: MangaDraftService
   ) {
     const savedActive = this.uiState.getValue<number>('activeTabId');
     if (savedActive !== null) {
@@ -122,6 +129,58 @@ export class TabsService {
     return tab.preview ?? DEFAULT_PREVIEW;
   }
 
+  async open({
+    mangaId,
+    pageId = null,
+    chapterId = null
+  }: {
+    mangaId: number;
+    pageId?: number | null;
+    chapterId?: number | null;
+  }) {
+
+    // clear states
+    this.draftService.clear();
+    this.reader.close();
+
+    const tab = await this.getTabById(mangaId);
+    if (!tab) {
+      await this.setSelectedManga(null);
+      return;
+    }
+
+    // open chapter view
+    if (tab.mode === ViewMod.Chapters && chapterId === null) {
+      await this.setSelectedManga(mangaId, ViewMod.Chapters);
+      return;
+    }
+
+    // load pages 
+    let pages: PageMeta[] = [];
+
+    if (chapterId) {
+      pages = await this.pagesRepo.getMetaByChapter(chapterId);
+    } else {
+      pages = await this.pagesRepo.getMeta(mangaId);
+    }
+
+    if (!pages.length) return;
+
+    // determine current page id
+    const currentPageId = pageId ?? pages[0].id!;
+
+    // open reader 
+    this.reader.open({
+      mangaId,
+      chapterId,
+      pages,
+      currentPageId
+    });
+
+    // set mode in UI
+    await this.setSelectedManga(mangaId, ViewMod.Single);
+  }
+
   // UI STATE INTERACTIONS
   async setSelectedManga(mangaId: number | null, mod: ViewMod | null = null) {
     {
@@ -147,8 +206,9 @@ export class TabsService {
 
       if (mode === ViewMod.Chapters)
         this.uiState.navigate(ViewMod.Chapters);
-      else
+      else {
         this.uiState.navigate(ViewMod.Single);
+      }
     }
   }
 

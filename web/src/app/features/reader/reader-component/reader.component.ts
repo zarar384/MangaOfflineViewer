@@ -552,7 +552,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
 
-  // ─── CHAPTER TRACKING ─────────────────────────────────────────────────────
+  // CHAPTER TRACKING
 
   /**
    * Rebuilds chapter ranges from the current pages buffer.

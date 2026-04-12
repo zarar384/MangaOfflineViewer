@@ -3,13 +3,12 @@ import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Chapter } from '../../../core/models/chapter.model';
-import { Page, PageMeta } from '../../../core/models/page.model';
+import { PageMeta } from '../../../core/models/page.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
 import { Tab } from '../../../core/models/tab.model';
 import { TabsService } from '../../../core/services/tabs.service';
-import { ViewMod } from '../../enums/viewmod.enum';
 import { ReaderService } from '../../../core/services/reader.service';
 
 @Component({
@@ -38,7 +37,6 @@ export class ChapterItemComponent implements OnChanges {
   constructor(
     private pagesRepo: PagesRepository,
     private tabService: TabsService,
-    private reader: ReaderService
   ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -72,38 +70,22 @@ export class ChapterItemComponent implements OnChanges {
     // this.loadPages();
   }
 
-async openChapter() {
-  if (!this.chapter.id) return;
+  async openChapter() {
+    if (!this.chapter.id) return;
 
-  // If pages are not loaded yet, load them before opening reader
-  if (!this.pages.length) {
-    await this.loadPages();
+    this.tabService.open({
+      mangaId: this.chapter.tabId!,
+      pageId: null, // first
+      chapterId: this.chapter.id!
+    });
   }
 
-  // open first page current chapter in reader
-  const firstPage = this.pages[0];
-
-  if (!firstPage) return;
-
-  this.reader.open({
-    mangaId: this.chapter.tabId!,
-    chapterId: this.chapter.id!,
-    pages: this.pages, // chapter pages 
-    currentPageId: firstPage.id!
-  });
-
-  this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
-}
-
   openPage(pageId: number) {
-    this.reader.open({
+    this.tabService.open({
       mangaId: this.chapter.tabId!,
-      chapterId: this.chapter.id!,
-      pages: this.pages, // chapter pages 
-      currentPageId: pageId
+      pageId: pageId,
+      chapterId: this.chapter.id!
     });
-
-    this.tabService.setSelectedManga(this.chapter.tabId, ViewMod.Single);
   }
 
   private async loadPages() {

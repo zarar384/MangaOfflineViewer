@@ -2,16 +2,12 @@ import { Component, effect, Input, OnChanges, OnInit, SimpleChanges } from '@ang
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
-import { numericNameSort } from '../../../shared/utils/file-parsing';
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { ExportService } from '../../../core/services/export.service';
-import { TabsRepository } from '../../../core/repositories/tabs.repository';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
-import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
-import { Page } from 'src/app/core/models/page.model';
-import { PagesRepository } from 'src/app/core/repositories/pages.repository';
+import { TabsService } from 'src/app/core/services/tabs.service';
 
 @Component({
   selector: 'app-manga-reader',
@@ -32,8 +28,7 @@ export class ReaderWrapperComoponent implements OnInit {
   showSettingsWindow = true;
 
   constructor(
-    private tabsRepo: TabsRepository,
-    private pagesRepo:  PagesRepository,
+    private tabsService: TabsService,
     private bookmarksRepo: BookmarksRepository,
     private uiState: UiStateService,
     private exportService: ExportService,
@@ -48,23 +43,6 @@ export class ReaderWrapperComoponent implements OnInit {
     this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
-
-    this.initManga();
-  }
-
-  async initManga() {
-    var tab = await this.tabsRepo.get(this.activeManga!);
-    
-    if (tab && tab.mode === ViewMod.Single) {
-      var pages = await this.pagesRepo.getAll(tab.id!);
-
-      this.reader.open({
-        mangaId: tab.id!,
-        chapterId: null,
-        pages: pages,
-        currentPageId: pages[0]?.id
-      });
-    }
   }
 
   // SETTINGS WINDOW: MAIN
@@ -94,7 +72,7 @@ export class ReaderWrapperComoponent implements OnInit {
     try {
       this.loading.show();
 
-      const tab = await this.tabsRepo.get(this.activeManga);
+      const tab = await this.tabsService.getTabById(this.activeManga);
       if (!tab) return;
 
       await this.exportService.exportManga(tab, this.reader.pages(), format);
