@@ -10,7 +10,7 @@
   [showTransparency]="true"
   (hide)="onWindowHide()">
 
-  <molv-tabs [tabs]="settingsTabs" [selectedTab]="activeTab === 'bookmarks' ? settingsTabs[0] : null"
+  <molv-tabs [userTabs]="settingsTabs" [selectedUserTab]="activeTab === 'bookmarks' ? settingsTabs[0].id! : null"
     (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
 
   <div class="tab-content">

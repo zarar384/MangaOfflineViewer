@@ -5,11 +5,11 @@
   </div>
 
   <!-- Dynamic tabs -->
-  @for (t of tabs; track t.id) {
+  @for (t of userTabs; track t.tabId) {
     <div
       class="explorer-tab"
-      [class.active]="tabsService.activeTabIdState() === t.id"
-      [attr.title]="t.name"
+      [class.active]="tabsService.activeTabIdState() === t.tabId"
+      [attr.title]="t.name" 
     >
       <button class="tab-btn" (click)="select(t)">
         {{ t.name }}

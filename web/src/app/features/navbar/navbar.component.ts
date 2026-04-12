@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, signal, computed, inject } from '@angular/core';
-import { Tab } from '../../core/models/tab.model';
 import { TabsService } from '../../core/services/tabs.service';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { MolvTabsComponent } from '../../shared/components/molv-tabs/molv-tabs.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
+import { UserTab } from 'src/app/core/models/usertab';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -32,14 +32,17 @@ export class NavbarComponent {
   perPage = computed(() => this.uiState.getValue<number>('perPage') ?? 10);
 
   // tabs from service
-  private tabsState = this.tabsService.tabsState;
+  private userTabsState = this.tabsService.userTabsState;
 
   // derived visible tabs
   visibleTabs = computed(() =>
-    this.tabsState().map(x => x.tab)
+    this.userTabsState()
   );
 
-  onTabSelected(tab: Tab) {
+  async onTabSelected(userTab: UserTab) {
+    var tab = await this.tabsService.getTabById(userTab.tabId);
+    if(!tab) return;
+
     var isChapterMode = tab.mode === ViewMod.Chapters;
     var isSameManga = tab.id == this.selectedMangaId();
 
@@ -52,12 +55,12 @@ export class NavbarComponent {
     this.mangaSelected.emit(tab.id);
   }
 
-  async onTabClosed(tab: Tab) {
-    await this.tabsService.removeTab(
-      tab.id!
+  async onTabClosed(userTab: UserTab) {
+    await this.tabsService.deleteUserTab(
+      userTab.tabId
     );
 
-    if (this.selectedMangaId() === tab.id) {
+    if (this.selectedMangaId() === userTab.tabId) {
       this.tabsService.setSelectedManga(null);
     }
   }

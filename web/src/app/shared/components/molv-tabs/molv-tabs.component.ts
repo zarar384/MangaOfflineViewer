@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Tab } from '../../../core/models/tab.model';
 import { TabsService } from '../../../core/services/tabs.service';
+import { UserTab } from 'src/app/core/models/usertab';
 
 @Component({
   selector: 'molv-tabs',
@@ -12,28 +12,28 @@ import { TabsService } from '../../../core/services/tabs.service';
   styleUrls: ['./molv-tabs.component.css'],
 })
 export class MolvTabsComponent {
-  @Input() tabs: Tab[] = [];
-  @Input() selectedTab: Tab | null = null;
+  @Input() userTabs: UserTab[] = [];
+  @Input() selectedUserTab: number | null = null;
 
   @Output() homeClicked = new EventEmitter<void>();
-  @Output() tabSelected = new EventEmitter<Tab>();
-  @Output() tabClosed = new EventEmitter<Tab>();
+  @Output() tabSelected = new EventEmitter<UserTab>();
+  @Output() tabClosed = new EventEmitter<UserTab>();
 
   constructor(public tabsService: TabsService) { }
 
-  select(tab: Tab) {
-    this.tabsService.setActiveTab(tab.id!);
-    this.tabSelected.emit(tab);
+  select(userTab: UserTab) {
+    this.tabsService.setActiveTab(userTab.tabId);
+    this.tabSelected.emit(userTab);
   }
 
-  close(tab: Tab) {
-    const isActive = this.tabsService.activeTabIdState() === tab.id;
+  close(userTab: UserTab) {
+    const isActive = this.tabsService.activeTabIdState() === userTab.tabId;
 
     if (isActive) {
       this.tabsService.setActiveTab(null);
     }
 
-    this.tabClosed.emit(tab);
+    this.tabClosed.emit(userTab);
 
     if (isActive) {
       this.homeClicked.emit();

@@ -5,12 +5,14 @@ import { Bookmark } from "../models/bookmark";
 import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_CHAPTERS, STORE_PAGES, STORE_TABS } from "../db.config";
 import { numericNameSort } from "../../shared/utils/file-parsing";
 import { Chapter } from "../models/chapter.model";
+import { UserTab } from "../models/usertab";
 
 export class MangaDB extends Dexie {
   pages!: Table<Page, number>;
   tabs!: Table<Tab, number>;
   bookmarks!: Table<Bookmark, number>;
   chapters!: Table<Chapter, number>;
+  userTabs!: Table<UserTab, number>;
 
   constructor() {
     super(DB_NAME);
@@ -159,6 +161,26 @@ export class MangaDB extends Dexie {
       chapters: '++id, tabId, order, createdAt, [tabId+order]'
     });
 
+
+    // v9
+    this.version(9).stores({
+      userTabs: '++id, name, tabId, createdAt',
+      tabs: '++id, name, updatedAt, description, mode',
+      pages: '++id, tabId, chapterId, chapterOrder, pageNumber, name, [tabId+chapterOrder+pageNumber], [tabId+chapterId]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, createdAt, [tabId+order]'
+    }).upgrade(async tx => {
+
+      // create default userTab for each existing tab
+      const tabs = await tx.table<Tab>(STORE_TABS).toArray();
+      const userTabs = tabs.map(t => ({
+        name: t.name,
+        tabId: t.id!,
+        createdAt: t.updatedAt ?? Date.now()
+      }));
+
+      await tx.table('userTabs').bulkAdd(userTabs);
+    });
 
     // future migrations can be added like version(n).upgrade(...)
     // example

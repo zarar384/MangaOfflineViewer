@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, EventEmitter, Input, Output } from '@angular/core';
 import { Bookmark } from '../../../core/models/bookmark';
-import { Tab } from '../../../core/models/tab.model';
 import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { MolvModule } from '../../../shared/components/molv-module.component';
@@ -9,8 +8,8 @@ import { MolvTabsComponent } from '../../../shared/components/molv-tabs/molv-tab
 import { WindowComponent } from '../../../shared/components/window/window.component';
 import { FormsModule } from '@angular/forms';
 import { ReaderService } from '../../../core/services/reader.service';
-import { PageMeta } from '../../../core/models/page.model';
 import { numericNameSort } from 'src/app/shared/utils/file-parsing';
+import { UserTab } from 'src/app/core/models/usertab';
 
 @Component({
   selector: 'reader-settings-window',
@@ -123,9 +122,9 @@ export class ReaderSettingsWindowComponent {
     this.exportButtonClicked.emit(format);
   }
 
-  get settingsTabs(): Tab[] {
+  get settingsTabs(): UserTab [] {
     if (this.bookmarks.length > 0) {
-      return [{ id: 1, name: 'Bookmarks' } as Tab];
+      return  [{ id: 1, name: 'Bookmarks', tabId: 0 }];
     }
     return [];
   }
@@ -169,7 +168,7 @@ export class ReaderSettingsWindowComponent {
 
   onHomeTab() { this.activeTab = 'home'; }
 
-  onTabSelected(tab: Tab) {
+  onTabSelected(tab: UserTab) {
     this.activeTab = tab.name === 'Bookmarks' ? 'bookmarks' : 'home';
   }
 

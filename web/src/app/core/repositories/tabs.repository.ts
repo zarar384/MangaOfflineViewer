@@ -51,11 +51,12 @@ export class TabsRepository {
   }
 
   async delete(id: number): Promise<void> {
-    await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
+    await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, db.userTabs, async () => {
       await db.tabs.delete(id);
       await db.pages.where('tabId').equals(id).delete();
       await db.bookmarks.where('tabId').equals(id).delete();
       await db.chapters.where('tabId').equals(id).delete();
+      await db.userTabs.where('tabId').equals(id).delete();
     });
   }
 
@@ -90,7 +91,7 @@ export class TabsRepository {
     }
 
     // transaction to save tab and pages
-    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
+    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters,  async () => {
       const tabToSave = {
         ...tab,
         preview: preview ?? tab.preview,

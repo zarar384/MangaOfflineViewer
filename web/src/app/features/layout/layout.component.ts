@@ -8,7 +8,6 @@ import { TabsService } from '../../core/services/tabs.service';
 import { MangaPageComponent } from "../manga-page/manga-page.component";
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
-import { ReaderService } from '../../core/services/reader.service';
 
 @Component({
   selector: 'app-manga-layout',
@@ -59,6 +58,7 @@ export class LayoutComponent implements OnInit {
 
   async onMangaSelected(mangaId: number | null) {
     if (mangaId === null) return;
+    await this.tabsService.createUserTab(mangaId);
     await this.tabsService.open({ mangaId });
   }
 

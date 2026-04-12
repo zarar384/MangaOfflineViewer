@@ -1,7 +1,6 @@
 import { Injectable, signal, effect } from '@angular/core';
 import { TabsRepository } from '../repositories/tabs.repository';
 import { ObjectUrlService } from './object-url.service';
-import { Tab } from '../models/tab.model';
 import { UiStateService } from './ui-state.service';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { DEFAULT_PREVIEW } from '../../../assets/assets.config';
@@ -9,6 +8,9 @@ import { PageMeta } from '../models/page.model';
 import { ReaderService } from './reader.service';
 import { PagesRepository } from '../repositories/pages.repository';
 import { MangaDraftService } from './manga-draft.service';
+import { UserTabsRepository } from '../repositories/usertab.repository';
+import { UserTab } from '../models/usertab';
+import { Tab } from '../models/tab.model';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -16,6 +18,9 @@ export class TabsService {
   private page = signal(1);
   private perPage = signal(10);
   private hydrated = signal(false);
+
+  private userTabs = signal<UserTab[]>([]);
+  readonly userTabsState = this.userTabs.asReadonly();
 
   private tabs = signal<{ tab: Tab; previewUrl: string }[]>([]);
   readonly tabsState = this.tabs.asReadonly();
@@ -32,7 +37,8 @@ export class TabsService {
     private uiState: UiStateService,
     private pagesRepo: PagesRepository,
     private reader: ReaderService,
-    private draftService: MangaDraftService
+    private draftService: MangaDraftService,
+    private userTabsRepo: UserTabsRepository
   ) {
     const savedActive = this.uiState.getValue<number>('activeTabId');
     if (savedActive !== null) {
@@ -70,6 +76,7 @@ export class TabsService {
 
   async deleteTab(id: number) {
     await this.repo.delete(id);
+    await this.userTabsRepo.delete(id);
     await this.refresh();
   }
 
@@ -92,6 +99,32 @@ export class TabsService {
     return this.activeTabId();
   }
 
+  async createUserTab(tabId: number) {
+    const existing = await this.userTabsRepo.get(tabId);
+    if (existing) return;
+
+    const tab = await this.getTabById(tabId);
+    if (!tab) throw new Error(`Tab with id ${tabId} not found`);
+
+    const newTab: UserTab = {
+      name: tab.name || `Tab ${tabId}`,
+      tabId,
+      createdAt: Date.now()
+    };
+
+    await this.userTabsRepo.put(newTab);
+
+    this.userTabs.update(tabs => [...tabs, newTab]);
+  }
+
+  async deleteUserTab(tabId: number) {
+    await this.userTabsRepo.delete(tabId);
+
+    this.userTabs.update(tabs =>
+      tabs.filter(t => t.tabId !== tabId)
+    );
+  }
+
   private async load(page: number, perPage: number) {
     const tabs = await this.repo.getPaged(page, perPage);
 
@@ -104,10 +137,12 @@ export class TabsService {
 
     this.tabs.set(previewData);
     this.totalTabs.set(await this.repo.getTotalCount());
+    this.userTabs.set(await this.userTabsRepo.getAll());
   }
 
   async removeTab(id: number) {
     await this.repo.delete(id);
+    await this.userTabsRepo.delete(id);
     this.load(this.page(), this.perPage());
   }
 
