@@ -53,12 +53,14 @@ export class ReaderWrapperComoponent implements OnInit {
     this.reader.goToPage(pageId);
   }
 
-  async goToBookmark(bookmarkId: number) {
-    const bm = await this.bookmarksRepo.get(bookmarkId);
-    if (!bm) return;
+goToBookmark = async (bookmarkId: number | string) => {
+  const id = Number(bookmarkId); 
 
-    this.reader.goToPage(bm.pageId);
-  }
+  const bm = await this.bookmarksRepo.get(id);
+  if (!bm) return;
+
+  this.reader.goToPage(bm.pageId);
+}
 
   // SETTINGS WINDOW: VISUAL
   onSettingsWindowHide() {

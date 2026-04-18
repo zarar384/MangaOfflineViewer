@@ -12,8 +12,13 @@ export class MolvDropdownComponent {
   @Output() valueChange = new EventEmitter<any>();
 
   onChange(e: Event) {
-    const val = (e.target as HTMLSelectElement).value;
-    this.value = val;
-    this.valueChange.emit(val);
-  }
+  const select = e.target as HTMLSelectElement;
+  const index = select.selectedIndex;
+
+  const val = this.options[index]?.value; // original value
+
+  this.value = val;
+  this.valueChange.emit(val);
+}
+
 }

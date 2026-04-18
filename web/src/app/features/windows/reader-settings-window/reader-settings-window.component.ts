@@ -41,7 +41,9 @@ export class ReaderSettingsWindowComponent {
   activeTab: 'home' | 'bookmarks' = 'home';
   bookmarks: Bookmark[] = [];
   selectedBookmarkId: number | null = null;
-  
+  editingBookmarkId: number | null = null;
+  originalTitle: string = '';
+
   constructor(
     private uiState: UiStateService,
     private bookmarksRepo: BookmarksRepository,
@@ -122,9 +124,9 @@ export class ReaderSettingsWindowComponent {
     this.exportButtonClicked.emit(format);
   }
 
-  get settingsTabs(): UserTab [] {
+  get settingsTabs(): UserTab[] {
     if (this.bookmarks.length > 0) {
-      return  [{ id: 1, name: 'Bookmarks', tabId: 0 }];
+      return [{ id: 1, name: 'Bookmarks', tabId: 0 }];
     }
     return [];
   }
@@ -172,7 +174,34 @@ export class ReaderSettingsWindowComponent {
     this.activeTab = tab.name === 'Bookmarks' ? 'bookmarks' : 'home';
   }
 
-  // BOOKMARK EDIT / DELETE 
+  // BOOKMARK EDIT / DELETE / CREATE / CANCEL
+  async saveBookmarkEdit(bm: Bookmark) {
+    if (!bm.id) return;
+
+    try {
+      await this.bookmarksRepo.put(bm);
+      this.editingBookmarkId = null;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  cancelBookmarkEdit(bm: Bookmark) {
+    bm.title = this.originalTitle;
+    this.editingBookmarkId = null;
+  }
+
+  startEditBookmark(bm: Bookmark) {
+    if (this.editingBookmarkId !== null) return; // block if another bookmark is being edited
+
+    this.editingBookmarkId = bm.id!;
+    this.originalTitle = bm.title || '';
+  }
+
+  isEditing(bm: Bookmark): boolean {
+    return this.editingBookmarkId === bm.id;
+  }
+
   async editBookmarkTitle(bookmark: Bookmark, newTitle?: string) {
     if (!bookmark.id) return;
 
@@ -185,7 +214,7 @@ export class ReaderSettingsWindowComponent {
     }
   }
 
-    // SETTINGS WINDOW: BOOKMARKS
+  // SETTINGS WINDOW: BOOKMARKS
   async saveBookmark() {
     // Get current page from reader state
     const reader = this.reader.getSnapshot();
@@ -228,6 +257,11 @@ export class ReaderSettingsWindowComponent {
       this.bookmarks = this.bookmarks.filter(b => b.id !== bookmark.id);
 
       if (this.selectedBookmarkId === bookmark.id) {
+        this.selectedBookmarkId = null;
+      }
+
+      if(this.bookmarks.length === 0) {
+        this.activeTab = 'home';
         this.selectedBookmarkId = null;
       }
 

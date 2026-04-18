@@ -9,12 +9,7 @@
       }
 
       <div class="title-container">
-        @if (isEditMode) {
-        <input class="molv-txtbx chapter-title-input" [(ngModel)]="editTitle" (click)="$event.stopPropagation()" />
-        }
-        @else {
-        <span class="chapter-title">{{ chapter.title }}</span>
-        }
+         <molv-textbox [value]="isEditMode ? editTitle : chapter.title" (valueChange)="editTitle = $event" [isEditMode]="isEditMode"> </molv-textbox>
       </div>
     </div>
 

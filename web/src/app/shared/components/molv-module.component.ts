@@ -3,10 +3,11 @@ import { NgModule } from "@angular/core";
 import { MolvSwitchComponent } from "./molv-switch/molv-switch.component";
 import { MolvSliderComponent } from "./molv-slider/molv-slider.component";
 import { MolvDropdownComponent } from "./molv-dropdown/molv-dropdown.component";
+import { MolvTextboxComponent } from "./molv-textbox/molv-textbox";
 
 @NgModule({
   declarations: [MolvSwitchComponent, MolvSliderComponent, MolvDropdownComponent],
-  exports: [MolvSwitchComponent, MolvSliderComponent, MolvDropdownComponent],
-  imports: [CommonModule]
+  exports: [MolvSwitchComponent, MolvSliderComponent, MolvDropdownComponent, MolvTextboxComponent ],
+  imports: [CommonModule, MolvTextboxComponent]
 })
 export class MolvModule { }

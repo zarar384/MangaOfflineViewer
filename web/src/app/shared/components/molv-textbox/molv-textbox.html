@@ -1,0 +1,12 @@
+@if (isEditMode) {
+  <input
+    class="molv-txtbx {{ className }}"
+    [ngModel]="value"
+    (ngModelChange)="onInputChange($event)"
+    [placeholder]="placeholder"
+    (click)="stopClick($event)"
+  />
+}
+@else {
+  <span class="{{ className }}">{{ value }}</span>
+}

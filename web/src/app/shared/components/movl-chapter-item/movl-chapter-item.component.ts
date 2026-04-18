@@ -9,13 +9,13 @@ import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
 import { Tab } from '../../../core/models/tab.model';
 import { TabsService } from '../../../core/services/tabs.service';
-import { ReaderService } from '../../../core/services/reader.service';
+import { MolvModule } from '../molv-module.component';
 
 @Component({
   selector: 'movl-chapter-item',
   templateUrl: './movl-chapter-item.component.html',
   styleUrls: ['./movl-chapter-item.component.css'],
-  imports: [CommonModule, FormsModule, TranslocoPipe, MolvDropUploaderComponents],
+  imports: [CommonModule, FormsModule, TranslocoPipe, MolvDropUploaderComponents, MolvModule],
   standalone: true
 })
 export class ChapterItemComponent implements OnChanges {
