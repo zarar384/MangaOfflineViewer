@@ -52,7 +52,7 @@ export class ReaderSettingsWindowComponent {
     effect(() => {
       const chapterId = this.reader.chapterId();
 
-      if (!chapterId) return;
+      // if (!chapterId) return;
 
       Promise.resolve().then(() => this.loadBookmarks());
     });
