@@ -1,5 +1,8 @@
 {
     "home": "Domů",
+    "description": "Popis",
+    "title": "Název",
+    "change": "Změnit",
     "uploadFiles": "Nahrát soubory",
     "settingsMangas": "Nastavení mang",
     "gap": "Mezera",
@@ -30,6 +33,11 @@
     "pages": "Stránky",
     "cancel": "Zrušit",
     "edit": "Upravit",
+    "select": "Vybrat",
+    "uploadSingleChapter": "Nahrát jedinou kapitolu",
+    "uploadMultipleChapters": "Nahrát více kapitol",
+    "single": "Jediná",
+    "multi": "Více",
     "toast": {
         "saved": "Úspěšně uloženo",
         "deleted": "Úspěšně smazáno",
