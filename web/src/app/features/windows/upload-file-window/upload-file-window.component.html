@@ -1,4 +1,4 @@
-<app-window [visible]="isVisible" title="Import Mangas" [width]="'500px'" [height]="'400px'" position="center"
+<app-window [visible]="isVisible" title= "{{'importMangas' | transloco}}" [width]="'500px'" [height]="'400px'" position="center"
   [showClose]="true" [closeDisabled]="filesProcessing" [showHide]="false" [showTransparency]="false"
   (close)="onWindowClose()">
 
@@ -6,21 +6,21 @@
 
     <!-- selection mode -->
     <div class="molv-mode-switch">
-      <button class="molv-btn molv-btn-orange molv-mode-btn active" title="Upload a single chapter">
-        Single
+      <button class="molv-btn molv-btn-orange molv-mode-btn active" title="{{'uploadSingleChapter' | transloco}}">
+        {{'single' | transloco}}
       </button>
 
-      <button class="molv-btn molv-btn-pink molv-mode-btn" title="Upload multiple chapters"
+      <button class="molv-btn molv-btn-pink molv-mode-btn" title="{{'uploadMultipleChapters' | transloco}}"
         (click)="openChaptersMode()">
-        Multi
+        {{'multi' | transloco}}
       </button>
     </div>
 
     <!-- form -->
-    <input type="text" class="molv-txtbx" placeholder="Manga Name" [(ngModel)]="fileName" />
+    <input type="text" class="molv-txtbx" placeholder="{{'mangaName' | transloco}}" [(ngModel)]="fileName" />
 
     <button class="molv-btn molv-btn-pink" (click)="saveAndClose()">
-      Save
+      {{'save' | transloco}}
     </button>
 
     <molv-drop-uploader [visible]="isVisible" [saveAll$]="saveAll$" [clearAll$]="clearAll$"

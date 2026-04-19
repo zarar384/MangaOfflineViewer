@@ -12,10 +12,12 @@ import { TabsService } from "../../../core/services/tabs.service";
 import { ViewMod } from "../../../shared/enums/viewmod.enum";
 import { LoadingService } from "../../../core/services/loading.service";
 import { Chapter } from "../../../core/models/chapter.model";
+import { TranslocoPipe } from "@jsverse/transloco";
+import { LanguageService } from "src/app/core/services/language.service";
 
 @Component({
   selector: 'edit-tab-window',
-  imports: [WindowComponent, CommonModule, MolvDropUploaderComponents, FormsModule],
+  imports: [WindowComponent, CommonModule, MolvDropUploaderComponents, FormsModule, TranslocoPipe],
   templateUrl: './edit-tab-window.component.html',
   styleUrls: ['./edit-tab-window.component.css'],
   standalone: true
@@ -33,7 +35,13 @@ export class EditTabWindowComponent implements OnChanges {
   clearAll$ = new Subject<void>();
   filesProcessing = false;
 
-  constructor(private pagesRepo: PagesRepository, private tabService: TabsService, private loading: LoadingService) { }
+  constructor(
+    private pagesRepo: PagesRepository, 
+    private tabService: TabsService, 
+    private loading: LoadingService, 
+    private langService: LanguageService
+  ) { }
+  
   async ngOnChanges(changes: SimpleChanges) {
     await this.loadPages();
   }
@@ -75,7 +83,7 @@ export class EditTabWindowComponent implements OnChanges {
         return;
       }
 
-      tab.name = this.fileName ?? `Tab ${tab.id}`;
+      tab.name = this.fileName ?? `${this.langService.translate('tab')} ${tab.id}`;
       this.saveAll$.next([tab, undefined]);
     }
     catch (err) {

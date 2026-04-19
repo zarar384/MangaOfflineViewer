@@ -6,14 +6,14 @@ import { provideHttpClient } from '@angular/common/http';
 
 import { provideTransloco } from '@jsverse/transloco';
 import { TranslocoLoaderService } from './app/core/services/transloco-loader.service';
-import { LanguageService } from './app/core/services/language.service';
+import { LanguageService, SupportedLangs } from './app/core/services/language.service';
 
 const providers = [
   provideHttpClient(), // to load assets/i18n JSON files
 
   provideTransloco({
     config: {
-      availableLangs: ['en', 'cs', 'ru'],
+      availableLangs: Object.values(SupportedLangs),
       defaultLang: 'en',
       fallbackLang: 'en',
       reRenderOnLangChange: true,

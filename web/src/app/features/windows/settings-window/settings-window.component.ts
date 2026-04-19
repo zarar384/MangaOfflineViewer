@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { LanguageService } from '../../../core/services/language.service';
+import { LanguageService, SupportedLangs } from '../../../core/services/language.service';
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { MolvModule } from '../../../shared/components/molv-module.component';
 import { WindowComponent } from '../../../shared/components/window/window.component';
@@ -21,13 +21,17 @@ export class SettingsWindowComponent {
   private updates = inject(SwUpdate, { optional: true });
   private uiState = inject(UiStateService);
 
-  language = 'en';
+  // LANGUAGE SETTINGS
+  language: SupportedLangs = SupportedLangs.EN;
 
+  // SW UPDATE
   updateAvailable = this.uiState.updateAvailable;
 
-  constructor(
-    private langService: LanguageService) {
-    this.language = this.uiState.getValue<string>('language') || this.langService.getLang();
+  // Expose enum to template
+  supportedLangs = SupportedLangs;
+
+  constructor(private langService: LanguageService) {
+    this.language = this.uiState.getValue<SupportedLangs>('language') || this.langService.getLang();
   }
 
   onWindowHide() {
@@ -35,7 +39,7 @@ export class SettingsWindowComponent {
   }
 
   // LANGUAGE SETTINGS
-  onLangChange(lang: 'en' | 'cs' | 'ru') {
+  onLangChange(lang: SupportedLangs) {
     this.language = lang;
     this.langService.setLang(lang);
     this.uiState.saveState({ language: lang });

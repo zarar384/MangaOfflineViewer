@@ -10,10 +10,12 @@ import { UiStateService } from '../../../core/services/ui-state.service';
 import { ViewMod } from '../../../shared/enums/viewmod.enum';
 import { TabsService } from '../../../core/services/tabs.service';
 import { Chapter } from '../../../core/models/chapter.model';
+import { LanguageService } from 'src/app/core/services/language.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'upload-file-window',
-  imports: [WindowComponent, CommonModule, MolvDropUploaderComponents, FormsModule],
+  imports: [WindowComponent, CommonModule, MolvDropUploaderComponents, FormsModule, TranslocoPipe],
   templateUrl: './upload-file-window.component.html',
   styleUrls: ['./upload-file-window.component.css'],
   standalone: true
@@ -35,7 +37,9 @@ export class UploadFileWindowComponent {
   constructor(
     private uiState: UiStateService,
     private draftService: MangaDraftService,
-    private tabService: TabsService) { }
+    private tabService: TabsService,
+    private langService: LanguageService
+  ) { }
 
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');
@@ -43,7 +47,7 @@ export class UploadFileWindowComponent {
 
   openChaptersMode() {
     const tab: Tab = {
-      name: this.fileName ?? 'Untitled',
+      name: this.fileName ?? this.langService.translate('untitled'),
       mode: ViewMod.Chapters
     };
 
@@ -77,7 +81,7 @@ export class UploadFileWindowComponent {
         // for single mode, just set the tab name and save pages
       }
 
-      this.tab.name = this.fileName ?? this.tab.name ?? 'Untitled';
+      this.tab.name = this.fileName ?? this.tab.name ?? this.langService.translate('untitled');
       this.saveAll$.next([this.tab, undefined]);
     }
     catch (err) {

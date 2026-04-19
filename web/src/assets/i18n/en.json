@@ -1,5 +1,8 @@
 {
     "home": "Home",
+    "description": "Description",
+    "title": "Title",
+    "change": "Change",
     "uploadFiles": "Upload Files",
     "settingsMangas": "Settings Mangas",
     "gap": "Gap",
@@ -30,6 +33,11 @@
     "pages": "Pages",
     "cancel": "Cancel",
     "edit": "Edit",
+    "select": "Select",
+    "uploadSingleChapter": "Upload Single Chapter",
+    "uploadMultipleChapters": "Upload Multiple Chapters",
+    "single": "Single",
+    "multi": "Multiple",
     "toast": {
         "saved": "Saved successfully",
         "deleted": "Deleted successfully",

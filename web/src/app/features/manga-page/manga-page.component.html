@@ -8,7 +8,7 @@
       </div>
       @if (isEditMode()) {
       <div class="header">
-        <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">Change</button>
+        <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">{{ 'change' | transloco }}</button>
 
         <input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
       </div>
@@ -24,7 +24,7 @@
       }
       @else {
       <input [(ngModel)]="draft!.name" (ngModelChange)="onNameChange($event)" type="text"
-        class="molv-txtbx molv-txtbx-large" placeholder="Title" />
+        class="molv-txtbx molv-txtbx-large" placeholder="{{ 'title' | transloco }}" />
       }
 
       <!-- description -->
@@ -33,7 +33,7 @@
       }
       @else {
       <textarea [(ngModel)]="draft!.description" (ngModelChange)="onDescriptionChange($event)" type="text"
-        class="molv-txtbx molv-txtbx-large" placeholder="Description"> </textarea>
+        class="molv-txtbx molv-txtbx-large" placeholder="{{ 'description' | transloco }}"> </textarea>
       }
 
       <!-- buttons -->

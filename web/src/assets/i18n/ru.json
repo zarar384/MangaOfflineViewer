@@ -1,5 +1,8 @@
 {
     "home": "Главная",
+    "description": "Описание",
+    "title": "Название",
+    "change": "Изменить",
     "uploadFiles": "Загрузить файлы",
     "settingsMangas": "Настройки манги",
     "gap": "Отступ",
@@ -30,6 +33,11 @@
     "pages": "Страницы",
     "cancel": "Отмена",
     "edit": "Редактировать",
+    "select": "Выбрать",
+    "uploadSingleChapter": "Загрузить одну главу",
+    "uploadMultipleChapters": "Загрузить несколько глав",
+    "single": "Одна",
+    "multi": "Несколько",
     "toast": {
         "saved": "Успешно сохранено",
         "deleted": "Успешно удалено",

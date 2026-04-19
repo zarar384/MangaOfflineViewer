@@ -10,10 +10,12 @@ import { FormsModule } from '@angular/forms';
 import { ReaderService } from '../../../core/services/reader.service';
 import { numericNameSort } from 'src/app/shared/utils/file-parsing';
 import { UserTab } from 'src/app/core/models/usertab';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { LanguageService } from 'src/app/core/services/language.service';
 
 @Component({
   selector: 'reader-settings-window',
-  imports: [CommonModule, WindowComponent, MolvModule, MolvTabsComponent, FormsModule],
+  imports: [CommonModule, WindowComponent, MolvModule, MolvTabsComponent, FormsModule, TranslocoPipe],
   templateUrl: './reader-settings-window.component.html',
   styleUrl: './reader-settings-window.component.css',
   standalone: true
@@ -47,7 +49,14 @@ export class ReaderSettingsWindowComponent {
   constructor(
     private uiState: UiStateService,
     private bookmarksRepo: BookmarksRepository,
-    private reader: ReaderService) {
+    private reader: ReaderService,
+    private langService: LanguageService) {
+
+    // load states 
+    this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
+    this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
+    this.zoomLevel = this.uiState.getValue<number>('readerZoom') || 0;
+    this.gapLevel = this.uiState.getValue<number>('readerGap') || 0;
 
     effect(() => {
       const chapterId = this.reader.chapterId();
@@ -126,13 +135,13 @@ export class ReaderSettingsWindowComponent {
 
   get settingsTabs(): UserTab[] {
     if (this.bookmarks.length > 0) {
-      return [{ id: 1, name: 'Bookmarks', tabId: 0 }];
+      return [{ id: 1, name: this.langService.translate('bookmarks'), tabId: 0 }];
     }
     return [];
   }
 
   get pageOptions() {
-    const options = [{ value: 0, label: 'Select' }];
+    const options = [{ value: 0, label: this.langService.translate('select') }];
     var pages = (this.reader.pages()).map(n => ({
       value: n.pageNumber!,
       label: `${n.pageNumber}`
@@ -152,10 +161,10 @@ export class ReaderSettingsWindowComponent {
 
   // BOOKMARKS
   get bookmarkOptions() {
-    const options = [{ value: 0, label: 'Select' }];
+    const options = [{ value: 0, label: this.langService.translate('select') }];
     var bookmarks = this.bookmarks.map(b => ({
       value: b.id!,
-      label: b.title || `Page ${b.pageId}`
+      label: b.title || `${this.langService.translate('page')} ${b.pageId}`
     }));
 
     return options.concat(bookmarks);
@@ -260,7 +269,7 @@ export class ReaderSettingsWindowComponent {
         this.selectedBookmarkId = null;
       }
 
-      if(this.bookmarks.length === 0) {
+      if (this.bookmarks.length === 0) {
         this.activeTab = 'home';
         this.selectedBookmarkId = null;
       }

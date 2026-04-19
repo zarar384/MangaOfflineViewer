@@ -1,6 +1,6 @@
 <app-window
   [visible]="isVisible"
-  title="Import Mangas"
+  title="{{'importMangas' | transloco}}"
   [width]="'500px'"
   [height]="'400px'"
   position="center"
@@ -9,8 +9,8 @@
   [showHide]="false"
   (close)="onWindowClose()">
   <div class="molv-container">
-    <input type="text" class="molv-txtbx" placeholder="Manga Name" [value]="fileName" [(ngModel)]="fileName" />
-    <button class="molv-btn molv-btn-pink" (click)="saveAndClose()">Save</button>
+    <input type="text" class="molv-txtbx" placeholder="{{'mangaName' | transloco}}" [value]="fileName" [(ngModel)]="fileName" />
+    <button class="molv-btn molv-btn-pink" (click)="saveAndClose()">{{'save' | transloco}}</button>
     <molv-drop-uploader [visible]="isVisible" [tabId]="tabId" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
       (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event" (fileSelected)="fileName = fileName ?? $event"></molv-drop-uploader>
   </div>

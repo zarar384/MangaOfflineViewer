@@ -1,24 +1,36 @@
 import { Injectable } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
+import { UiStateService } from './ui-state.service';
+ 
+export enum SupportedLangs {
+  EN = 'en',
+  CS = 'cs',
+  RU = 'ru',
+  ES = 'es'
+}
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
-  constructor(private transloco: TranslocoService) {}
+  constructor(private transloco: TranslocoService, private uiState: UiStateService) {}
 
   init() {
-    const saved = localStorage.getItem('lang') || 'en';
+    const saved = this.uiState.getValue<SupportedLangs>('language') || SupportedLangs.EN;
     this.transloco.setActiveLang(saved);
   }
 
-  setLang(lang: 'en' | 'cs' | 'ru') {
+  setLang(lang: SupportedLangs) {
     if(!lang){
-      lang = 'en';
+      lang = SupportedLangs.EN;
     }
     this.transloco.setActiveLang(lang);
-    localStorage.setItem('lang', lang);
+    this.uiState.saveState({ language: lang });
   }
 
-  getLang() {
-    return this.transloco.getActiveLang();
+  getLang(): SupportedLangs {
+    return this.transloco.getActiveLang() as SupportedLangs;
+  }
+
+  translate(key: string): string {
+    return this.transloco.translate(key);
   }
 }

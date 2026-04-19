@@ -4,6 +4,7 @@ import { Chapter } from '../../../core/models/chapter.model';
 import { ChaptersRepository } from '../../../core/repositories/chapters.repository';
 import { ChapterItemComponent } from '../movl-chapter-item/movl-chapter-item.component';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { LanguageService } from 'src/app/core/services/language.service';
 
 @Component({
   selector: 'movl-chapter-list',
@@ -18,7 +19,9 @@ export class ChapterListComponent implements OnChanges {
 
   chapters: Chapter[] = [];
 
-  constructor(private chaptersRepo: ChaptersRepository) {
+  constructor(
+    private chaptersRepo: ChaptersRepository,
+    private langService: LanguageService) {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -32,7 +35,7 @@ export class ChapterListComponent implements OnChanges {
     const order = await this.chaptersRepo.getNextOrder(this.activeManga);
     await this.chaptersRepo.add({
       tabId: this.activeManga,
-      title: `Chapter ${order}`,
+      title: `${this.langService.translate('chapter')} ${order}`,
       order,
       createdAt: Date.now(),
       updatedAt: Date.now()
