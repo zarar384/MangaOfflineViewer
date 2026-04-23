@@ -71,6 +71,7 @@ export class TabsService {
 
   async updateTab(tab: Tab) {
     await this.repo.update(tab);
+    await this.userTabsRepo.updateByTabId(tab.id!);
     await this.refresh();
   }
 
@@ -244,6 +245,8 @@ export class TabsService {
       else {
         this.uiState.navigate(ViewMod.Single);
       }
+
+      this.setActiveTab(mangaId);
     }
   }
 

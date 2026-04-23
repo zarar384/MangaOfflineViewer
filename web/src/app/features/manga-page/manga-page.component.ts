@@ -108,6 +108,9 @@ export class MangaPageComponent implements OnChanges {
       if (!tab.id) {
         const id = await this.tabsService.createTab(tab);
         tab = { ...tab, id };
+        
+        await this.tabsService.createUserTab(id);
+        await this.tabsService.setSelectedManga(id);
       } else {
         await this.tabsService.updateTab(tab);
       }
