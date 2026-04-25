@@ -3,3 +3,12 @@
 
 /* ADAPT */
 @media (min-width: 768px) { .search-wrapper { justify-content: flex-end; } .search-field { max-width: 400px; } }
+
+/* SEARCH */
+
+/* default */
+.pink-search { --mat-form-field-filled-active-indicator-color: #fff; --mat-form-field-filled-label-text-color: #fff; --mat-form-field-filled-input-text-color: #fff; --mat-form-field-filled-caret-color: #fff; }
+/* hover */
+.pink-search:not(.mat-mdc-form-field.mat-focused):hover { --mat-form-field-filled-active-indicator-color: #ffd6e8; --mat-form-field-filled-label-text-color: #ffd6e8; --mat-form-field-filled-input-text-color: #ffd6e8; }
+/* focus */
+.pink-search.mat-mdc-form-field.mat-focused { --mat-form-field-filled-active-indicator-color: #faa2c8; --mat-form-field-filled-focus-active-indicator-color: #faa2c8; --mat-form-field-filled-label-text-color: #faa2c8; --mat-form-field-filled-focus-label-text-color: #faa2c8; --mat-form-field-filled-caret-color: #faa2c8; }
