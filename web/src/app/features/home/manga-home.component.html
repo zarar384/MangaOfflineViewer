@@ -1,3 +1,5 @@
+<molv-search (searchChange)="onSearch($event)"></molv-search>
+
 <div class="manga-home-root">
   <tabs
     (mangaSelected)="onTabSelected($event)"
@@ -8,6 +10,7 @@
 <molv-pagination
   [totalTabs]="tabsService.totalTabsState()"
   [currentPage]="page()"
+  
   [perPage]="perPage()"
   (pageChange)="onPageChange($event)">
 </molv-pagination>

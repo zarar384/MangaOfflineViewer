@@ -1,0 +1,5 @@
+.search-wrapper { width: 100%; display: flex; justify-content: center; padding: 8px 12px; box-sizing: border-box; }
+.search-field { width: 100%; max-width: 600px; }
+
+/* ADAPT */
+@media (min-width: 768px) { .search-wrapper { justify-content: flex-end; } .search-field { max-width: 400px; } }

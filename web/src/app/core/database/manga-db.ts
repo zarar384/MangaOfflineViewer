@@ -182,6 +182,25 @@ export class MangaDB extends Dexie {
       await tx.table('userTabs').bulkAdd(userTabs);
     });
 
+    // v10
+     this.version(10).stores({
+      userTabs: '++id, name, tabId, createdAt',
+      tabs: '++id, name, updatedAt, description, mode, createdAt',
+      pages: '++id, tabId, chapterId, chapterOrder, pageNumber, name, [tabId+chapterOrder+pageNumber], [tabId+chapterId]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, createdAt, [tabId+order]'
+    }).upgrade(async tx => {
+
+      // migrate tabs - add createdAt field (default to updatedAt or now)
+      await tx.table<Tab>(STORE_TABS)
+        .toCollection()
+        .modify((t: any) => {
+          if (!('createdAt' in t) || !t.createdAt) {
+            t.createdAt = t.updatedAt ?? Date.now();
+          }
+        });
+    });
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({

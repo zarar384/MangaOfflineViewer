@@ -31,6 +31,8 @@ export class TabsService {
   private activeTabId = signal<number | null>(null);
   readonly activeTabIdState = this.activeTabId.asReadonly();
 
+  private searchQuery = signal('');
+
   constructor(
     private repo: TabsRepository,
     private url: ObjectUrlService,
@@ -81,6 +83,11 @@ export class TabsService {
     await this.refresh();
   }
 
+  filterByTitle(query: string) {
+    this.searchQuery.set(query);
+    this.page.set(1); // reset to first page in pagination
+  }
+
   hydrate(page: number, perPage: number) {
     this.page.set(page);
     this.perPage.set(perPage);
@@ -127,17 +134,45 @@ export class TabsService {
   }
 
   private async load(page: number, perPage: number) {
-    const tabs = await this.repo.getPaged(page, perPage);
+    // normalize search query (trim + lowercase)
+    const query = this.searchQuery().trim().toLowerCase();
 
+    // load all tabs from repository
+    let allTabs = await this.repo.getAll();
+
+    // sort by last activity (updatedAt -> createdAt -> id), newest first
+    allTabs = [...allTabs].sort((a, b) => {
+      const aTime = a.updatedAt ?? a.createdAt ?? a.id ?? 0;
+      const bTime = b.updatedAt ?? b.createdAt ?? b.id ?? 0;
+      return bTime - aTime;
+    });
+
+    // filter by title if search query exists
+    if (query) {
+      allTabs = allTabs.filter(tab =>
+        (tab.name ?? '').toLowerCase().includes(query)
+      );
+    }
+
+    // total count after filtering (used for pagination UI)
+    this.totalTabs.set(allTabs.length);
+
+    // apply pagination AFTER filtering
+    const start = (page - 1) * perPage;
+    const pagedTabs = allTabs.slice(start, start + perPage);
+
+    // build preview URLs (async)
     const previewData = await Promise.all(
-      tabs.map(async tab => ({
+      pagedTabs.map(async tab => ({
         tab,
         previewUrl: await this.buildPreview(tab)
       }))
     );
 
+    // update state
     this.tabs.set(previewData);
-    this.totalTabs.set(await this.repo.getTotalCount());
+
+    // load user tabs (independent state)
     this.userTabs.set(await this.userTabsRepo.getAll());
   }
 

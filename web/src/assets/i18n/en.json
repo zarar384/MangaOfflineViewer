@@ -38,6 +38,8 @@
     "uploadMultipleChapters": "Upload Multiple Chapters",
     "single": "Single",
     "multi": "Multiple",
+    "searchManga": "Search Manga",
+    "typeMangaTitle": "Type Manga Title",
     "toast": {
         "saved": "Saved successfully",
         "deleted": "Deleted successfully",

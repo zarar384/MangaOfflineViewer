@@ -38,6 +38,8 @@
     "uploadMultipleChapters": "Nahrát více kapitol",
     "single": "Jediná",
     "multi": "Více",
+    "searchManga": "Hledat mangu",
+    "typeMangaTitle": "Zadejte název mangy",
     "toast": {
         "saved": "Úspěšně uloženo",
         "deleted": "Úspěšně smazáno",

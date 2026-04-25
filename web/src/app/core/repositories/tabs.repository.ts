@@ -40,12 +40,14 @@ export class TabsRepository {
 
   async add(tab: Tab): Promise<number> {
     tab.updatedAt = tab.updatedAt ?? Date.now();
+    tab.createdAt = tab.createdAt ?? Date.now();
     const id = await db.tabs.put(tab);
     return id as number;
   }
 
   async update(tab: Tab): Promise<number> {
     tab.updatedAt = Date.now();
+    tab.createdAt = tab.createdAt ?? Date.now();
     const id = await db.tabs.put(tab);
     return id as number;
   }
@@ -96,6 +98,7 @@ export class TabsRepository {
         ...tab,
         preview: preview ?? tab.preview,
         updatedAt: Date.now(),
+        createdAt: tab.createdAt ?? Date.now()
       };
 
       if (tabToSave.mode === ViewMod.Single) {

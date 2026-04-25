@@ -9,4 +9,5 @@ export interface Tab {
   preview?: Blob | string;
   updatedAt?: number;
   mode?: TabMode;
+  createdAt?: number;
 }

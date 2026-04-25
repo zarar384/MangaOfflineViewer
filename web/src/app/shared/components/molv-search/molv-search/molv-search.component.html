@@ -1,0 +1,13 @@
+<div class="search-wrapper">
+    <mat-form-field class="search-field">
+        <mat-label>{{ 'searchManga' | transloco }}</mat-label>
+
+        <input matInput [value]="search()" (input)="onInput($any($event.target).value)"
+            placeholder="{{ 'typeMangaTitle' | transloco }}" />
+
+        <!-- clear button -->
+        <button class="molv-btn-small-remove" *ngIf="search()" matSuffix mat-icon-button (click)="clear()">
+            ✕
+        </button>
+    </mat-form-field>
+</div>

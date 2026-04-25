@@ -38,6 +38,8 @@
     "uploadMultipleChapters": "Загрузить несколько глав",
     "single": "Одна",
     "multi": "Несколько",
+    "searchManga": "Поиск манги",
+    "typeMangaTitle": "Введите название манги",
     "toast": {
         "saved": "Успешно сохранено",
         "deleted": "Успешно удалено",
