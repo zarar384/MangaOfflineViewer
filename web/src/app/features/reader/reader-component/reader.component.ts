@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Page, PageMeta } from '../../../core/models/page.model';
+import { Page } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
@@ -8,6 +8,7 @@ import { isIOS } from '../../../shared/utils/constants';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ChaptersRepository } from 'src/app/core/repositories/chapters.repository';
+import { PageMeta } from 'src/app/shared/models/page-meta.model';
 
 @Component({
   selector: 'manga-reader',

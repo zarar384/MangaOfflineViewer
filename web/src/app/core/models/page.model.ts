@@ -1,12 +1,6 @@
+import { PageMeta } from "src/app/shared/models/page-meta.model";
+
 export interface Page extends PageMeta {
   src?:  Blob | string | null;
   chapterOrder?: number | null;
-}
-
-export interface PageMeta {
-  id?: number;
-  tabId: number;   // FK
-  chapterId?: number | null; // FK, nullable
-  name?: string;
-  pageNumber?: number;
 }

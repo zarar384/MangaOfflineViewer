@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { PageMeta } from '../models/page.model';
+import { PageMeta } from 'src/app/shared/models/page-meta.model';
+
 
 /**
  * Centralized state manager for Manga Reader.

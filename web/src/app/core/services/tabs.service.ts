@@ -4,13 +4,13 @@ import { ObjectUrlService } from './object-url.service';
 import { UiStateService } from './ui-state.service';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { DEFAULT_PREVIEW } from '../../../assets/assets.config';
-import { PageMeta } from '../models/page.model';
 import { ReaderService } from './reader.service';
 import { PagesRepository } from '../repositories/pages.repository';
 import { MangaDraftService } from './manga-draft.service';
 import { UserTabsRepository } from '../repositories/usertab.repository';
 import { UserTab } from '../models/usertab';
 import { Tab } from '../models/tab.model';
+import { PageMeta } from 'src/app/shared/models/page-meta.model';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {

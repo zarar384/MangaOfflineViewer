@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Page, PageMeta } from '../models/page.model';
+import { Page } from '../models/page.model';
 import { db } from '../database/manga-db';
 import { Dexie } from 'dexie';
+import { PageMeta } from 'src/app/shared/models/page-meta.model';
 
 export const PAGES_SEED: Page[] = [
   {

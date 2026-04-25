@@ -3,13 +3,13 @@ import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Chapter } from '../../../core/models/chapter.model';
-import { PageMeta } from '../../../core/models/page.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { Subject } from 'rxjs';
 import { MolvDropUploaderComponents } from '../molv-drop-uploader/molv-drop-uploader.components';
 import { Tab } from '../../../core/models/tab.model';
 import { TabsService } from '../../../core/services/tabs.service';
 import { MolvModule } from '../molv-module.component';
+import { PageMeta } from '../../models/page-meta.model';
 
 @Component({
   selector: 'movl-chapter-item',
