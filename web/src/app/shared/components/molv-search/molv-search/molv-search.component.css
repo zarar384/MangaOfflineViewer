@@ -12,3 +12,19 @@
 .pink-search:not(.mat-mdc-form-field.mat-focused):hover { --mat-form-field-filled-active-indicator-color: #ffd6e8; --mat-form-field-filled-label-text-color: #ffd6e8; --mat-form-field-filled-input-text-color: #ffd6e8; }
 /* focus */
 .pink-search.mat-mdc-form-field.mat-focused { --mat-form-field-filled-active-indicator-color: #faa2c8; --mat-form-field-filled-focus-active-indicator-color: #faa2c8; --mat-form-field-filled-label-text-color: #faa2c8; --mat-form-field-filled-focus-label-text-color: #faa2c8; --mat-form-field-filled-caret-color: #faa2c8; }
+
+
+/* INPUT OVERLAY FOR SUGGESTION */
+.input-container { position: relative; }
+
+/* ghost text suggestion */
+.ghost-text { position: absolute; top: 50%; left: 0; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center; font: inherit; padding-left: 0; white-space: nowrap; }
+
+/* typed text (invisible but occupies space) */
+.ghost-text .typed { visibility: hidden; }
+
+/* hint */
+.ghost-text .hint { color: rgba(255, 214, 232, 0.4); }
+
+/* input overlay */
+input { position: relative; background: transparent; }

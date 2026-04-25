@@ -8,6 +8,7 @@ import { TabsComponent } from './tabs/tabs.component';
 import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
 import { EditTabWindowComponent } from '../windows/edit-tab-window/edit-tab-window.component';
 import { MolvSearchComponent } from 'src/app/shared/components/molv-search/molv-search/molv-search.component';
+import { SearchToken } from 'src/app/shared/models/search-token.model';
 
 @Component({
   selector: 'app-manga-home',
@@ -80,7 +81,7 @@ export class MangaHomeComponent implements OnInit {
     this.showEditWindow = false;
   }
 
-  onSearch(query: string) {
-    this.tabsService.filterByTitle(query);
+  onSearch(tokens: SearchToken[]) {
+    this.tabsService.filterByTokens(tokens);
   }
 }

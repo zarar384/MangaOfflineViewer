@@ -1,9 +1,19 @@
 <div class="search-wrapper">
-    <mat-form-field class="search-field pink-search" >
+    <mat-form-field class="search-field pink-search">
         <mat-label>{{ 'searchManga' | transloco }}</mat-label>
 
-        <input matInput [value]="search()" (input)="onInput($any($event.target).value)"
-            placeholder="{{ 'typeMangaTitle' | transloco }}" />
+        <div class="input-container">
+
+            <!-- ghost -->
+            <div class="ghost-text">
+                <span class="typed">{{ search() }}</span><span class="hint">{{ suggestion() }}</span>
+            </div>
+
+            <!-- input -->
+            <input matInput [value]="search()" (input)="onInput($any($event.target).value)"
+                (keydown)="onKeyDown($event)" (click)="onClick()" placeholder="{{ 'typeMangaTitle' | transloco }}" />
+
+        </div>
 
         <!-- clear button -->
         <button class="molv-btn-small-remove" *ngIf="search()" matSuffix mat-icon-button (click)="clear()">

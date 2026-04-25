@@ -11,6 +11,7 @@ import { UserTabsRepository } from '../repositories/usertab.repository';
 import { UserTab } from '../models/usertab';
 import { Tab } from '../models/tab.model';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
+import { SearchTagKey, SearchToken, SearchTokenType } from 'src/app/shared/models/search-token.model';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -31,7 +32,7 @@ export class TabsService {
   private activeTabId = signal<number | null>(null);
   readonly activeTabIdState = this.activeTabId.asReadonly();
 
-  private searchQuery = signal('');
+  private searchTokens = signal<SearchToken[]>([]);
 
   constructor(
     private repo: TabsRepository,
@@ -83,8 +84,8 @@ export class TabsService {
     await this.refresh();
   }
 
-  filterByTitle(query: string) {
-    this.searchQuery.set(query);
+  filterByTokens(tokens: SearchToken[]) {
+    this.searchTokens.set(tokens);
     this.page.set(1); // reset to first page in pagination
   }
 
@@ -135,7 +136,7 @@ export class TabsService {
 
   private async load(page: number, perPage: number) {
     // normalize search query (trim + lowercase)
-    const query = this.searchQuery().trim().toLowerCase();
+    const tokens = this.searchTokens();
 
     // load all tabs from repository
     let allTabs = await this.repo.getAll();
@@ -148,10 +149,32 @@ export class TabsService {
     });
 
     // filter by title if search query exists
-    if (query) {
-      allTabs = allTabs.filter(tab =>
-        (tab.name ?? '').toLowerCase().includes(query)
-      );
+    if (tokens.length) {
+      allTabs = allTabs.filter(tab => {
+        const name = (tab.name ?? '').toLowerCase();
+
+        return tokens.every(token => {
+          // simple text search
+          if (token.type === SearchTokenType.Text) {
+            return name.includes(token.value);
+          }
+
+          //  tag search (artist:xxx, genre:xxx, ...)
+          if (token.type === SearchTokenType.Tag) {
+            if (token.key === SearchTagKey.Artist) {
+              return (tab as any).artist?.toLowerCase().includes(token.value);
+            }
+
+            if (token.key === SearchTagKey.Genre) {
+              return (tab as any).genres?.some((g: string) =>
+                g.toLowerCase().includes(token.value)
+              );
+            }
+          }
+
+          return true;
+        });
+      });
     }
 
     // total count after filtering (used for pagination UI)
