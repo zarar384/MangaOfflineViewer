@@ -48,7 +48,7 @@ export class LayoutComponent implements OnInit {
 
   ngOnInit(): void {
     const savedId = this.selectedMangaId;
-    this.tabsService.setSelectedManga(savedId);
+    this.tabsService.open({ mangaId: savedId });
 
     const page = this.uiState.getValue<number>('page') ?? 1;
     const perPage = this.uiState.getValue<number>('perPage') ?? 10;

@@ -224,11 +224,11 @@ export class TabsService {
   }
 
   async open({
-    mangaId,
+    mangaId = null,
     pageId = null,
     chapterId = null
   }: {
-    mangaId: number;
+    mangaId: number | null;
     pageId?: number | null;
     chapterId?: number | null;
   }) {
@@ -236,6 +236,11 @@ export class TabsService {
     // clear states
     this.draftService.clear();
     this.reader.close();
+
+    if (!mangaId) {
+      await this.setSelectedManga(null);
+      return;
+    }
 
     const tab = await this.getTabById(mangaId);
     if (!tab) {
@@ -276,7 +281,7 @@ export class TabsService {
   }
 
   // UI STATE INTERACTIONS
-  async setSelectedManga(mangaId: number | null, mod: ViewMod | null = null) {
+  private async setSelectedManga(mangaId: number | null, mod: ViewMod | null = null) {
     {
       // if no mangaId is provided, navigate to home and clear selection
       if (!mangaId) {

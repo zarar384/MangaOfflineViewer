@@ -51,7 +51,7 @@ export class NavbarComponent {
     // clear any existing draft when selecting a different manga
     this.draftService.clear(); 
 
-    this.tabsService.setSelectedManga(tab.id!);
+    this.tabsService.open({ mangaId: tab.id! });
     this.mangaSelected.emit(tab.id);
   }
 
@@ -61,12 +61,12 @@ export class NavbarComponent {
     );
 
     if (this.selectedMangaId() === userTab.tabId) {
-      this.tabsService.setSelectedManga(null);
+      this.tabsService.open({ mangaId: null });
     }
   }
 
   goHome() {
-    this.tabsService.setSelectedManga(null);
+    this.tabsService.open({ mangaId: null });
     this.mangaSelected.emit(null);
   }
 

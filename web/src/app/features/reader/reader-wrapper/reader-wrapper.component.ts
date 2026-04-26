@@ -1,4 +1,4 @@
-import { Component, effect, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component,  Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
@@ -53,14 +53,14 @@ export class ReaderWrapperComoponent implements OnInit {
     this.reader.goToPage(pageId);
   }
 
-goToBookmark = async (bookmarkId: number | string) => {
-  const id = Number(bookmarkId); 
+  goToBookmark = async (bookmarkId: number | string) => {
+    const id = Number(bookmarkId);
 
-  const bm = await this.bookmarksRepo.get(id);
-  if (!bm) return;
+    const bm = await this.bookmarksRepo.get(id);
+    if (!bm) return;
 
-  this.reader.goToPage(bm.pageId);
-}
+    this.reader.goToPage(bm.pageId);
+  }
 
   // SETTINGS WINDOW: VISUAL
   onSettingsWindowHide() {

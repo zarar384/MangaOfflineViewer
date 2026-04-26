@@ -1,11 +1,17 @@
 <div class="anime-select-wrapper">
-    <select class="anime-select" (change)="onChange($event)">
-        @for (o of options; track $index) {
-            <option 
-                [value]="o.value" 
-                [selected]="o.value === value">
-                {{ o.label }}
-            </option>
+    <select class="anime-select" [(ngModel)]="value" (ngModelChange)="valueChange.emit($event)">
+
+        @if (placeholder) {
+        <option [ngValue]="null">
+            {{ placeholder }}
+        </option>
         }
+
+        @for (o of options; track $index) {
+        <option [ngValue]="o.value">
+            {{ o.label }}
+        </option>
+        }
+
     </select>
 </div>

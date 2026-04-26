@@ -1,5 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
+import { UiStateService } from './ui-state.service';
 
 
 /**
@@ -11,7 +12,10 @@ import { PageMeta } from 'src/app/shared/models/page-meta.model';
 export class ReaderService {
 
   //  STATE 
+  // TODO: save current manga info in uiState 
+    //private uiState = inject(UiStateService);
 
+  
   /** Current manga identifier */
   private _mangaId = signal<number | null>(null);
 
@@ -126,6 +130,7 @@ export class ReaderService {
   /** Update current page id without triggering scroll */
   setCurrentPage(pageId: number): void {
     this._currentPageId.set(pageId);
+    //this.uiState.saveState({ lastPageId: pageId });
   }
 
   /** Update bookmark to the last observed visible page */

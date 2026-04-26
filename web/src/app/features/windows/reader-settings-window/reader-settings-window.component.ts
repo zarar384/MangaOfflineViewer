@@ -141,13 +141,10 @@ export class ReaderSettingsWindowComponent {
   }
 
   get pageOptions() {
-    const options = [{ value: 0, label: this.langService.translate('select') }];
-    var pages = (this.reader.pages()).map(n => ({
+    return (this.reader.pages()).map(n => ({
       value: n.pageNumber!,
       label: `${n.pageNumber}`
     }));
-
-    return options.concat(pages);
   }
 
   // PAGE
@@ -161,13 +158,10 @@ export class ReaderSettingsWindowComponent {
 
   // BOOKMARKS
   get bookmarkOptions() {
-    const options = [{ value: 0, label: this.langService.translate('select') }];
-    var bookmarks = this.bookmarks.map(b => ({
+    return this.bookmarks.map(b => ({
       value: b.id!,
       label: b.title || `${this.langService.translate('page')} ${b.pageId}`
     }));
-
-    return options.concat(bookmarks);
   }
 
   goToBookmark() {

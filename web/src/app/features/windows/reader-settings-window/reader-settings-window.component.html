@@ -27,7 +27,7 @@
         <!-- go to page -->
         <div class="setting-left">
           <div class="setting-label">
-            <molv-dropdown [options]="pageOptions" [(value)]="selectedPageNumber">
+            <molv-dropdown [options]="pageOptions" [(value)]="selectedPageNumber" placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
           <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageNumber" (click)="goToPage()">{{'go' | transloco}}</button>
@@ -36,7 +36,7 @@
         <!-- bookmarks -->
         <div class="setting-left">
           <div class="setting-label">
-            <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId">
+            <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId" placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
           <button class="molv-btn molv-btn-pink" (click)="saveBookmark()">{{'save' | transloco}}</button>
@@ -49,7 +49,7 @@
             <molv-dropdown [(value)]="dwnldMod" [options]="[
             { value: 'mhtml', label: 'MHTML' },
             { value: 'zip', label: 'ZIP' }
-            ]">
+            ]" >
             </molv-dropdown>
           </div>
           <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">{{'download' | transloco}}</button>
