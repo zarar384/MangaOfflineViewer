@@ -43,6 +43,9 @@ export class ReaderWrapperComoponent implements OnInit {
     this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
+
+    // Apply restored settings to reader service
+    this.reader.setSettings({ gap: this.gap, mode: this.mode, zoom: this.zoom });
   }
 
   // SETTINGS WINDOW: MAIN
