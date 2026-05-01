@@ -57,6 +57,22 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /** Tracks global loader visibility */
   private isLoaderVisible = false;
 
+  /**
+   * Number of pages that are currently in the viewport and not yet loaded.
+   * Loader is shown only when this is > 0 - background preloads don't count.
+   */
+  private visibleUnloadedCount = 0;
+
+  /**
+   * Debounce timer for showing the loader.
+   * Prevents flicker when images load quickly enough that the user never notices.
+   * The loader only appears if pages are STILL unloaded after LOADER_DELAY_MS.
+   */
+  private loaderDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** How long to wait before showing the loader (ms) */
+  private readonly LOADER_DELAY_MS = 300;
+
   /** Page used as scroll focus center during navigation */
   private focusPageId: number | null = null;
 
@@ -64,7 +80,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Radius for keeping image URLs in memory.
    * URLs outside this range are revoked to free memory.
    */
-  private CLEANUP_RADIUS = 30;
+  private CLEANUP_RADIUS = isIOS ? 20 : 50;
 
   /**
    * Incremented to cancel outdated async work after state resets.
@@ -190,13 +206,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.loadingSet.clear();
       this.loadingCount = 0;
+      this.visibleUnloadedCount = 0;
       this.focusPageId = null;
 
       this.fetchingNext = false;
       this.fetchingPrev = false;
 
-      this.loading.show();
-      this.isLoaderVisible = true;
+      // show loader immediately on clean open - user is waiting for first paint
+      this.showLoaderNow();
 
       this.loadToken++;
 
@@ -252,8 +269,68 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.observer?.disconnect();
     this.observedPageIds.clear();
     this.teardownScrollPreloadListener();
+    this.cancelLoaderDebounce();
     this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
+  }
+
+
+  //  LOADER 
+
+  /**
+   * Returns true if the image is currently intersecting the actual viewport
+   * (not the rootMargin zone). Used to decide whether a load is "visible"
+   * to the user and warrants showing the loader.
+   */
+  private isImageInViewport(img: HTMLImageElement): boolean {
+    const rect = img.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  }
+
+  /**
+   * Shows loader immediately, bypassing the debounce.
+   * Only used on clean open where the user is explicitly waiting.
+   */
+  private showLoaderNow(): void {
+    this.cancelLoaderDebounce();
+    this.loading.show();
+    this.isLoaderVisible = true;
+  }
+
+  /**
+   * Schedules loader to appear after LOADER_DELAY_MS if visibleUnloadedCount
+   * is still > 0 at that point. This prevents flicker for fast loads -
+   * the loader only shows when the user is genuinely waiting.
+   */
+  private scheduleLoader(): void {
+    if (this.isLoaderVisible || this.loaderDebounceTimer) return;
+
+    this.loaderDebounceTimer = setTimeout(() => {
+      this.loaderDebounceTimer = null;
+      if (this.visibleUnloadedCount > 0) {
+        this.loading.show();
+        this.isLoaderVisible = true;
+      }
+    }, this.LOADER_DELAY_MS);
+  }
+
+  /**
+   * Hides the loader and cancels any pending debounce timer.
+   * Safe to call even if nothing is showing.
+   */
+  private hideLoader(): void {
+    this.cancelLoaderDebounce();
+    if (this.isLoaderVisible) {
+      this.loading.hide();
+      this.isLoaderVisible = false;
+    }
+  }
+
+  private cancelLoaderDebounce(): void {
+    if (this.loaderDebounceTimer) {
+      clearTimeout(this.loaderDebounceTimer);
+      this.loaderDebounceTimer = null;
+    }
   }
 
 
@@ -344,9 +421,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         if (this.loadingSet.has(id)) continue;
         if (this.loadingCount >= this.MAX_LOAD) continue;
 
-        if (!this.isLoaderVisible) {
-          this.loading.show();
-          this.isLoaderVisible = true;
+        // show loader only if user can actually see this image is missing
+        const inViewport = this.isImageInViewport(img);
+        if (inViewport) {
+          this.visibleUnloadedCount++;
+          this.scheduleLoader();
         }
 
         this.loadingSet.add(id);
@@ -385,17 +464,22 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadingSet.delete(id);
           this.loadingCount--;
 
-          // hide loader when all done
-          if (this.loadingSet.size === 0 && this.isLoaderVisible) {
-            this.loading.hide();
-            this.isLoaderVisible = false;
+          // decrement viewport counter only if this was a visible load
+          if (this.isImageInViewport(img) && this.visibleUnloadedCount > 0) {
+            this.visibleUnloadedCount--;
+          }
+
+          // hide loader only when no viewport pages are still loading
+          if (this.visibleUnloadedCount === 0) {
+            this.hideLoader();
           }
         }
       }
 
     }, {
-      rootMargin: isIOS ? '600px' : '1200px',
-      threshold: isIOS ? 0.1 : 0.01,
+      // aggressive preload margins so images load well before they scroll into view
+      rootMargin: isIOS ? '1500px' : '2500px',
+      threshold: 0,
     });
   }
 
@@ -450,7 +534,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /**
    * Attaches a scroll listener to the reader container that manually checks
    * for unloaded images within a preload distance of the viewport and loads
-   * them imperatively — complementing the IntersectionObserver which does
+   * them imperatively - complementing the IntersectionObserver which does
    * not reliably preload elements above the viewport during upward scroll
    * on some browsers (notably Safari).
    */
@@ -490,7 +574,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * for upward scroll on some browsers.
    */
   private loadVisibleRange() {
-    const PRELOAD_PX = 1200;
+    const PRELOAD_PX = isIOS ? 1500 : 2500;
     const token = this.loadToken;
 
     this.imgRefs.forEach(ref => {
@@ -517,14 +601,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const page = this.visiblePages.find(p => p.id === id);
       if (!page) return;
 
-      // load imperatively — same pipeline as the observer
+      // show loader only if user can actually see this image is missing
+      const inViewport = this.isImageInViewport(img);
+      if (inViewport) {
+        this.visibleUnloadedCount++;
+        this.scheduleLoader();
+      }
+
+      // load imperatively - same pipeline as the observer
       this.loadingSet.add(id);
       this.loadingCount++;
-
-      if (!this.isLoaderVisible) {
-        this.loading.show();
-        this.isLoaderVisible = true;
-      }
 
       this.ensurePageLoaded(page)
         .then(() => {
@@ -539,14 +625,17 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (this.destroyed) return;
           this.cleanupFarImages(id);
         })
-        .catch(() => { /* silent — observer will retry on next scroll */ })
+        .catch(() => { /* silent - observer will retry on next scroll */ })
         .finally(() => {
           this.loadingSet.delete(id);
           this.loadingCount--;
 
-          if (this.loadingSet.size === 0 && this.isLoaderVisible) {
-            this.loading.hide();
-            this.isLoaderVisible = false;
+          if (inViewport && this.visibleUnloadedCount > 0) {
+            this.visibleUnloadedCount--;
+          }
+
+          if (this.visibleUnloadedCount === 0) {
+            this.hideLoader();
           }
         });
     });
@@ -791,10 +880,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.isNavigating = true;
     this.focusPageId = pageId;
 
-    if (!this.isLoaderVisible) {
-      this.loading.show();
-      this.isLoaderVisible = true;
-    }
+    this.showLoaderNow();
 
     await this.waitForImages();
 
@@ -841,9 +927,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       })
     );
 
-    // two frames to let layout settle before measuring offsets
-    await new Promise(r => requestAnimationFrame(r));
-    await new Promise(r => requestAnimationFrame(r));
+    // one frame with forced reflow to get accurate offsetTop before scrolling
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => {
+        void document.body.offsetHeight;
+        resolve();
+      });
+    });
 
     const container = document.querySelector('.reader-container') as HTMLElement;
     const target = await this.waitForTarget(pageId);
@@ -859,10 +949,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.isNavigating = false;
     this.focusPageId = null;
 
-    if (this.isLoaderVisible) {
-      this.loading.hide();
-      this.isLoaderVisible = false;
-    }
+    this.hideLoader();
   }
 
   /**
@@ -871,10 +958,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   async scrollToPage(pageId: number): Promise<void> {
     this.focusPageId = pageId;
 
-    if (!this.isLoaderVisible) {
-      this.loading.show();
-      this.isLoaderVisible = true;
-    }
+    this.showLoaderNow();
 
     let target: HTMLElement | undefined;
     let attempts = 0;
@@ -980,27 +1064,37 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   /**
    * Preserves scroll position around a DOM mutation.
-   * Measures anchor top before callback, compensates after with scrollBy.
-   * Prevents visible jump when pages are added/removed above the viewport.
+   *
+   * Measures the anchor element's offsetTop before and after the callback,
+   * then corrects scrollTop synchronously via queueMicrotask - which runs
+   * before the next paint, unlike requestAnimationFrame, so the user never
+   * sees a visual jump even when pages are inserted above the viewport.
    */
   private preserveScroll(anchorId: number, callback: () => void): void {
+    const container = document.querySelector('.reader-container') as HTMLElement;
+
     const anchorEl = this.imgRefs.find(r =>
       Number(r.nativeElement.dataset['pageId']) === anchorId
     )?.nativeElement;
 
-    if (!anchorEl) { callback(); return; }
+    if (!anchorEl || !container) { callback(); return; }
 
-    const prevTop = anchorEl.getBoundingClientRect().top;
+    // capture position relative to container scroll before mutation
+    const prevOffsetTop = anchorEl.offsetTop;
+    const prevScrollTop = container.scrollTop;
+    const prevDelta = prevScrollTop - prevOffsetTop;
+
     callback();
 
-    requestAnimationFrame(() => {
+    // queueMicrotask fires before the next paint - no visible jump
+    queueMicrotask(() => {
       const newEl = this.imgRefs.find(r =>
         Number(r.nativeElement.dataset['pageId']) === anchorId
       )?.nativeElement;
 
       if (!newEl) return;
 
-      window.scrollBy(0, newEl.getBoundingClientRect().top - prevTop);
+      container.scrollTop = newEl.offsetTop + prevDelta;
     });
   }
 
