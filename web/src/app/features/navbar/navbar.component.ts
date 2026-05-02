@@ -5,7 +5,6 @@ import { UiStateService } from '../../core/services/ui-state.service';
 import { MolvTabsComponent } from '../../shared/components/molv-tabs/molv-tabs.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
-import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { UserTab } from 'src/app/core/models/usertab';
 
 @Component({
@@ -39,20 +38,11 @@ export class NavbarComponent {
     this.userTabsState()
   );
 
-  async onTabSelected(userTab: UserTab) {
-    var tab = await this.tabsService.getTabById(userTab.tabId);
-    if(!tab) return;
-
-    var isChapterMode = tab.mode === ViewMod.Chapters;
-    var isSameManga = tab.id == this.selectedMangaId();
-
-    if (!isChapterMode && isSameManga) return;
-
+  async onTabSelected(userTab: UserTab) {    
     // clear any existing draft when selecting a different manga
     this.draftService.clear(); 
-
-    this.tabsService.open({ mangaId: tab.id! });
-    this.mangaSelected.emit(tab.id);
+    
+    this.mangaSelected.emit(userTab.tabId);
   }
 
   async onTabClosed(userTab: UserTab) {

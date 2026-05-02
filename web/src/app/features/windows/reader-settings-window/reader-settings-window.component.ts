@@ -12,6 +12,8 @@ import { numericNameSort } from 'src/app/shared/utils/file-parsing';
 import { UserTab } from 'src/app/core/models/usertab';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguageService } from 'src/app/core/services/language.service';
+import { PagesRepository } from 'src/app/core/repositories/pages.repository';
+import { PageMeta } from 'src/app/shared/models/page-meta.model';
 
 @Component({
   selector: 'reader-settings-window',
@@ -26,7 +28,7 @@ export class ReaderSettingsWindowComponent {
   @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
   @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
-  @Input() selectedPageNumber: number | null = null;
+  @Input() selectedPageId: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
@@ -40,8 +42,9 @@ export class ReaderSettingsWindowComponent {
   @Output() goToBookmarkClicked = new EventEmitter<number>();
   @Output() goToPageClicked = new EventEmitter<number>();
 
-  activeTab: 'home' | 'bookmarks' = 'home';
+  activeTabId: number | null = null;
   bookmarks: Bookmark[] = [];
+  pages: PageMeta[] = [];
   selectedBookmarkId: number | null = null;
   editingBookmarkId: number | null = null;
   originalTitle: string = '';
@@ -49,6 +52,7 @@ export class ReaderSettingsWindowComponent {
   constructor(
     private uiState: UiStateService,
     private bookmarksRepo: BookmarksRepository,
+    private pagesRepo: PagesRepository,
     private reader: ReaderService,
     private langService: LanguageService) {
 
@@ -59,11 +63,14 @@ export class ReaderSettingsWindowComponent {
     this.gapLevel = this.uiState.getValue<number>('readerGap') || 0;
 
     effect(() => {
-      const chapterId = this.reader.chapterId();
+      const isOpen = this.reader.isOpen();
 
       // if (!chapterId) return;
 
-      Promise.resolve().then(() => this.loadBookmarks());
+      Promise.resolve().then(() => {
+        this.loadBookmarks()
+        this.loadPages()
+      });
     });
   }
 
@@ -135,25 +142,37 @@ export class ReaderSettingsWindowComponent {
 
   get settingsTabs(): UserTab[] {
     if (this.bookmarks.length > 0) {
-      return [{ id: 1, name: this.langService.translate('bookmarks'), tabId: 0 }];
+      return [{ id: 1, name: this.langService.translate('bookmarks'), tabId: 1 }];
     }
     return [];
   }
 
   get pageOptions() {
-    return (this.reader.pages()).map(n => ({
-      value: n.pageNumber!,
+    return this.pages.map(n => ({
+      value: n.id!,
       label: `${n.pageNumber}`
     }));
   }
 
+  get activeTab(): 'home' | 'bookmarks' {
+  return this.activeTabId === null ? 'home' : 'bookmarks';
+}
+
   // PAGE
   goToPage() {
-    // var bookmark = this.bookmarks.find(b => b.pageId === this.selectedPageNumber);
-    // if (bookmark)
-    //   this.selectedBookmarkId = bookmark.id!;
+    this.goToPageClicked.emit(+this.selectedPageId!)
+  }
+  
+  async loadPages() {
+    const reader = this.reader.getSnapshot();
+    if (!reader.mangaId) return;
 
-    this.goToPageClicked.emit(+this.selectedPageNumber!)
+    try {
+      this.pages = await this.pagesRepo.getMeta(reader.mangaId);
+    }
+    catch (err) {
+      console.log(`Error loading pages for manga ${reader.mangaId}`, err);
+    }
   }
 
   // BOOKMARKS
@@ -166,15 +185,15 @@ export class ReaderSettingsWindowComponent {
 
   goToBookmark() {
     var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
-    var page = this.reader.pages().find(p => p.id === bookmark?.pageId);
-    this.selectedPageNumber = page ? page?.pageNumber! : null;
+    var page = this.pages.find(p => p.id === bookmark?.pageId);
+    this.selectedPageId = page ? page?.id! : null;
     this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
 
-  onHomeTab() { this.activeTab = 'home'; }
+  onHomeTab() { this.activeTabId = null;}
 
   onTabSelected(tab: UserTab) {
-    this.activeTab = tab.name === 'Bookmarks' ? 'bookmarks' : 'home';
+    this.activeTabId = tab.tabId; 
   }
 
   // BOOKMARK EDIT / DELETE / CREATE / CANCEL
@@ -225,7 +244,7 @@ export class ReaderSettingsWindowComponent {
 
     // Load all bookmarks for current manga
     try {
-      const page = this.reader.pages().find(p => p.id === reader.currentPageBookmark);
+      const page = this.pages.find(p => p.id === reader.currentPageBookmark);
       if (!page || page.pageNumber === undefined) return;
 
       // check if bookmark for this page already exists
@@ -264,7 +283,7 @@ export class ReaderSettingsWindowComponent {
       }
 
       if (this.bookmarks.length === 0) {
-        this.activeTab = 'home';
+        this.activeTabId = null;
         this.selectedBookmarkId = null;
       }
 
@@ -278,7 +297,7 @@ export class ReaderSettingsWindowComponent {
     if (!reader.mangaId) return;
 
     try {
-      const bookmarks = await this.bookmarksRepo.getAll(reader.mangaId, reader?.chapterId || undefined);
+      const bookmarks = await this.bookmarksRepo.getAll(reader.mangaId);
 
       this.bookmarks = bookmarks.sort((a, b) =>
         numericNameSort(`${a}`, `${b}`)

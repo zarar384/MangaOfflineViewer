@@ -1,7 +1,7 @@
 <app-window [visible]="isVisible" title="{{'settingsMangas' | transloco}}" [width]="'500px'" [height]="'400px'" position="bottom-right"
   [showClose]="false" [showHide]="true" [blockBackground]="false" [showTransparency]="true" (hide)="onWindowHide()">
 
-  <molv-tabs [userTabs]="settingsTabs" [selectedUserTab]="activeTab === 'bookmarks' ? settingsTabs[0].id! : null"
+  <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId"
     (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
 
   <div class="tab-content">
@@ -27,10 +27,10 @@
         <!-- go to page -->
         <div class="setting-left">
           <div class="setting-label">
-            <molv-dropdown [options]="pageOptions" [(value)]="selectedPageNumber" placeholder="{{'select' | transloco}}">
+            <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId" placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
-          <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageNumber" (click)="goToPage()">{{'go' | transloco}}</button>
+          <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId" (click)="goToPage()">{{'go' | transloco}}</button>
         </div>
 
         <!-- bookmarks -->

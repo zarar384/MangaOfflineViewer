@@ -1,20 +1,25 @@
 <div class="tabs-scroll">
   <!-- Home -->
-  <div class="explorer-tab home-tab"[class.active]="tabsService.activeTabIdState() === null">
-    <button class="tab-btn" (click)="goHome()"> {{ 'home' | transloco }}</button>
+  <div class="explorer-tab home-tab" [class.active]="activeTabId === null">
+    <button class="tab-btn" (click)="homeClicked.emit()">
+      {{ 'home' | transloco }}
+    </button>
   </div>
 
-  <!-- Dynamic tabs -->
+  <!-- Tabs -->
   @for (t of userTabs; track t.tabId) {
-    <div
-      class="explorer-tab"
-      [class.active]="tabsService.activeTabIdState() === t.tabId"
-      [attr.title]="t.name" 
+    <div 
+      class="explorer-tab" 
+      [class.active]="activeTabId === t.tabId" 
+      [attr.title]="t.name"
     >
-      <button class="tab-btn" (click)="select(t)">
-        {{ t.name }}
-      </button>
-      <button class="tab-close" (click)="close(t); $event.stopPropagation()">✕</button>
-    </div>
+    <button class="tab-btn" (click)="tabSelected.emit(t)">
+      {{ t.name }}
+    </button>
+
+    <button class="tab-close" (click)="tabClosed.emit(t); $event.stopPropagation()">
+      ✕
+    </button>
+  </div>
   }
 </div>

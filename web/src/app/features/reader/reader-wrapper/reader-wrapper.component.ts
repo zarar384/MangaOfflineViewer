@@ -49,10 +49,7 @@ export class ReaderWrapperComoponent implements OnInit {
   }
 
   // SETTINGS WINDOW: MAIN
-  goToPage(pageNumber: number) {
-    const pageId = this.reader.pages().find(p => p.pageNumber === pageNumber)?.id;
-    if (!pageId) return;
-
+  goToPage(pageId: number) {
     this.reader.goToPage(pageId);
   }
 

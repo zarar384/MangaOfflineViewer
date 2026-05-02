@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, } from '@angular/core';
+import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
@@ -25,6 +25,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    */
   @ViewChildren('imgRef')
   imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
+
+  @ViewChild('readerContainer')
+  private readerContainer!: ElementRef<HTMLDivElement>;
 
   /** Intersection observer for lazy loading */
   private observer!: IntersectionObserver;
@@ -217,7 +220,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.loadToken++;
 
-      const container = document.querySelector('.reader-container');
+      const container = this.readerContainer?.nativeElement;
       if (container) container.scrollTop = 0;
 
       requestAnimationFrame(() => {
@@ -240,11 +243,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     //  EFFECT: navigation to specific page 
 
     effect(() => {
-      const pages = this.reader.pages();
       this.reader.navTick();
       const pageId = untracked(() => this.reader.currentPageId());
 
-      if (!pageId || !pages.length) return;
+      if (!pageId) return;
 
       this.handleNavigation(pageId);
     });
@@ -541,7 +543,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private setupScrollPreloadListener() {
     this.teardownScrollPreloadListener();
 
-    const container = document.querySelector('.reader-container') as HTMLElement;
+    const container = this.readerContainer?.nativeElement;
     if (!container) return;
 
     this.scrollPreloadListener = () => {
@@ -561,7 +563,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private teardownScrollPreloadListener() {
     if (!this.scrollPreloadListener) return;
 
-    const container = document.querySelector('.reader-container') as HTMLElement;
+    const container = this.readerContainer?.nativeElement;
     container?.removeEventListener('scroll', this.scrollPreloadListener!);
     this.scrollPreloadListener = null;
   }
@@ -877,105 +879,134 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Preloads nearby pages then scrolls to target.
    */
   private async handleNavigation(pageId: number): Promise<void> {
-    this.isNavigating = true;
     this.focusPageId = pageId;
 
     this.showLoaderNow();
 
     await this.waitForImages();
 
-    const index = this.pageIndexMap.get(pageId);
+    const index = await this.resolvePageIndexForNavigation(pageId);
     if (index === undefined) return;
 
-    this.updateVisiblePages(index);
+    this.isNavigating = true;
 
-    await new Promise(r => requestAnimationFrame(r));
-    await this.waitForImages();
+    try {
+      this.updateVisiblePages(index);
 
-    const PRELOAD_BEFORE = this.MAX_LOAD * 2;
-    const PRELOAD_AFTER = this.MAX_LOAD;
+      await new Promise(r => requestAnimationFrame(r));
+      await this.waitForImages();
 
-    const start = Math.max(0, index - PRELOAD_BEFORE);
-    const end = Math.min(this.visiblePages.length, index + PRELOAD_AFTER);
-    const toLoad = this.visiblePages.slice(start, end);
+      const PRELOAD_BEFORE = this.MAX_LOAD * 2;
+      const PRELOAD_AFTER = this.MAX_LOAD;
 
-    await Promise.all(
-      toLoad.map(async (page) => {
-        if (this.loadingSet.has(page.id!)) return;
-        this.loadingSet.add(page.id!);
+      const localIndex = this.visiblePages.findIndex(p => p.id === pageId);
+      if (localIndex === -1) return;
 
-        try {
-          await this.ensurePageLoaded(page);
-          if (this.destroyed) return;
+      const start = Math.max(0, localIndex - PRELOAD_BEFORE);
+      const end = Math.min(this.visiblePages.length, localIndex + PRELOAD_AFTER + 1);
+      const toLoad = this.visiblePages.slice(start, end);
 
-          const url = await this.getOrCreateUrl(page);
-          if (this.destroyed) return;
-          if (!url) return;
+      await Promise.all(
+        toLoad.map(async (page) => {
+          if (this.loadingSet.has(page.id!)) return;
+          this.loadingSet.add(page.id!);
 
-          const img = this.imgRefs.find(r =>
-            Number(r.nativeElement.dataset['pageId']) === page.id
-          )?.nativeElement;
+          try {
+            await this.ensurePageLoaded(page);
+            if (this.destroyed) return;
 
-          if (!img) return;
+            const url = await this.getOrCreateUrl(page);
+            if (this.destroyed) return;
+            if (!url) return;
 
-          await this.loadImage(img, url);
-          if (this.destroyed) return;
+            const img = this.imgRefs.find(r =>
+              Number(r.nativeElement.dataset['pageId']) === page.id
+            )?.nativeElement;
 
-        } finally {
-          this.loadingSet.delete(page.id!);
-        }
-      })
-    );
+            if (!img) return;
 
-    // one frame with forced reflow to get accurate offsetTop before scrolling
-    await new Promise<void>(resolve => {
-      requestAnimationFrame(() => {
-        void document.body.offsetHeight;
-        resolve();
+            await this.loadImage(img, url);
+            if (this.destroyed) return;
+
+          } finally {
+            this.loadingSet.delete(page.id!);
+          }
+        })
+      );
+
+      // one frame with forced reflow to get accurate offsetTop before scrolling
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          void document.body.offsetHeight;
+          resolve();
+        });
       });
-    });
 
-    const container = document.querySelector('.reader-container') as HTMLElement;
-    const target = await this.waitForTarget(pageId);
+      const container = this.readerContainer?.nativeElement;
+      const target = await this.waitForTarget(pageId);
 
-    if (target && container) {
-      container.scrollTo({ top: target.offsetTop - container.offsetTop, behavior: 'auto' });
+      if (target && container) {
+        container.scrollTo({ top: target.offsetTop - container.offsetTop, behavior: 'auto' });
+      }
+
+      this.reader.setCurrentPage(pageId);
+      this.reader.setCurrentPageBookmark(pageId);
+      this.updateActiveChapter(pageId);
+
+    } finally {
+      this.isNavigating = false;
+      this.focusPageId = null;
+      this.hideLoader();
     }
-
-    this.reader.setCurrentPage(pageId);
-    this.reader.setCurrentPageBookmark(pageId);
-    this.updateActiveChapter(pageId);
-
-    this.isNavigating = false;
-    this.focusPageId = null;
-
-    this.hideLoader();
   }
 
   /**
-   * Scroll helper with retry logic for cases when the DOM isn't ready yet.
+   * Ensures target page exists in current pages buffer and returns its index.
+   * If missing, loads the target chapter and merges it into the buffer first.
    */
-  async scrollToPage(pageId: number): Promise<void> {
-    this.focusPageId = pageId;
+  private async resolvePageIndexForNavigation(pageId: number): Promise<number | undefined> {
+    const directIndex = this.pageIndexMap.get(pageId);
+    if (directIndex !== undefined) return directIndex;
 
-    this.showLoaderNow();
+    const targetPage = await this.pagesRepo.get(pageId);
+    const targetChapterId = targetPage?.chapterId;
 
-    let target: HTMLElement | undefined;
-    let attempts = 0;
+    if (!targetPage || targetChapterId == null) return undefined;
 
-    while (attempts < 5 && !target) {
-      await new Promise(r => setTimeout(r, 50));
-      target = await this.waitForTarget(pageId);
-      attempts++;
+    if (!this.loadedChapterIds.has(targetChapterId)) {
+      const newPages = await this.pagesRepo.getMetaByChapter(targetChapterId);
+      if (!newPages.length) return undefined;
+
+      let direction: 'next' | 'prev' = 'next';
+      const currentChapterId = this.reader.chapterId();
+
+      if (currentChapterId != null) {
+        const [currentChapter, targetChapter] = await Promise.all([
+          this.chaptersRepo.get(currentChapterId),
+          this.chaptersRepo.get(targetChapterId),
+        ]);
+
+        if (currentChapter && targetChapter && targetChapter.order < currentChapter.order) {
+          direction = 'prev';
+        }
+      }
+
+      // mirror regular merge flow: mark chapter as loaded before merge
+      this.loadedChapterIds.add(targetChapterId);
+      this.reader.mergePages(newPages, direction);
     }
 
-    const container = document.querySelector('.reader-container') as HTMLElement;
+    for (let i = 0; i < 10; i++) {
+      const index = this.pageIndexMap.get(pageId);
+      if (index !== undefined) return index;
 
-    if (target && container) {
-      container.scrollTo({ top: target.offsetTop - container.offsetTop, behavior: 'auto' });
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => resolve());
+      });
     }
+
+    return this.pageIndexMap.get(pageId);
   }
-
 
   //  VIRTUAL WINDOW 
 
@@ -1071,7 +1102,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * sees a visual jump even when pages are inserted above the viewport.
    */
   private preserveScroll(anchorId: number, callback: () => void): void {
-    const container = document.querySelector('.reader-container') as HTMLElement;
+    // no need to preserve if not in page mode
+    // the scroll container is the whole page and mutations don't affect scroll
+    if (this.reader.mode() === 'page') {
+      callback();
+      return;
+    }
+
+    const container = this.readerContainer?.nativeElement;
+
+    if (this.isNavigating) {
+      callback();
+      return;
+    }
 
     const anchorEl = this.imgRefs.find(r =>
       Number(r.nativeElement.dataset['pageId']) === anchorId
