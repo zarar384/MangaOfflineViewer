@@ -34,13 +34,4 @@ export class ObjectUrlService {
     this.cache.forEach(url => URL.revokeObjectURL(url));
     this.cache.clear();
   }
-
-  // convert Blob to Data URL
-  private blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  }
 }

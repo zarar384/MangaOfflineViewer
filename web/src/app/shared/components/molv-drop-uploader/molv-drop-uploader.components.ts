@@ -44,11 +44,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   private saveSub?: Subscription;
   private clearSub?: Subscription;
 
-
-  pages: Page[] = [];
-
   progress = signal(0);
-  urls = signal<{ name?: string; src: string }[]>([]);
+  items = signal<{ page: Page; url: string }[]>([]);
   isProcessing = signal(false);
 
   ngOnChanges(changes: SimpleChanges) {
@@ -81,7 +78,11 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     }
 
     // pages
-    if (changes['tabId'] || changes['chapterId']) {
+    if (
+      changes['tabId'] ||
+      changes['chapterId'] ||
+      (changes['visible'] && this.visible)
+    ) {
       this.rebuildUrls();
     }
   }
@@ -95,7 +96,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     this.loading.show();
 
     return from(
-      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.pages, { chapter })
+      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.items().map(item => item.page), { chapter })
     ).pipe(
       tap(() => {
         this.tabsService.refresh();
@@ -108,15 +109,13 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   clearAll() {
-    this.pages = [];
-    this.urls.set([]);
+    this.items.set([]);
   }
 
   private async rebuildUrls() {
-    if(!this.tabId) return;
+    if (!this.tabId) return;
 
     const pages = await this.pageRepo.getAll(this.tabId!, this.chapterId);
-    this.pages = pages;
 
     const urls = await Promise.all(
       pages.map(async (p) => ({
@@ -125,7 +124,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       }))
     );
 
-    this.urls.set(urls);
+    this.items.set(pages.map((p, i) => ({ page: p, url: urls[i]!.src })));
   }
 
   async onFilesDropped(files: FileList | File[]) {
@@ -216,29 +215,27 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       previewSrc = await this.urlService.createUrl(name!, blob);
     }
 
-    this.pages.push({
-      src: pageSrc,
-      name,
-      tabId: 0
-    });
-
-    this.urls.update(u => [...u, { src: previewSrc, name }]);
+    this.items.update(items => [...items, { page: { src: pageSrc, name, tabId: 0 }, url: previewSrc }]);
   }
 
   remove(index: number) {
-    const itUrl = this.urls()[index];
-    if (itUrl?.src.startsWith('blob:')) {
-      this.urlService.revokeUrl(itUrl.src);
+    const itUrl = this.items()[index];
+    if (itUrl?.url.startsWith('blob:')) {
+      this.urlService.revokeUrl(itUrl.url);
     }
 
-    this.pages.splice(index, 1);
-    this.urls.update(u => u.filter((_, i) => i !== index));
+    this.items.update(items => items.filter((_, i) => i !== index));
   }
 
   drop(event: CdkDragDrop<any[]>) {
-    moveItemInArray(this.pages, event.previousIndex, event.currentIndex);
-    moveItemInArray(this.urls(), event.previousIndex, event.currentIndex);
-    this.urls.set([...this.urls()]);
+    if (event.previousIndex === event.currentIndex) return;
+
+    //copy urls array
+    const newUrls = [...this.items()];
+    moveItemInArray(newUrls, event.previousIndex, event.currentIndex);
+
+    // update urls signal with new order
+    this.items.set(newUrls);
   }
 
   onDrop(event: DragEvent) {

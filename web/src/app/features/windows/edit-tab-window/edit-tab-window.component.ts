@@ -34,16 +34,23 @@ export class EditTabWindowComponent implements OnChanges {
   saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
+  localFileName: string | undefined;
 
   constructor(
-    private pagesRepo: PagesRepository, 
-    private tabService: TabsService, 
-    private loading: LoadingService, 
+    private pagesRepo: PagesRepository,
+    private tabService: TabsService,
+    private loading: LoadingService,
     private langService: LanguageService
   ) { }
-  
+
   async ngOnChanges(changes: SimpleChanges) {
-    await this.loadPages();
+    if (changes['fileName']
+      || (changes['isVisible'] && this.isVisible)
+    ) {
+      this.localFileName = this.fileName;
+
+      await this.loadPages();
+    }
   }
 
   private async loadPages() {
@@ -63,12 +70,18 @@ export class EditTabWindowComponent implements OnChanges {
     }
   }
 
+  onFileSelected(name: string) {
+    if (!this.localFileName) {
+      this.localFileName = name;
+    }
+  }
+
   onUploadFinished() {
     console.log('EditTabWindowComponent - onUploadFinished');
   }
 
   onWindowClose() {
-    this.fileName = undefined;
+    this.localFileName = undefined;
     this.viewMode = undefined;
     this.clearAll$.next();
     this.closeWindow.emit();
@@ -83,7 +96,7 @@ export class EditTabWindowComponent implements OnChanges {
         return;
       }
 
-      tab.name = this.fileName ?? `${this.langService.translate('tab')} ${tab.id}`;
+      tab.name = this.localFileName ?? `${this.langService.translate('tab')} ${tab.id}`;
       this.saveAll$.next([tab, undefined]);
     }
     catch (err) {

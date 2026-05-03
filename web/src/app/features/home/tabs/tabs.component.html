@@ -2,8 +2,13 @@
     @for (tabData of tabs(); track tabData.tab.id) {
     <div class="card" (click)="openChapterInTab(tabData)">
         <div class="header">
+            <!-- Edit (only single view mode) -->
+            @if (tabData.tab.mode == isSingle) {
             <button class="molv-btn-small-remove"
                 (click)="openEditWindow(tabData.tab); $event.stopPropagation()">⚙</button>
+            }
+
+            <!-- Delete -->
             <button class="molv-btn-small-remove"
                 (click)="remove(tabData.tab.id!); $event.stopPropagation()">✕</button>
         </div>

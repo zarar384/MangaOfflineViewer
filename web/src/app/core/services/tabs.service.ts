@@ -206,6 +206,7 @@ export class TabsService {
   }
 
   async refresh() {
+    this.url.revokeAll();
     await this.load(this.page(), this.perPage());
   }
 

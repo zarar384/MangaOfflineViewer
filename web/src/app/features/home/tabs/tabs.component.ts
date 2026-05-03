@@ -4,6 +4,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { Tab } from '../../../core/models/tab.model';
 import { LoadingService } from '../../../core/services/loading.service';
 import { TabsService } from '../../../core/services/tabs.service';
+import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 
 @Component({
   selector: 'tabs',
@@ -21,6 +22,9 @@ export class TabsComponent {
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
 
   tabs = this.tabsService.tabsState;
+
+  // expose enum to template
+  isSingle = ViewMod.Single;
 
   async remove(id: number) {
     try {
