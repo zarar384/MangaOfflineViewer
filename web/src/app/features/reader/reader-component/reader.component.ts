@@ -61,6 +61,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private isLoaderVisible = false;
 
   /**
+   * Incremented on every new handleNavigation call.
+   * Stale async continuations compare against this and abort early,
+   * which prevents concurrent navigations from fighting over scroll/state.
+   * Also incremented on clean open so a navigation from the previous session
+   * cannot corrupt freshly opened reader state.
+   */
+  private navToken = 0;
+
+  /**
    * Number of pages that are currently in the viewport and not yet loaded.
    * Loader is shown only when this is > 0 - background preloads don't count.
    */
@@ -107,14 +116,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /**
    * Chapter ids already loaded into the pages buffer.
    * Prevents re-fetching the same chapter on repeated observer callbacks.
-   * Reset only on clean open.
+   * Reset only on clean open - NOT on merge, otherwise already-loaded chapters
+   * get re-fetched on every merge and performance degrades the longer you read.
    */
   private loadedChapterIds = new Set<number>();
 
   /**
    * chapter id -> { firstPageId, lastPageId }
    * Used to detect when the bookmark crosses a chapter boundary
-   * so we can update reader.chapterId() correctly.
+   * so  can update reader.chapterId() correctly.
    */
   private chapterPageRanges = new Map<number, { first: number; last: number }>();
 
@@ -165,13 +175,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.pageIndexMap.clear();
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
-      this.rebuildChapterTracking(pages);
 
       if (pagesUpdateKind === 'merge') {
         //  seamless merge: minimal update, no scroll reset 
         //
         // Recalculate the visible window without losing scroll position,
         // and re-attach the observer to any newly rendered elements.
+        //
+        // rebuildChapterTracking is NOT called here - it clears loadedChapterIds
+        // which causes already-loaded chapters to be re-fetched on every merge,
+        // degrading performance the longer you read (classic "gets laggier" bug).
+        // Instead,  update chapterPageRanges incrementally via mergeChapterTracking.
+
+        this.mergeChapterTracking(pages);
 
         const anchorId = untracked(() => this.reader.currentPageBookmark());
         const anchorIndex = anchorId
@@ -209,16 +225,27 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.loadingSet.clear();
       this.loadingCount = 0;
+
+      // reset visible counter on clean open - stale count from a previous session
+      // would keep the loader stuck forever or suppress it incorrectly
       this.visibleUnloadedCount = 0;
+      this.cancelLoaderDebounce();
+
       this.focusPageId = null;
 
       this.fetchingNext = false;
       this.fetchingPrev = false;
 
+      // full chapter tracking reset only on clean open
+      this.rebuildChapterTracking(pages);
+
       // show loader immediately on clean open - user is waiting for first paint
       this.showLoaderNow();
 
       this.loadToken++;
+
+      // cancel any navigation that was started for the previous session
+      this.navToken++;
 
       const container = this.readerContainer?.nativeElement;
       if (container) container.scrollTop = 0;
@@ -250,6 +277,70 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.handleNavigation(pageId);
     });
+
+
+    //  EFFECT: mode changed 
+    //
+    // When switching between scroll and page mode the observer root changes
+    // (scroll mode uses window, page mode uses the container), so the observer
+    // must be recreated with the correct root. Also resets the visible counter
+    // because the viewport geometry is completely different in each mode -
+    // a stale counter would cause infinite loader or suppress it incorrectly.
+
+    effect(() => {
+      const mode = this.reader.mode();
+      untracked(() => {
+        if (!this.reader.pages().length) return;
+
+        // Mode switch changes layout metrics (snap/size), so keep an explicit
+        // anchor page to prevent browser snap from jumping to a different image.
+        const anchorId =
+          this.getViewportAnchorPageId() ??
+          this.reader.currentPageBookmark() ??
+          this.reader.currentPageId() ??
+          null;
+
+        // Cancel any in-flight programmatic navigation started before mode switch.
+        this.navToken++;
+        this.isNavigating = true;
+        this.focusPageId = anchorId;
+
+        if (anchorId != null) {
+          const anchorIndex = this.pageIndexMap.get(anchorId);
+          if (anchorIndex !== undefined) {
+            this.updateVisiblePages(anchorIndex);
+          }
+
+          // Keep reader state in sync with the anchored page so follow-up
+          // observer updates do not snap to a stale bookmark/currentPage.
+          this.reader.setCurrentPage(anchorId);
+          this.reader.setCurrentPageBookmark(anchorId);
+          this.updateActiveChapter(anchorId);
+        }
+
+        // reset loader state - old counter is meaningless after mode switch
+        this.visibleUnloadedCount = 0;
+        this.cancelLoaderDebounce();
+        this.hideLoader();
+
+        // recreate observer with the correct root for the new mode
+        requestAnimationFrame(() => {
+          this.setupObserver();
+          this.observeAllImages();
+
+          if (anchorId != null) {
+            this.scrollToPageImmediately(anchorId);
+          }
+
+          requestAnimationFrame(() => {
+            if (this.destroyed) return;
+            this.isNavigating = false;
+            this.focusPageId = null;
+            this.loadVisibleRange();
+          });
+        });
+      });
+    });
   }
 
 
@@ -272,6 +363,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.observedPageIds.clear();
     this.teardownScrollPreloadListener();
     this.cancelLoaderDebounce();
+    this.hideLoader();
     this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
   }
@@ -280,13 +372,21 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   //  LOADER 
 
   /**
-   * Returns true if the image is currently intersecting the actual viewport
-   * (not the rootMargin zone). Used to decide whether a load is "visible"
-   * to the user and warrants showing the loader.
+   * Returns true if the image is currently intersecting the actual viewport.
+   * Checks against the reader container bounds, not window - because in page
+   * mode scroll happens inside the container, not the window.
    */
   private isImageInViewport(img: HTMLImageElement): boolean {
-    const rect = img.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < window.innerHeight;
+    const container = this.readerContainer?.nativeElement;
+    if (!container) {
+      const rect = img.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+
+    return imgRect.bottom > containerRect.top && imgRect.top < containerRect.bottom;
   }
 
   /**
@@ -342,13 +442,22 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.observer?.disconnect();
     this.observedPageIds.clear();
 
+    // root = reader container so rootMargin is measured against it, not window.
+    // Critical in page mode where the container (not window) is the scroll host.
+    // In scroll mode the container IS effectively the viewport so this is safe too.
+    const root = this.readerContainer?.nativeElement ?? null;
+
     this.observer = new IntersectionObserver(async (entries) => {
 
       if (this.isNavigating) return;
 
       const token = this.loadToken;
 
-      let centerY = window.innerHeight / 2;
+      const containerRect = root?.getBoundingClientRect();
+      const containerHeight = containerRect?.height ?? window.innerHeight;
+      const containerTop = containerRect?.top ?? 0;
+
+      let centerY = containerHeight / 2;
 
       if (this.focusPageId !== null) {
         const el = this.imgRefs.find(r =>
@@ -357,15 +466,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         if (el) {
           const rect = el.getBoundingClientRect();
-          centerY = rect.top + rect.height / 2;
+          centerY = (rect.top - containerTop) + rect.height / 2;
         }
       }
 
       const visible = entries
         .filter(e => e.isIntersecting)
         .sort((a, b) => {
-          const aCenter = a.boundingClientRect.top + a.boundingClientRect.height / 2;
-          const bCenter = b.boundingClientRect.top + b.boundingClientRect.height / 2;
+          const aCenter = (a.boundingClientRect.top - containerTop) + a.boundingClientRect.height / 2;
+          const bCenter = (b.boundingClientRect.top - containerTop) + b.boundingClientRect.height / 2;
           return Math.abs(aCenter - centerY) - Math.abs(bCenter - centerY);
         })
         .slice(0, this.MAX_LOAD * 2);
@@ -423,7 +532,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         if (this.loadingSet.has(id)) continue;
         if (this.loadingCount >= this.MAX_LOAD) continue;
 
-        // show loader only if user can actually see this image is missing
+        // snapshot viewport state at the moment  START loading -
+        // by the time finally runs the user may have scrolled away,
+        // so isImageInViewport() in finally would return a different value
+        // and the counter would never decrement -> infinite loader
+        //
+        // IMPORTANT: increment only AFTER the skip checks above -
+        // skipped entries never reach try/finally, so the counter would
+        // leak and never reach 0 -> infinite loader (page mode bug)
         const inViewport = this.isImageInViewport(img);
         if (inViewport) {
           this.visibleUnloadedCount++;
@@ -466,8 +582,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadingSet.delete(id);
           this.loadingCount--;
 
-          // decrement viewport counter only if this was a visible load
-          if (this.isImageInViewport(img) && this.visibleUnloadedCount > 0) {
+          // use the snapshotted inViewport - not a fresh call - to match the increment above
+          if (inViewport && this.visibleUnloadedCount > 0) {
             this.visibleUnloadedCount--;
           }
 
@@ -479,6 +595,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
     }, {
+      root,
       // aggressive preload margins so images load well before they scroll into view
       rootMargin: isIOS ? '1500px' : '2500px',
       threshold: 0,
@@ -579,6 +696,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const PRELOAD_PX = isIOS ? 1500 : 2500;
     const token = this.loadToken;
 
+    const container = this.readerContainer?.nativeElement;
+    const containerRect = container?.getBoundingClientRect();
+    const containerTop = containerRect?.top ?? 0;
+    const containerBottom = containerRect?.bottom ?? window.innerHeight;
+
     this.imgRefs.forEach(ref => {
       if (this.destroyed) return;
       if (token !== this.loadToken) return;
@@ -593,10 +715,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       const rect = img.getBoundingClientRect();
 
-      // check if within preload range (above or below viewport)
+      // check if within preload range relative to the container (not window)
       const inRange =
-        rect.bottom >= -PRELOAD_PX &&
-        rect.top <= window.innerHeight + PRELOAD_PX;
+        rect.bottom >= containerTop - PRELOAD_PX &&
+        rect.top <= containerBottom + PRELOAD_PX;
 
       if (!inRange) return;
 
@@ -647,9 +769,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   // CHAPTER TRACKING
 
   /**
-   * Rebuilds chapter ranges from the current pages buffer.
-   * This keeps boundary detection correct after clean opens, restored sessions,
-   * and seamless prev/next chapter merges.
+   * Full rebuild of chapter tracking from scratch.
+   * Called only on clean open - never on merge.
+   * Clears both loadedChapterIds and chapterPageRanges.
    */
   private rebuildChapterTracking(pages: PageMeta[]): void {
     this.loadedChapterIds.clear();
@@ -665,14 +787,50 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       const range = this.chapterPageRanges.get(chapterId);
       if (!range) {
-        this.chapterPageRanges.set(chapterId, {
-          first: pageId,
-          last: pageId,
-        });
+        this.chapterPageRanges.set(chapterId, { first: pageId, last: pageId });
         continue;
       }
 
       range.last = pageId;
+    }
+  }
+
+  /**
+   * Incremental chapter tracking update for seamless merges.
+   * Only adds new chapters and extends boundaries of existing ones.
+   * Does NOT clear loadedChapterIds - that's the whole point.
+   *
+   * Clearing loadedChapterIds on merge was the root cause of the
+   * "gets laggier the longer you read" bug: each merge would wipe the
+   * set, making tryLoadAdjacentChapters re-fetch chapters already in the
+   * buffer, triggering more merges, wiping again, in an accelerating loop.
+   */
+  private mergeChapterTracking(pages: PageMeta[]): void {
+    for (const page of pages) {
+      const chapterId = page.chapterId;
+      const pageId = page.id;
+
+      if (chapterId == null || pageId == null) continue;
+
+      this.loadedChapterIds.add(chapterId);
+
+      const range = this.chapterPageRanges.get(chapterId);
+      if (!range) {
+        this.chapterPageRanges.set(chapterId, { first: pageId, last: pageId });
+        continue;
+      }
+
+      // extend boundaries in both directions to handle prev and next merges
+      const pageIndex = this.pageIndexMap.get(pageId);
+      const firstIndex = this.pageIndexMap.get(range.first);
+      const lastIndex = this.pageIndexMap.get(range.last);
+
+      if (pageIndex !== undefined && firstIndex !== undefined && pageIndex < firstIndex) {
+        range.first = pageId;
+      }
+      if (pageIndex !== undefined && lastIndex !== undefined && pageIndex > lastIndex) {
+        range.last = pageId;
+      }
     }
   }
 
@@ -745,17 +903,18 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.chaptersRepo.getNextChapter(chapterId)
         .then(next => {
-          if (!next || this.loadedChapterIds.has(next.id!)) {
+          const nextId = next?.id;
+          if (!nextId || this.loadedChapterIds.has(nextId)) {
             // no next chapter or already in buffer - nothing to do
             this.fetchingNext = false;
             return;
           }
 
-          return this.pagesRepo.getMetaByChapter(next.id!).then(newPages => {
+          return this.pagesRepo.getMetaByChapter(nextId).then(newPages => {
             if (!newPages?.length) { this.fetchingNext = false; return; }
 
             // register before merging to block duplicate fetches
-            this.loadedChapterIds.add(next.id!);
+            this.loadedChapterIds.add(nextId);
 
             this.reader.mergePages(newPages, 'next');
 
@@ -772,15 +931,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.chaptersRepo.getPrevChapter(chapterId)
         .then(prev => {
-          if (!prev || this.loadedChapterIds.has(prev.id!)) {
+          const prevId = prev?.id;
+          if (!prevId || this.loadedChapterIds.has(prevId)) {
             this.fetchingPrev = false;
             return;
           }
 
-          return this.pagesRepo.getMetaByChapter(prev.id!).then(newPages => {
+          return this.pagesRepo.getMetaByChapter(prevId).then(newPages => {
             if (!newPages?.length) { this.fetchingPrev = false; return; }
 
-            this.loadedChapterIds.add(prev.id!);
+            this.loadedChapterIds.add(prevId);
 
             this.reader.mergePages(newPages, 'prev');
 
@@ -879,22 +1039,31 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Preloads nearby pages then scrolls to target.
    */
   private async handleNavigation(pageId: number): Promise<void> {
-    this.focusPageId = pageId;
+    // Each call takes a snapshot of the current token.
+    // If a newer navigation starts while this one is awaiting, the token
+    // no longer matches and this call aborts itself on every resume point.
+    const navToken = ++this.navToken;
 
+    this.focusPageId = pageId;
     this.showLoaderNow();
 
-    await this.waitForImages();
-
-    const index = await this.resolvePageIndexForNavigation(pageId);
-    if (index === undefined) return;
-
-    this.isNavigating = true;
-
     try {
+      await this.waitForImages();
+      if (this.destroyed || navToken !== this.navToken) return;
+
+      const index = await this.resolvePageIndexForNavigation(pageId);
+      if (this.destroyed || navToken !== this.navToken) return;
+
+      if (index === undefined) return;
+
+      this.isNavigating = true;
       this.updateVisiblePages(index);
 
       await new Promise(r => requestAnimationFrame(r));
+      if (navToken !== this.navToken) return;
+
       await this.waitForImages();
+      if (navToken !== this.navToken) return;
 
       const PRELOAD_BEFORE = this.MAX_LOAD * 2;
       const PRELOAD_AFTER = this.MAX_LOAD;
@@ -913,10 +1082,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
           try {
             await this.ensurePageLoaded(page);
-            if (this.destroyed) return;
+            if (this.destroyed || navToken !== this.navToken) return;
 
             const url = await this.getOrCreateUrl(page);
-            if (this.destroyed) return;
+            if (this.destroyed || navToken !== this.navToken) return;
             if (!url) return;
 
             const img = this.imgRefs.find(r =>
@@ -934,6 +1103,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         })
       );
 
+      if (navToken !== this.navToken) return;
+
       // one frame with forced reflow to get accurate offsetTop before scrolling
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => {
@@ -942,11 +1113,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         });
       });
 
+      if (navToken !== this.navToken) return;
+
       const container = this.readerContainer?.nativeElement;
       const target = await this.waitForTarget(pageId);
 
       if (target && container) {
-        container.scrollTo({ top: target.offsetTop - container.offsetTop, behavior: 'auto' });
+        container.scrollTo({
+          top: this.getContainerRelativeTop(target, container),
+          behavior: 'auto',
+        });
       }
 
       this.reader.setCurrentPage(pageId);
@@ -955,8 +1131,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     } finally {
       this.isNavigating = false;
-      this.focusPageId = null;
-      this.hideLoader();
+      // Only release focus/loader ownership if this is still the active navigation.
+      // If a newer call has taken over, it owns focusPageId and the visible loader.
+      if (navToken === this.navToken) {
+        this.focusPageId = null;
+        this.hideLoader();
+      }
     }
   }
 
@@ -997,6 +1177,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
 
     for (let i = 0; i < 10; i++) {
+      if (this.destroyed) return undefined;
+
       const index = this.pageIndexMap.get(pageId);
       if (index !== undefined) return index;
 
@@ -1100,10 +1282,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * then corrects scrollTop synchronously via queueMicrotask - which runs
    * before the next paint, unlike requestAnimationFrame, so the user never
    * sees a visual jump even when pages are inserted above the viewport.
+   *
+   * Skipped in page mode - scroll-snap handles positioning there,
+   * and manual compensation would fight with snap causing the teleport bug.
    */
   private preserveScroll(anchorId: number, callback: () => void): void {
-    // no need to preserve if not in page mode
-    // the scroll container is the whole page and mutations don't affect scroll
     if (this.reader.mode() === 'page') {
       callback();
       return;
@@ -1139,6 +1322,69 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       container.scrollTop = newEl.offsetTop + prevDelta;
     });
+  }
+
+  /**
+   * Restores container scroll so the requested page stays in view.
+   * Used during mode switch where layout metrics change abruptly.
+   */
+  private scrollToPageImmediately(pageId: number): void {
+    const container = this.readerContainer?.nativeElement;
+    if (!container) return;
+
+    const target = this.imgRefs.find(r =>
+      Number(r.nativeElement.dataset['pageId']) === pageId
+    )?.nativeElement;
+
+    if (!target) return;
+
+    container.scrollTo({
+      top: this.getContainerRelativeTop(target, container),
+      behavior: 'auto',
+    });
+  }
+
+  /**
+   * Returns the page id currently closest to viewport center.
+   * This is a more reliable mode-switch anchor than bookmark/currentPage,
+   * which can lag by one observer callback in fast scrolling.
+   */
+  private getViewportAnchorPageId(): number | null {
+    const container = this.readerContainer?.nativeElement;
+    if (!container || !this.imgRefs?.length) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const viewportCenter = containerRect.top + containerRect.height / 2;
+
+    let bestId: number | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    this.imgRefs.forEach(ref => {
+      const img = ref.nativeElement;
+      const id = Number(img.dataset['pageId']);
+      if (!id) return;
+
+      const rect = img.getBoundingClientRect();
+      const center = rect.top + rect.height / 2;
+      const distance = Math.abs(center - viewportCenter);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestId = id;
+      }
+    });
+
+    return bestId;
+  }
+
+  /**
+   * Computes element top in container scroll coordinates.
+   * More stable than offsetTop math when layout/offset parents change.
+   */
+  private getContainerRelativeTop(target: HTMLElement, container: HTMLElement): number {
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return targetRect.top - containerRect.top + container.scrollTop;
   }
 
 
