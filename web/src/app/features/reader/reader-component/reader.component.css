@@ -4,13 +4,13 @@
 
 /* Scroll mode */
 .scroll-mode {  padding: 0; }
-.scroll-mode .image-container {  margin: 0; }
-.scroll-mode .reader-img {  width: 100vw;  height: 100vh;  object-fit: cover;  display: block; }
+.scroll-mode .image-container { margin: 0; }
+.scroll-mode .reader-img { display: block; margin: 0 auto; height: auto; object-fit: contain; }
 
 /* Page mode */
 .page-mode {  overflow-y: scroll;  overflow-x: hidden;  scroll-snap-type: y mandatory; }
 .page-mode .image-container {  width: 100vw;  height: 100vh; scroll-snap-align: start; scroll-snap-stop: always;}
-.page-mode .reader-img {  width: 100%;  height: 100%;  object-fit: cover; }
+.page-mode .reader-img { width: 100%; height: 100%; object-fit: contain; }
 
 /* Image loading placeholder */
 .reader-img:not([src]) { background: linear-gradient( 100deg, #ffe4ec 0%, #ffd6e4 40%, #ffeef3 60%, #ffd6e4 80%, #ffe4ec 100% ); background-size: 200% 100%; animation: shimmer 2.5s ease-in-out infinite; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #c48aa3; font-family: "Amatic SC", sans-serif; }

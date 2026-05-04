@@ -341,6 +341,46 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         });
       });
     });
+
+    //  EFFECT: zoom changed 
+    //
+    // Changing zoom modifies layout metrics (image height changes),
+    // which shifts offsetTop for every element in the DOM.
+    // If not compensated, scrollTop stays the same and viewport
+    // jumps to a different page (anchor breaks).
+    //
+    // Fixed by capturing anchor and compensating scroll via preserveScroll.
+    // This keeps the same visual position without triggering navigation.
+
+    effect(() => {
+      const zoom = this.reader.zoom();
+
+      untracked(() => {
+        if (!this.reader.pages().length) return;
+
+        // Anchor = closest to viewport center (most stable during layout shifts)
+        // Fallbacks ensure recovery if observer/bookmark lag behind.
+        const anchorId =
+          this.getViewportAnchorPageId() ??
+          this.reader.currentPageBookmark() ??
+          this.reader.currentPageId() ??
+          null;
+
+        if (anchorId == null) return;
+
+        const anchorIndex = this.pageIndexMap.get(anchorId);
+        if (anchorIndex === undefined) return;
+
+        // IMPORTANT:
+        // This is a pure layout compensation, not navigation.
+        // No navToken, no isNavigating, no observer reset.
+        //
+        // Only scroll is corrected relative to anchor.
+        this.preserveScroll(anchorId, () => {
+          this.updateVisiblePages(anchorIndex);
+        });
+      });
+    });
   }
 
 
