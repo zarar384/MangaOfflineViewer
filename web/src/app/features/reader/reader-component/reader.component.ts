@@ -342,9 +342,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       });
     });
 
-    //  EFFECT: zoom changed 
+    //  EFFECT: zoom, gap changed 
     //
-    // Changing zoom modifies layout metrics (image height changes),
+    // Changing zoom or gap modifies layout metrics (image height changes),
     // which shifts offsetTop for every element in the DOM.
     // If not compensated, scrollTop stays the same and viewport
     // jumps to a different page (anchor breaks).
@@ -354,6 +354,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     effect(() => {
       const zoom = this.reader.zoom();
+      const gap = this.reader.gap();
 
       untracked(() => {
         if (!this.reader.pages().length) return;

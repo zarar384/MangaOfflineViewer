@@ -108,9 +108,9 @@ export class TabsRepository {
       // save tab or update
       const savedId = await db.tabs.put(tabToSave);
 
-      if (deleteOldPages || pages.length === 0) {
-        await db.pages.where('tabId').equals(savedId as number).delete();
-      }
+      // if (deleteOldPages || pages.length === 0) {
+      //   await db.pages.where('tabId').equals(savedId as number).delete();
+      // }
 
       var chapterId: number | undefined = undefined;
       let startPageNumber = 0;
@@ -130,7 +130,7 @@ export class TabsRepository {
 
       // prepare pages and bulk put
       const normalized: Page[] = pages.map((p: any, indx: number) => ({
-        id: undefined,
+        id: p.id,
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
