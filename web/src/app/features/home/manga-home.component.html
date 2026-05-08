@@ -1,4 +1,7 @@
-<molv-search (searchChange)="onSearch($event)"></molv-search>
+<molv-search
+  [value]="tabsService.searchQueryState()"
+  (searchChange)="onSearch($event)">
+</molv-search>
 
 <div class="manga-home-root">
   <tabs

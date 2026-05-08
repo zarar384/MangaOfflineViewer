@@ -35,6 +35,8 @@ export class TabsService {
   readonly activeTabIdState = this.activeTabId.asReadonly();
 
   private searchTokens = signal<SearchToken[]>([]);
+  private searchQuery = signal('');
+  readonly searchQueryState = this.searchQuery.asReadonly();
 
   constructor(
     private repo: TabsRepository,
@@ -88,9 +90,18 @@ export class TabsService {
     await this.refresh();
   }
 
-  filterByTokens(tokens: SearchToken[]) {
+  filterByTokens(
+    tokens: SearchToken[],
+    query: string
+  ) {
     this.searchTokens.set(tokens);
+    this.searchQuery.set(query);
+
     this.page.set(1); // reset to first page in pagination
+  }
+
+  setSearchQuery(query: string) {
+    this.searchQuery.set(query);
   }
 
   hydrate(page: number, perPage: number) {

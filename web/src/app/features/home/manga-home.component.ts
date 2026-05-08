@@ -81,7 +81,14 @@ export class MangaHomeComponent implements OnInit {
     this.showEditWindow = false;
   }
 
-  onSearch(tokens: SearchToken[]) {
-    this.tabsService.filterByTokens(tokens);
+  onSearch(event: {
+    tokens: SearchToken[];
+    query: string;
+  }) {
+
+    this.tabsService.filterByTokens(
+      event.tokens,
+      event.query
+    );
   }
 }

@@ -47,9 +47,9 @@
 
       <!-- artists -->
       <molv-meta-input
-        label="Artist"
-        placeholder="Hayao Miyazaki; Kentaro Miura"
-        hint="Use ; to separate multiple artists"
+        label="{{ 'artist' | transloco }}"
+        placeholder="{{ 'artist_placeholder' | transloco }}"
+        hint="{{ 'use_semicolon' | transloco }}"
         [items]="artists()"
         [value]="artistsValue"
         [suggestions]="artistSuggestions()"
@@ -59,9 +59,9 @@
 
       <!-- tags -->
       <molv-meta-input
-        label="Tags"
-        placeholder="action; horror; racing"
-        hint="Use ; to separate multiple tags"
+        label="{{ 'tags' | transloco }}"
+        placeholder="{{ 'tags_placeholder' | transloco }}"
+        hint="{{ 'use_semicolon' | transloco }}"
         [items]="tags()"
         [value]="tagsValue"
         [suggestions]="tagSuggestions()"

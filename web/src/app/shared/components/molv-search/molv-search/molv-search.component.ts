@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, signal, } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,27 +11,50 @@ import { parseQuery } from 'src/app/shared/utils/search';
 @Component({
   selector: 'molv-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule, TranslocoPipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    TranslocoPipe
+  ],
   templateUrl: './molv-search.component.html',
   styleUrls: ['./molv-search.component.css']
 })
-export class MolvSearchComponent {
+export class MolvSearchComponent
+  implements OnInit {
 
-  @Output() searchChange = new EventEmitter<SearchToken[]>();
+  @Input()
+  value = '';
+
+  @Output()
+  searchChange = new EventEmitter<{
+    tokens: SearchToken[];
+    query: string;
+  }>();
 
   search = signal('');
 
   // ghost text for autocompletion suggestions
   suggestion = signal('');
 
-  private searchSubject = new Subject<SearchToken[]>();
+  private searchSubject =
+    new Subject<SearchToken[]>();
+
+  ngOnInit() {
+    this.search.set(this.value);
+  }
 
   constructor() {
-    // debounce (so as not to emit on every keystroke) and subscribe to search changes
+    // debounce
     this.searchSubject
       .pipe(debounceTime(300))
-      .subscribe(value => {
-        this.searchChange.emit(value);
+      .subscribe(tokens => {
+
+        this.searchChange.emit({
+          tokens,
+          query: this.search()
+        });
       });
   }
 
@@ -40,18 +63,25 @@ export class MolvSearchComponent {
 
     // calculate suggestion based on last word
     const suggestion = this.getSuggestion(value);
+
     this.suggestion.set(suggestion);
 
-    this.searchSubject.next(parseQuery(value));
+    this.searchSubject.next(
+      parseQuery(value)
+    );
   }
 
   // reset
   clear() {
+
     this.search.set('');
-    this.searchSubject.next(parseQuery(''));
+
+    this.searchSubject.next(
+      parseQuery('')
+    );
   }
 
-  // mobile / fallback: apply suggestion on tap
+  // mobile / fallback
   onClick() {
     if (this.suggestion()) {
       this.applySuggestion();
@@ -64,11 +94,17 @@ export class MolvSearchComponent {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    const suggestion = this.suggestion();
+    const suggestion =
+      this.suggestion();
 
-    // desktop TAB to accept suggestion
-    if (event.key === 'Tab' && suggestion) {
+    // desktop TAB
+    if (
+      event.key === 'Tab' &&
+      suggestion
+    ) {
+
       event.preventDefault();
+
       this.applySuggestionInternal();
     }
   }
@@ -76,38 +112,51 @@ export class MolvSearchComponent {
   getSuggestion(value: string): string {
     // get last typed token
     const parts = value.split(' ');
+
     const last = parts[parts.length - 1]?.toLowerCase() ?? '';
 
     // no suggestion if empty or already a tag
-    if (!last || last.includes(':')) return '';
+    if (!last || last.includes(':')) {
+      return '';
+    }
 
-    // find matching tag key (artist, genre, ...)
+    // find matching tag key
     const match = Object.values(SearchTagKey).find(k => k.startsWith(last));
 
-    // no suggestion if exact match or nothing found
-    if (!match || match === last) return '';
+    // no suggestion if exact match
+    if (!match || match === last) {
+      return '';
+    }
 
-    // return only the remaining part (avoid "ggenre")
+    // return only remaining part
     return match.slice(last.length) + ':';
   }
 
   private applySuggestionInternal(): void {
-    const suggestion = this.suggestion();
-    if (!suggestion) return;
+    const suggestion =
+      this.suggestion();
 
-    // replace last token with completed version
+    if (!suggestion) {
+      return;
+    }
+
+    // replace last token
     const parts = this.search().split(' ');
+
     const lastIndex = parts.length - 1;
 
     parts[lastIndex] = (parts[lastIndex] ?? '') + suggestion;
 
     const newValue = parts.join(' ') + ' ';
 
-    // update input and clear suggestion
+    // update input
     this.search.set(newValue);
+
     this.suggestion.set('');
 
     // emit updated query
-    this.searchSubject.next(parseQuery(newValue));
+    this.searchSubject.next(
+      parseQuery(newValue)
+    );
   }
 }

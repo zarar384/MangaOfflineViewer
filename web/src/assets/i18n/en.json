@@ -40,6 +40,11 @@
     "multi": "Multiple",
     "searchManga": "Search Manga",
     "typeMangaTitle": "Type Manga Title",
+    "artist": "Artist",
+    "tags": "Tags",
+    "use_semicolon": "Use ; to separate multiple items",
+    "artist_placeholder": "Hayao Sasaki; Kentaro Ebanari",
+    "tags_placeholder": "action; horror; racing",
     "toast": {
         "saved": "Saved successfully",
         "deleted": "Deleted successfully",
