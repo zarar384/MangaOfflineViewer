@@ -40,6 +40,11 @@
     "multi": "Více",
     "searchManga": "Hledat mangu",
     "typeMangaTitle": "Zadejte název mangy",
+    "artist": "Autor",
+    "tags": "Tagy",
+    "use_semicolon": "Použijte ; pro oddělení více položek",
+    "artist_placeholder": "Hayao Sasaki; Kentaro Ebanari",
+    "tags_placeholder": "action; horror; racing",
     "toast": {
         "saved": "Úspěšně uloženo",
         "deleted": "Úspěšně smazáno",
