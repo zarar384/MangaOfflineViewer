@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {  Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ItemMeta } from '../models/item-meta.model';
+import { ItemMeta } from '../../models/item-meta.model';
 
 @Component({
   selector: 'molv-meta-input',

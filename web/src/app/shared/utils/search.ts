@@ -4,6 +4,21 @@ import {
   SearchTagKey
 } from "../models/search-token.model";
 
+/*
+  Search examples:
+
+  artist:hideo_kojima
+  artist:hayao_miyazaki tags:horror;action
+  tags:psychological tokyo_ghoul
+  tags:horror; action tokyo_ghoul
+
+  Rules:
+  * spaces split tokens
+  * multi-word artist/tag values use _
+  * tags are separated with ;
+  * everything outside artist:/tags: is normal title search
+*/
+
 export function parseQuery(query: string): SearchToken[] {
 
   const result: SearchToken[] = [];
@@ -81,20 +96,29 @@ export function parseQuery(query: string): SearchToken[] {
             `${SearchTagKey.Tags}:`.length
           );
       }
-      // tags: horror;action
+      // tags: horror; action
       else {
 
         index++;
 
-        // collect until next tag
+        // collect tags until next search token
         while (index < parts.length) {
 
           const next =
             parts[index].toLowerCase();
 
+          // stop at next tag key
           if (
             next.startsWith(`${SearchTagKey.Artist}:`) ||
             next.startsWith(`${SearchTagKey.Tags}:`)
+          ) {
+            break;
+          }
+
+          // stop if token does not belong to tags list
+          if (
+            rawValue &&
+            !parts[index - 1].includes(';')
           ) {
             break;
           }

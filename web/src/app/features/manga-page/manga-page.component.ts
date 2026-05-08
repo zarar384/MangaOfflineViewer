@@ -8,12 +8,12 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { createPreview } from '../../shared/utils/preview';
 import { PREVIEW_MAX_SIZE } from '../../core/db.config';
-import { MolvMetaInputComponent } from 'src/app/shared/molv-meta-input/molv-meta-input.component';
 import { Tag } from 'src/app/core/models/tag.model';
 import { Artist } from 'src/app/core/models/artist.model';
 import { TagsRepository } from 'src/app/core/repositories/tags.repository';
 import { ArtistsRepository } from 'src/app/core/repositories/artist.repository';
 import { MolvTextboxComponent } from 'src/app/shared/components/molv-textbox/molv-textbox';
+import { MolvMetaInputComponent } from 'src/app/shared/components/molv-meta-input/molv-meta-input.component';
 
 @Component({
   selector: 'manga-page',
