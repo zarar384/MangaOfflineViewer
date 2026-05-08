@@ -19,22 +19,55 @@
     <div class="info">
 
       <!-- title -->
-      @if (!isEditMode()) {
-      <h1 class="title">{{ tab()?.name }}</h1>
-      }
-      @else {
-      <input [(ngModel)]="draft!.name" (ngModelChange)="onNameChange($event)" type="text"
-        class="molv-txtbx molv-txtbx-large" placeholder="{{ 'title' | transloco }}" />
-      }
+      <molv-textbox
+        [value]="draft?.name ?? tab()?.name ?? ''"
+        (valueChange)="onNameChange($event)"
+        [placeholder]="'title' | transloco"
+        [isEditMode]="isEditMode()"
+        [editableTag]="'input'"
+        [readonlyTag]="'h1'"
+        [multiline]="true"
+        [maxLength]="200"
+        [maxHeight]="180"
+        [editClassName]="'molv-txtbx-large'">
+      </molv-textbox>
 
       <!-- description -->
-      @if (!isEditMode()) {
-      <p class="description">{{ tab()?.description }}</p>
-      }
-      @else {
-      <textarea [(ngModel)]="draft!.description" (ngModelChange)="onDescriptionChange($event)" type="text"
-        class="molv-txtbx molv-txtbx-large" placeholder="{{ 'description' | transloco }}"> </textarea>
-      }
+      <molv-textbox
+        [value]="draft?.description ?? tab()?.description ?? ''"
+        (valueChange)="onDescriptionChange($event)"
+        [placeholder]="'description' | transloco"
+        [isEditMode]="isEditMode()"
+        [editableTag]="'textarea'"
+        [readonlyTag]="'p'"
+        [maxLength]="3000"
+        [maxHeight]="320"
+        [editClassName]="'molv-txtbx-large'">
+      </molv-textbox>
+
+      <!-- artists -->
+      <molv-meta-input
+        label="Artist"
+        placeholder="Hayao Miyazaki; Kentaro Miura"
+        hint="Use ; to separate multiple artists"
+        [items]="artists()"
+        [value]="artistsValue"
+        [suggestions]="artistSuggestions()"
+        [isEditMode]="isEditMode()"
+        (valueChange)="onArtistChange($event)">
+      </molv-meta-input>
+
+      <!-- tags -->
+      <molv-meta-input
+        label="Tags"
+        placeholder="action; horror; racing"
+        hint="Use ; to separate multiple tags"
+        [items]="tags()"
+        [value]="tagsValue"
+        [suggestions]="tagSuggestions()"
+        [isEditMode]="isEditMode()"
+        (valueChange)="onTagChange($event)">
+      </molv-meta-input>
 
       <!-- buttons -->
       <div class="actions">

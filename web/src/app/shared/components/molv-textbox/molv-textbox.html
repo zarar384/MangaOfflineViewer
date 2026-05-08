@@ -1,12 +1,86 @@
 @if (isEditMode) {
-  <input
-    class="molv-txtbx {{ className }}"
-    [ngModel]="value"
-    (ngModelChange)="onInputChange($event)"
-    [placeholder]="placeholder"
-    (click)="stopClick($event)"
-  />
+
+  @switch(editableTag){
+
+    <!-- NORMAL INPUT -->
+    @case ('input') {
+
+      @if (!multiline) {
+
+        <input
+          class="molv-txtbx {{ editClassName }}"
+          [ngModel]="value"
+          (ngModelChange)="onInputChange($event)"
+          [placeholder]="placeholder"
+          [attr.maxLength]="maxLength"
+          (click)="stopClick($event)"
+        />
+
+      }
+      @else {
+
+        <!-- MULTILINE INPUT -->
+        <textarea
+          #textareaRef
+          rows="1"
+          class="molv-txtbx molv-multiline-input {{ editClassName }}"
+          [ngModel]="value"
+          (ngModelChange)="onInputChange($event)"
+          [placeholder]="placeholder"
+          [attr.maxLength]="maxLength"
+          (click)="stopClick($event)"
+        ></textarea>
+
+      }
+
+    }
+
+    <!-- TEXTAREA -->
+    @case ('textarea') {
+
+      <textarea
+        #textareaRef
+        class="molv-txtbx {{ editClassName }}"
+        [ngModel]="value"
+        (ngModelChange)="onInputChange($event)"
+        [placeholder]="placeholder"
+        [attr.maxLength]="maxLength"
+        (click)="stopClick($event)"
+      ></textarea>
+
+    }
+
+  }
+
 }
 @else {
-  <span class="{{ className }}">{{ value }}</span>
+
+  @switch (readonlyTag) {
+
+    @case ('h1') {
+      <h1 class="{{ readonlyClassName }}">{{ value }}</h1>
+    }
+
+    @case ('h2') {
+      <h2 class="{{ readonlyClassName }}">{{ value }}</h2>
+    }
+
+    @case ('h3') {
+      <h3 class="{{ readonlyClassName }}">{{ value }}</h3>
+    }
+
+    @case ('p') {
+      <p class="{{ readonlyClassName }}">{{ value }}</p>
+    }
+
+    @case ('div') {
+      <div class="{{ readonlyClassName }}">{{ value }}</div>
+    }
+
+    @default {
+      <span class="{{ readonlyClassName }}">{{ value }}</span>
+    }
+
+  }
+
 }

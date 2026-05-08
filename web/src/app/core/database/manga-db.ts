@@ -6,6 +6,8 @@ import { DB_NAME, DB_VERSION, STORE_BOOKMARKS, STORE_CHAPTERS, STORE_PAGES, STOR
 import { numericNameSort } from "../../shared/utils/file-parsing";
 import { Chapter } from "../models/chapter.model";
 import { UserTab } from "../models/usertab";
+import { Tag } from "../models/tag.model";
+import { Artist } from "../models/artist.model";
 
 export class MangaDB extends Dexie {
   pages!: Table<Page, number>;
@@ -13,6 +15,8 @@ export class MangaDB extends Dexie {
   bookmarks!: Table<Bookmark, number>;
   chapters!: Table<Chapter, number>;
   userTabs!: Table<UserTab, number>;
+  artists!: Table<Artist, number>;
+  tags!: Table<Tag, number>;
 
   constructor() {
     super(DB_NAME);
@@ -183,7 +187,7 @@ export class MangaDB extends Dexie {
     });
 
     // v10
-     this.version(10).stores({
+    this.version(10).stores({
       userTabs: '++id, name, tabId, createdAt',
       tabs: '++id, name, updatedAt, description, mode, createdAt',
       pages: '++id, tabId, chapterId, chapterOrder, pageNumber, name, [tabId+chapterOrder+pageNumber], [tabId+chapterId]',
@@ -199,6 +203,20 @@ export class MangaDB extends Dexie {
             t.createdAt = t.updatedAt ?? Date.now();
           }
         });
+    });
+
+    // v11
+    // fix indexes dor all tables and add artists and tags tables
+    // * means array index, because without its looks like [1,2,3] and not 1,2,3
+    // with it can be queried with .where('artistIds').equals(2) and it will return all tabs that have 2 in their artistIds array
+    this.version(11).stores({
+      userTabs: '++id, tabId',
+      tabs: '++id, updatedAt, createdAt, mode, *artistIds, *tagIds',
+      pages: '++id, tabId, chapterId, [tabId+chapterOrder+pageNumber], [tabId+chapterId]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, [tabId+order]',
+      artists: '++id, normalized',
+      tags: '++id, normalized'
     });
 
     // future migrations can be added like version(n).upgrade(...)

@@ -12,6 +12,8 @@ import { UserTab } from '../models/usertab';
 import { Tab } from '../models/tab.model';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
 import { SearchTagKey, SearchToken, SearchTokenType } from 'src/app/shared/models/search-token.model';
+import { ArtistsRepository } from '../repositories/artist.repository';
+import { TagsRepository } from '../repositories/tags.repository';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -41,7 +43,9 @@ export class TabsService {
     private pagesRepo: PagesRepository,
     private reader: ReaderService,
     private draftService: MangaDraftService,
-    private userTabsRepo: UserTabsRepository
+    private userTabsRepo: UserTabsRepository,
+    private artistsRepo: ArtistsRepository,
+    private tagsRepo: TagsRepository
   ) {
     const savedActive = this.uiState.getValue<number>('activeTabId');
     if (savedActive !== null) {
@@ -134,42 +138,126 @@ export class TabsService {
     );
   }
 
+
   private async load(page: number, perPage: number) {
+
     // normalize search query (trim + lowercase)
     const tokens = this.searchTokens();
 
     // load all tabs from repository
     let allTabs = await this.repo.getAll();
 
+    // preload artists/tags for filtering
+    const artistMap = new Map<number, string[]>();
+    const tagMap = new Map<number, string[]>();
+
+    for (const tab of allTabs) {
+
+      // artists
+      const artists = await Promise.all(
+        (tab.artistIds ?? []).map(id =>
+          this.artistsRepo.get(id)
+        )
+      );
+
+      artistMap.set(
+        tab.id!,
+        artists
+          .filter(Boolean)
+          .map(a =>
+            (
+              a!.normalized ??
+              a!.name
+            ).toLowerCase()
+          )
+      );
+
+      // tags
+      const tags = await Promise.all(
+        (tab.tagIds ?? []).map(id =>
+          this.tagsRepo.get(id)
+        )
+      );
+
+      tagMap.set(
+        tab.id!,
+        tags
+          .filter(Boolean)
+          .map(t =>
+            (
+              t!.normalized ??
+              t!.name
+            ).toLowerCase()
+          )
+      );
+    }
+
     // sort by last activity (updatedAt -> createdAt -> id), newest first
     allTabs = [...allTabs].sort((a, b) => {
-      const aTime = a.updatedAt ?? a.createdAt ?? a.id ?? 0;
-      const bTime = b.updatedAt ?? b.createdAt ?? b.id ?? 0;
+
+      const aTime =
+        a.updatedAt ??
+        a.createdAt ??
+        a.id ??
+        0;
+
+      const bTime =
+        b.updatedAt ??
+        b.createdAt ??
+        b.id ??
+        0;
+
       return bTime - aTime;
     });
 
-    // filter by title if search query exists
+    // filter by search tokens
     if (tokens.length) {
+
       allTabs = allTabs.filter(tab => {
-        const name = (tab.name ?? '').toLowerCase();
+
+        const name =
+          (tab.name ?? '').toLowerCase();
+
+        const artists =
+          artistMap.get(tab.id!) ?? [];
+
+        const tags =
+          tagMap.get(tab.id!) ?? [];
 
         return tokens.every(token => {
-          // simple text search
+
+          // normal text search
           if (token.type === SearchTokenType.Text) {
-            return name.includes(token.value);
+
+            return name.includes(
+              token.value.toLowerCase()
+            );
           }
 
-          //  tag search (artist:xxx, genre:xxx, ...)
-          if (token.type === SearchTokenType.Tag) {
-            if (token.key === SearchTagKey.Artist) {
-              return (tab as any).artist?.toLowerCase().includes(token.value);
-            }
+          // artist:xxx
+          if (
+            token.type === SearchTokenType.Tag &&
+            token.key === SearchTagKey.Artist
+          ) {
 
-            if (token.key === SearchTagKey.Genre) {
-              return (tab as any).genres?.some((g: string) =>
-                g.toLowerCase().includes(token.value)
-              );
-            }
+            return artists.some(a =>
+              a.includes(
+                token.value.toLowerCase()
+              )
+            );
+          }
+
+          // tags:xxx
+          if (
+            token.type === SearchTokenType.Tag &&
+            token.key === SearchTagKey.Tags
+          ) {
+
+            return tags.some(t =>
+              t.includes(
+                token.value.toLowerCase()
+              )
+            );
           }
 
           return true;
@@ -177,14 +265,16 @@ export class TabsService {
       });
     }
 
-    // total count after filtering (used for pagination UI)
+    // total count after filtering
     this.totalTabs.set(allTabs.length);
 
-    // apply pagination AFTER filtering
+    // pagination
     const start = (page - 1) * perPage;
-    const pagedTabs = allTabs.slice(start, start + perPage);
 
-    // build preview URLs (async)
+    const pagedTabs =
+      allTabs.slice(start, start + perPage);
+
+    // previews
     const previewData = await Promise.all(
       pagedTabs.map(async tab => ({
         tab,
@@ -195,8 +285,10 @@ export class TabsService {
     // update state
     this.tabs.set(previewData);
 
-    // load user tabs (independent state)
-    this.userTabs.set(await this.userTabsRepo.getAll());
+    // load user tabs
+    this.userTabs.set(
+      await this.userTabsRepo.getAll()
+    );
   }
 
   async removeTab(id: number) {

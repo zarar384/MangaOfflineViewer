@@ -1,0 +1,16 @@
+:host h1,
+:host h2,
+:host h3,
+:host p,
+:host div,
+:host span {
+    margin: 0;
+
+    min-width: 0;
+    max-width: 100%;
+
+    overflow-wrap: break-word;
+    word-break: break-word;
+
+    white-space: pre-wrap;
+}

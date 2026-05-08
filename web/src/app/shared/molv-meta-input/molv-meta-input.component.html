@@ -1,0 +1,79 @@
+<div class="meta-root">
+
+  <div class="meta-label">
+    {{ label }}
+  </div>
+
+  @if (!isEditMode) {
+
+  <div class="meta-items">
+
+    @for (item of items; track item.normalized) {
+    <div class="meta-chip">
+      {{ item.name }}
+    </div>
+    }
+
+  </div>
+
+  }
+  @else {
+
+  <div class="meta-input-wrapper">
+
+    <!-- ghost suggestion -->
+    @if (suggestion()) {
+
+    <div class="ghost-text">
+
+      <span class="typed">
+        {{ value }}
+      </span>
+
+      <span class="hint">
+        {{ suggestion() }}
+      </span>
+
+    </div>
+
+    }
+
+    <!-- textarea -->
+    <textarea
+  #textareaRef
+  rows="1"
+  class="molv-txtbx molv-txtbx-large meta-textarea"
+  [ngModel]="value"
+  (ngModelChange)="onInput($event)"
+  (keydown)="onKeyDown($event)"
+  (click)="onClick()"
+  [placeholder]="placeholder">
+</textarea>
+
+  </div>
+
+  <div class="meta-hint">
+    {{ hint }}
+  </div>
+
+  @if (shouldShowSuggestions()) {
+
+  <div class="meta-suggestions">
+
+    @for (item of suggestions; track item.normalized) {
+
+    <button type="button" class="meta-suggestion" (click)="selectSuggestion(item.name)">
+
+      {{ item.name }}
+
+    </button>
+
+    }
+
+  </div>
+
+  }
+
+  }
+
+</div>

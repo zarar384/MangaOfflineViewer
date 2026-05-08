@@ -43,3 +43,13 @@
   width: 100%;
   box-sizing: border-box;
 }
+
+
+/* ghost text suggestion */
+.ghost-text { position: absolute; top: 50%; left: 0; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center; font: inherit; padding-left: 0; white-space: nowrap; }
+
+/* typed text (invisible but occupies space) */
+.ghost-text .typed { visibility: hidden; }
+
+/* hint */
+.ghost-text .hint { color: rgba(255, 214, 232, 0.4); }

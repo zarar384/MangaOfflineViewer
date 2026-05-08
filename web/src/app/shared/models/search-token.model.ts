@@ -5,7 +5,7 @@ export enum SearchTokenType {
 
 export enum SearchTagKey {
   Artist = 'artist',
-  Genre = 'genre'
+  Tags = 'tags'
 }
 
 export type SearchToken = {
