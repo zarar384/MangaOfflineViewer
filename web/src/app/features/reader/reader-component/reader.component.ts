@@ -440,33 +440,29 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         })
         .slice(0, this.MAX_LOAD * 2);
 
-      // Compute viewport anchor once per observer batch.
-      // With rootMargin: 1500px on iOS, visible[] contains entries far outside
-      // the real viewport. Using the actual-viewport page as anchor keeps
-      // scroll compensation, bookmark updates and chapter preload stable.
-      const viewportAnchorEntry = visible
-        .filter(entry => {
-          const top = entry.boundingClientRect.top;
-          const bottom = entry.boundingClientRect.bottom;
-          return bottom > containerTop && top < containerTop + containerHeight;
-        })
-        .sort((a, b) => {
-          const aTop = Math.max(a.boundingClientRect.top, containerTop);
-          const aBottom = Math.min(a.boundingClientRect.bottom, containerTop + containerHeight);
-          const bTop = Math.max(b.boundingClientRect.top, containerTop);
-          const bBottom = Math.min(b.boundingClientRect.bottom, containerTop + containerHeight);
-          const aOverlap = Math.max(0, aBottom - aTop);
-          const bOverlap = Math.max(0, bBottom - bTop);
-          return bOverlap - aOverlap;
-        })[0] ?? visible[0] ?? null;
-
-      const viewportAnchorId = viewportAnchorEntry
-        ? Number((viewportAnchorEntry.target as HTMLImageElement).dataset['pageId'])
-        : null;
-
       // Update reading position from currently visible anchor page.
-      if (!this.freezeBookmarkUpdates && this.focusPageId === null && viewportAnchorEntry) {
-        const id = viewportAnchorId!;
+      if (!this.freezeBookmarkUpdates && this.focusPageId === null && visible.length > 0) {
+        const viewportVisible = visible
+          .filter(entry => {
+            const top = entry.boundingClientRect.top;
+            const bottom = entry.boundingClientRect.bottom;
+            return bottom > containerTop && top < containerTop + containerHeight;
+          })
+          .sort((a, b) => {
+            const aTop = Math.max(a.boundingClientRect.top, containerTop);
+            const aBottom = Math.min(a.boundingClientRect.bottom, containerTop + containerHeight);
+            const bTop = Math.max(b.boundingClientRect.top, containerTop);
+            const bBottom = Math.min(b.boundingClientRect.bottom, containerTop + containerHeight);
+            const aOverlap = Math.max(0, aBottom - aTop);
+            const bOverlap = Math.max(0, bBottom - bTop);
+            return bOverlap - aOverlap;
+          });
+
+        const anchorEntry = this.reader.mode() === 'page'
+          ? (viewportVisible[0] ?? visible[0])
+          : visible[0];
+
+        const id = Number((anchorEntry.target as HTMLImageElement).dataset['pageId']);
 
         if (id) {
 
@@ -487,15 +483,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           }
 
           this.updateActiveChapter(id);
-        }
-
-        // Trigger adjacent chapter loading based on viewport position only.
-        // Using rootMargin-extended entries can prematurely trigger prev-chapter
-        // prepend when the viewport is near the chapter start on iOS,
-        // which causes a downward teleport after open.
-        const viewportIndex = this.pageIndexMap.get(id);
-        if (viewportIndex !== undefined) {
-          this.tryLoadAdjacentChapters(viewportIndex);
         }
       }
 
@@ -520,17 +507,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
             globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
           ) {
-            // Shift virtual window around visible range. Anchor scroll compensation
-            // to the actual viewport page, not the rootMargin-extended entry.
-            // On iOS, anchoring to a far-below entry causes the compensation rAF
-            // to incorrectly apply a scroll delta that teleports the position.
+            // Shift virtual window around visible range and preserve viewport anchor.
             if (!this.isPrepending && !this.isRestoringScroll) {
-              const scrollAnchor = viewportAnchorId ?? id;
-              this.preserveScroll(scrollAnchor, () => { this.updateVisiblePages(globalIndex); });
+              this.preserveScroll(id, () => { this.updateVisiblePages(globalIndex); });
             }
             windowUpdated = true;
           }
-          // tryLoadAdjacentChapters is called once via viewport anchor above.
+
+          this.tryLoadAdjacentChapters(globalIndex);
         }
 
         const page = this.visiblePages.find(p => p.id === id);
