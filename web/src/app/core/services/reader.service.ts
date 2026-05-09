@@ -129,6 +129,8 @@ export class ReaderService {
 
   /** Update current page id without triggering scroll */
   setCurrentPage(pageId: number): void {
+    if(this._currentPageId() === pageId) return; // no update if pageId is the same
+    
     this._currentPageId.set(pageId);
     //this.uiState.saveState({ lastPageId: pageId });
   }

@@ -25,7 +25,7 @@ export class MolvSearchComponent
   implements OnInit {
 
   @Input()
-  value = '' ;
+  value = '';
 
   @Output()
   searchChange = new EventEmitter<{
