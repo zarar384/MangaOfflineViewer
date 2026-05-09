@@ -222,7 +222,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         if (this.reader.isOpen()) {
           this.reader.resetIsOpen();
-          this.tryLoadAdjacentChapters(startIndex);
+          // On initial open, preload only next chapter.
+          // Prepending previous chapter at this moment can shift viewport on iOS.
+          this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
       });
     });
@@ -440,7 +442,27 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       // Update reading position from currently visible anchor page.
       if (!this.freezeBookmarkUpdates && this.focusPageId === null && visible.length > 0) {
-        const id = Number((visible[0].target as HTMLImageElement).dataset['pageId']);
+        const viewportVisible = visible
+          .filter(entry => {
+            const top = entry.boundingClientRect.top;
+            const bottom = entry.boundingClientRect.bottom;
+            return bottom > containerTop && top < containerTop + containerHeight;
+          })
+          .sort((a, b) => {
+            const aTop = Math.max(a.boundingClientRect.top, containerTop);
+            const aBottom = Math.min(a.boundingClientRect.bottom, containerTop + containerHeight);
+            const bTop = Math.max(b.boundingClientRect.top, containerTop);
+            const bBottom = Math.min(b.boundingClientRect.bottom, containerTop + containerHeight);
+            const aOverlap = Math.max(0, aBottom - aTop);
+            const bOverlap = Math.max(0, bBottom - bTop);
+            return bOverlap - aOverlap;
+          });
+
+        const anchorEntry = this.reader.mode() === 'page'
+          ? (viewportVisible[0] ?? visible[0])
+          : visible[0];
+
+        const id = Number((anchorEntry.target as HTMLImageElement).dataset['pageId']);
 
         if (id) {
 
@@ -550,7 +572,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     }, {
       root,
-      rootMargin: isIOS ? '1500px' : '2500px',
+      rootMargin: this.reader.mode() === 'page'
+        ? '0px'
+        : (isIOS ? '1500px' : '2500px'),
       threshold: 0,
     });
   }
@@ -780,15 +804,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   // SEAMLESS CHAPTER LOADING
 
   /** Triggers adjacent chapter preload when reading position approaches buffer edges. */
-  private tryLoadAdjacentChapters(globalIndex: number): void {
+  private tryLoadAdjacentChapters(
+    globalIndex: number,
+    options: { allowNext?: boolean; allowPrev?: boolean } = {}
+  ): void {
     const total = this.reader.pages().length;
     const chapterId = this.reader.chapterId();
+    const allowNext = options.allowNext ?? true;
+    const allowPrev = options.allowPrev ?? true;
 
     if (!chapterId) return;
 
     // next chapter
 
-    if (!this.fetchingNext && globalIndex >= total - this.CHAPTER_TRIGGER) {
+    if (allowNext && !this.fetchingNext && globalIndex >= total - this.CHAPTER_TRIGGER) {
       this.fetchingNext = true;
 
       this.chaptersRepo.getNextChapter(chapterId)
@@ -812,7 +841,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     // previous chapter
 
-    if (!this.fetchingPrev && globalIndex <= this.CHAPTER_TRIGGER) {
+    if (allowPrev && !this.fetchingPrev && globalIndex <= this.CHAPTER_TRIGGER) {
       this.fetchingPrev = true;
 
       this.chaptersRepo.getPrevChapter(chapterId)
