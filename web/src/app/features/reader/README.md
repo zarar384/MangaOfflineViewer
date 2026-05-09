@@ -42,13 +42,17 @@
 
 ```txt
 reader.pages() change
--> rebuild map
+-> rebuild pageIndexMap
 -> reset runtime state
--> updateVisiblePages
--> rebuildChapterTracking
--> setupObserver
--> observeAllImages
--> setupScrollPreloadListener
+-> updateVisiblePages()
+-> rebuildChapterTracking()
+-> showLoaderNow()
+-> loadToken++
+-> navToken++
+-> setupObserver()
+-> observeAllImages()
+-> setupScrollPreloadListener()
+-> tryLoadAdjacentChapters()
 ```
 
 ---
@@ -57,18 +61,24 @@ reader.pages() change
 
 полная очистка runtime состояния:
 
-* revoke всех object URL
-* pageUrls.clear()
-* loadingSet.clear()
-* loadingCount = 0
-* visibleUnloadedCount = 0
-* cancelLoaderDebounce()
-* fetchingNext = false
-* fetchingPrev = false
-* focusPageId = null
-* observedPageIds.clear()
-* teardown scroll preload listener
-* scrollTop = 0
+```txt
+revoke all object URLs
+-> pageUrls.clear()
+-> loadingSet.clear()
+-> loadingCount = 0
+-> visibleUnloadedCount = 0
+-> cancelLoaderDebounce()
+-> focusPageId = null
+-> fetchingNext = false
+-> fetchingPrev = false
+-> isPrepending = false
+-> isRestoringScroll = false
+-> isNavigating = false
+-> observedPageIds.clear()
+-> teardownScrollPreloadListener()
+-> hideLoader()
+-> scrollTop = 0
+```
 
 ---
 
@@ -81,27 +91,92 @@ navToken++
 
 ---
 
-### FLAGS RESET
+### UPDATE TYPES
 
 ```txt
-isNavigating = false
-isPrepending = false
-isRestoringScroll = false
+open
+merge
+navigation
+mode switch
+zoom/gap change
 ```
 
 ---
 
-### UPDATE TYPES
+## 3] MERGE FLOW
 
-* open -> полный reset
-* merge -> расширение буфера
-* navigation -> переход к странице
-* mode switch -> rebuild observer + anchor restore
-* zoom/gap -> preserve scroll + rerender window
+### PURPOSE
+
+merge расширяет полный буфер P
 
 ---
 
-## 3] VIRTUAL WINDOW
+### TYPES
+
+```txt
+mergePages(next)
+mergePages(prev)
+```
+
+---
+
+### FLOW
+
+```txt
+merge pages
+-> mergeChapterTracking()
+-> resolve anchorId
+-> detect prepend
+-> preserveScroll()
+-> updateVisiblePages()
+-> observeNewImages()
+-> loadVisibleRange()
+```
+
+---
+
+### PREPEND DETECTION
+
+```txt
+firstNewIndex < firstVisibleIndex
+-> isPrepending = true
+```
+
+---
+
+### PREPEND FIX
+
+в page mode preserveScroll не компенсирует scroll
+
+---
+
+поэтому:
+
+```txt
+scrollToPageImmediately(anchorId)
+```
+
+---
+
+### POST PREPEND PRELOAD
+
+после prepend:
+
+```txt
+loadVisibleRange(8000 / 12000)
+```
+
+---
+
+### PURPOSE
+
+прогревает страницы вставленные выше viewport
+
+---
+
+## 4] VIRTUAL WINDOW
+
+### WINDOW
 
 ```txt
 WINDOW = 60
@@ -109,9 +184,17 @@ WINDOW = 60
 
 ---
 
-* в DOM максимум ~120 страниц
-* visiblePages = slice вокруг центра
-* окно двигается вместе со scroll
+### STRUCTURE
+
+```txt
+visiblePages = pages.slice(start, end)
+```
+
+---
+
+### LIMIT
+
+в DOM максимум ~120 страниц
 
 ---
 
@@ -124,6 +207,16 @@ end = centerIndex + WINDOW
 
 ---
 
+### EDGE FIX
+
+если окно выходит за границы массива:
+
+```txt
+clamp start/end
+```
+
+---
+
 ### JUMP DETECTION
 
 ```txt
@@ -132,11 +225,11 @@ JUMP_THRESHOLD = 50
 
 ---
 
-если прыжок слишком большой:
+если jump слишком большой:
 
 ```txt
 revoke all urls
--> clear pageUrls
+-> pageUrls.clear()
 -> replace visiblePages
 ```
 
@@ -150,7 +243,7 @@ BUFFER = 15
 
 ---
 
-если пользователь близко к краю visiblePages:
+если пользователь близко к краю окна:
 
 ```txt
 preserveScroll()
@@ -159,7 +252,7 @@ preserveScroll()
 
 ---
 
-## 4] INTERSECTION OBSERVER
+## 5] INTERSECTION OBSERVER
 
 ### ROOT
 
@@ -188,24 +281,24 @@ others -> 2500px
 
 ### PRIORITY SORTING
 
-observer:
-
 ```txt
 entries
 -> intersecting only
--> sort by distance to viewport center
+-> sort by distance to center
 -> closest first
 ```
 
 ---
 
-### VIEWPORT CENTER
+### CENTER LOGIC
 
 если есть focusPageId:
 
 ```txt
-center = focus element center
+center = focused image center
 ```
+
+---
 
 иначе:
 
@@ -219,34 +312,44 @@ center = viewport center
 
 ```txt
 MAX_LOAD = 12
-candidates = MAX_LOAD * 2
+visible candidates = 24
 ```
 
 ---
 
-* максимум 12 загрузок одновременно
-* максимум 24 элемента анализируется observer
+### OBSERVER FLOW
+
+```txt
+intersection
+-> update reading position
+-> maybe update virtual window
+-> tryLoadAdjacentChapters()
+-> lazy image loading
+```
 
 ---
 
-### OBSERVER BEHAVIOR
+### OBSERVER REUSE
 
 observer не пересоздаётся при merge
 
+---
+
+используется:
+
 ```txt
 observeNewImages()
--> attach only new DOM nodes
 ```
 
 ---
 
-старые intersection callbacks не теряются
+подключаются только новые DOM nodes
 
 ---
 
 ### OBSERVER BLOCK CONDITIONS
 
-observer ничего не делает если:
+observer полностью блокируется при:
 
 ```txt
 isNavigating = true
@@ -256,7 +359,29 @@ isRestoringScroll = true
 
 ---
 
-## 5] LOADING PIPELINE
+### BOOKMARK UPDATE RULE
+
+в scroll mode:
+
+```txt
+observer updates currentPage
+```
+
+---
+
+в page mode:
+
+```txt
+observer updates bookmark only
+```
+
+---
+
+navigation state не мутируется observer
+
+---
+
+## 6] LOADING PIPELINE
 
 ### CONDITIONS
 
@@ -272,10 +397,10 @@ loadingCount < MAX_LOAD
 ```txt
 loadingSet.add(id)
 -> loadingCount++
--> ensurePageLoaded(page)
--> getOrCreateUrl(page)
--> loadImage(img, url)
--> cleanupFarImages(id)
+-> ensurePageLoaded()
+-> getOrCreateUrl()
+-> loadImage()
+-> cleanupFarImages()
 ```
 
 ---
@@ -331,18 +456,19 @@ destroyed = true -> abort
 
 ---
 
-## 6] LOADER
+## 7] LOADER
 
 ### visibleUnloadedCount
 
-увеличивается только если image реально в viewport
+увеличивается только если image реально виден
 
 ---
 
 ### START
 
 ```txt
-visible image start load -> ++
+visible image starts loading
+-> visibleUnloadedCount++
 ```
 
 ---
@@ -350,7 +476,8 @@ visible image start load -> ++
 ### FINISH
 
 ```txt
-finish -> --
+load finished
+-> visibleUnloadedCount--
 ```
 
 ---
@@ -382,11 +509,13 @@ all visible loaded -> hideLoader()
 
 ---
 
+### IMPORTANT
+
 background preload loader не показывает
 
 ---
 
-## 7] MEMORY CLEANUP
+## 8] MEMORY CLEANUP
 
 ### CLEANUP RADIUS
 
@@ -411,7 +540,7 @@ others -> 50
 
 ---
 
-удаляется:
+очищается:
 
 ```txt
 revoke object URL
@@ -431,7 +560,7 @@ isRestoringScroll = true
 
 ---
 
-## 8] SCROLL PRELOAD
+## 9] SCROLL PRELOAD
 
 ### LISTENER
 
@@ -458,6 +587,16 @@ others -> 2500px
 
 ---
 
+### PURPOSE
+
+scroll preload:
+
+* дополняет observer
+* особенно важен для upward preload
+* уменьшает задержки при быстром scroll вверх
+
+---
+
 ### CONDITIONS
 
 ```txt
@@ -474,17 +613,17 @@ loadingCount < MAX_LOAD
 
 ---
 
-### PURPOSE
+### BLOCK CONDITIONS
 
-scroll preload:
-
-* дополняет observer
-* особенно важен для upward preload
-* уменьшает задержки при быстром scroll вверх
+```txt
+isNavigating = true
+isPrepending = true
+isRestoringScroll = true
+```
 
 ---
 
-## 9] CHAPTER LOADING
+## 10] CHAPTER LOADING
 
 ### TRIGGER
 
@@ -534,7 +673,7 @@ loadedChapterIds
 
 ---
 
-## 10] CHAPTER TRACKING
+## 11] CHAPTER TRACKING
 
 ### STRUCTURE
 
@@ -564,14 +703,14 @@ mergeChapterTracking()
 
 ```txt
 currentPageId
--> pageIndex
--> range lookup
+-> pageIndex lookup
+-> chapter range lookup
 -> reader.setChapterId()
 ```
 
 ---
 
-## 11] NAVIGATION
+## 12] NAVIGATION
 
 ### FLOW
 
@@ -581,17 +720,19 @@ navToken++
 -> showLoaderNow()
 -> waitForImages()
 -> resolvePageIndexForNavigation()
+-> isNavigating = true
 -> updateVisiblePages()
 -> preload target area
 -> forced reflow
 -> waitForTarget()
 -> scrollTo()
 -> update state
+-> hideLoader()
 ```
 
 ---
 
-### NAVIGATION PRELOAD
+### TARGET PRELOAD
 
 ```txt
 before = MAX_LOAD * 2
@@ -634,11 +775,11 @@ navToken mismatch -> abort
 
 ---
 
-новая navigation убивает старую
+новая navigation инвалидирует старую
 
 ---
 
-## 12] NAVIGATION OUTSIDE BUFFER
+## 13] NAVIGATION OUTSIDE BUFFER
 
 если page отсутствует в pageIndexMap:
 
@@ -673,7 +814,7 @@ wait requestAnimationFrame
 
 ---
 
-## 13] SCROLL PRESERVATION
+## 14] SCROLL PRESERVATION
 
 ### preserveScroll(anchorId)
 
@@ -691,7 +832,7 @@ wait requestAnimationFrame
 ```txt
 capture anchor viewport top
 -> callback()
--> queueMicrotask
+-> requestAnimationFrame
 -> recalc anchor top
 -> apply scroll compensation
 ```
@@ -727,7 +868,7 @@ isRestoringScroll = true
 
 ---
 
-## 14] VIEWPORT ANCHOR
+## 15] VIEWPORT ANCHOR
 
 ### getViewportAnchorPageId()
 
@@ -756,36 +897,38 @@ calculate viewport center
 
 ---
 
-## 15] MODE SWITCH
+## 16] MODE SWITCH
 
 ### FLOW
 
 ```txt
 navToken++
 -> isNavigating = true
+-> focusPageId = anchorId
 -> resolve anchor
 -> updateVisiblePages()
 -> setupObserver()
 -> observeAllImages()
 -> scrollToPageImmediately()
 -> loadVisibleRange()
+-> isNavigating = false
 ```
+
+---
+
+### PURPOSE
+
+mode switch сохраняет anchor и viewport position
 
 ---
 
 ### EXTRA
 
-```txt
-focusPageId = anchorId
-```
+observer использует focusPageId для priority sorting
 
 ---
 
-observer использует focusPageId для приоритетной загрузки
-
----
-
-## 16] ZOOM / GAP REFLOW
+## 17] ZOOM / GAP REFLOW
 
 ### FLOW
 
@@ -804,7 +947,7 @@ layout меняется без viewport jump
 
 ---
 
-## 17] STATE FLAGS
+## 18] STATE FLAGS
 
 ### isNavigating
 
@@ -834,11 +977,11 @@ isPrepending
 
 ---
 
-блокирует observer updates
+блокирует observer state updates
 
 ---
 
-## 18] TOKENS
+## 19] TOKENS
 
 ### navToken
 

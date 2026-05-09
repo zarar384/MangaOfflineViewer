@@ -157,14 +157,22 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadVisibleRange();
 
           if (isPrependMerge) {
+            // In page mode, preserveScroll is a no-op, so scrollTop was not
+            // adjusted when ch2 pages were inserted above the viewport.
+            // Explicitly scroll back to the anchor so the correct snap page stays
+            // visible and the observer does not cascade-fetch earlier chapters.
+            if (this.reader.mode() === 'page' && anchorId != null) {
+              this.scrollToPageImmediately(anchorId);
+            }
+
             requestAnimationFrame(() => {
               this.isPrepending = false;
 
-              // Run an extra preload pass right after prepend guard is released.
-              // This warms images that were inserted above viewport so first upward
-              // scroll does not stall on delayed lazy-load.
+              // Run a wide-range preload pass after prepend guard is released.
+              // This warms all images that were inserted above viewport so upward
+              // scroll does not stall waiting for lazy-load to catch up.
               requestAnimationFrame(() => {
-                this.loadVisibleRange();
+                this.loadVisibleRange(isIOS ? 8000 : 12000);
               });
             });
           }
@@ -616,12 +624,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   /**
    * Imperative preload pass for images near viewport.
    * Complements IntersectionObserver for browsers where upward preload can lag.
+   * Pass preloadPx to override the default lookahead distance (e.g. after prepend).
    */
-  private loadVisibleRange() {
+  private loadVisibleRange(preloadPx?: number) {
     // Avoid preload during active restore/prepend to keep layout stable.
     if (this.isPrepending || this.isRestoringScroll) return;
 
-    const PRELOAD_PX = isIOS ? 1500 : 2500;
+    const PRELOAD_PX = preloadPx ?? (isIOS ? 1500 : 2500);
     const token = this.loadToken;
 
     const container = this.readerContainer?.nativeElement;
@@ -1152,8 +1161,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     callback();
 
-    // Compensate in microtask so correction happens before next paint.
-    queueMicrotask(() => {
+    // Compensate in rAF so Angular has finished re-rendering the DOM before we
+    // read the new anchor position. queueMicrotask fires before Angular's CD
+    // updates the DOM, so the shift would be zero and compensation would be lost.
+    requestAnimationFrame(() => {
       // Re-query anchor after DOM update because original element can be replaced.
       const newAnchorEl = this.imgRefs.find(r =>
         Number(r.nativeElement.dataset['pageId']) === anchorId
