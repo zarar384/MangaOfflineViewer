@@ -8,7 +8,7 @@
     </button>
   </div>
 
-  <movl-chapter-item *ngFor="let chapter of chapters" [chapter]="chapter" >
+  <movl-chapter-item *ngFor="let chapter of chapters()" [chapter]="chapter" [isGlobalEditMode]="isEditMode()">
   </movl-chapter-item>
 
 </div>

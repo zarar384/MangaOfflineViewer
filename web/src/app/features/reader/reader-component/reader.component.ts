@@ -441,50 +441,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         .slice(0, this.MAX_LOAD * 2);
 
       // Update reading position from currently visible anchor page.
-      if (!this.freezeBookmarkUpdates && this.focusPageId === null && visible.length > 0) {
-        const viewportVisible = visible
-          .filter(entry => {
-            const top = entry.boundingClientRect.top;
-            const bottom = entry.boundingClientRect.bottom;
-            return bottom > containerTop && top < containerTop + containerHeight;
-          })
-          .sort((a, b) => {
-            const aTop = Math.max(a.boundingClientRect.top, containerTop);
-            const aBottom = Math.min(a.boundingClientRect.bottom, containerTop + containerHeight);
-            const bTop = Math.max(b.boundingClientRect.top, containerTop);
-            const bBottom = Math.min(b.boundingClientRect.bottom, containerTop + containerHeight);
-            const aOverlap = Math.max(0, aBottom - aTop);
-            const bOverlap = Math.max(0, bBottom - bTop);
-            return bOverlap - aOverlap;
-          });
-
-        const anchorEntry = this.reader.mode() === 'page'
-          ? (viewportVisible[0] ?? visible[0])
-          : visible[0];
-
-        const id = Number((anchorEntry.target as HTMLImageElement).dataset['pageId']);
-
-        if (id) {
-
-          // In scroll mode observer owns active page tracking.
-          // In page mode currentPage is navigation state and
-          // must not be mutated from scroll observation,
-          // otherwise handleNavigation() re-triggers and teleports scroll.
-          if (this.reader.mode() !== 'page') {
-
-            if (this.reader.currentPageId() !== id) {
-              this.reader.setCurrentPage(id);
-            }
-          }
-
-          // Bookmark can still follow viewport in both modes.
-          if (this.reader.currentPageBookmark() !== id) {
-            this.reader.setCurrentPageBookmark(id);
-          }
-
-          this.updateActiveChapter(id);
-        }
-      }
+      this.updateReadingPosition();
 
       let windowUpdated = false;
 
@@ -613,6 +570,54 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
 
+  // Updates current page / bookmark / chapter from the most-visible image in the viewport.
+  // Called both from the IntersectionObserver callback and the scroll listener so that
+  // scrolling up through already-loaded images (which produces no observer state changes)
+  // still updates the reading position correctly.
+  private updateReadingPosition(): void {
+    if (this.freezeBookmarkUpdates || this.focusPageId !== null) return;
+
+    const container = this.readerContainer?.nativeElement;
+    const containerRect = container?.getBoundingClientRect();
+    const containerHeight = containerRect?.height ?? window.innerHeight;
+    const containerTop = containerRect?.top ?? 0;
+
+    let anchorId: number | null = null;
+    let bestOverlap = 0;
+
+    this.imgRefs.forEach(ref => {
+      const img = ref.nativeElement;
+      const rect = img.getBoundingClientRect();
+      const overlapTop = Math.max(rect.top, containerTop);
+      const overlapBottom = Math.min(rect.bottom, containerTop + containerHeight);
+      const overlap = Math.max(0, overlapBottom - overlapTop);
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        anchorId = Number(img.dataset['pageId']) || null;
+      }
+    });
+
+    if (!anchorId) return;
+
+    // In scroll mode observer owns active page tracking.
+    // In page mode currentPage is navigation state and
+    // must not be mutated from scroll observation,
+    // otherwise handleNavigation() re-triggers and teleports scroll.
+    if (this.reader.mode() !== 'page') {
+      if (this.reader.currentPageId() !== anchorId) {
+        this.reader.setCurrentPage(anchorId);
+      }
+    }
+
+    // Bookmark can still follow viewport in both modes.
+    if (this.reader.currentPageBookmark() !== anchorId) {
+      this.reader.setCurrentPageBookmark(anchorId);
+    }
+
+    this.updateActiveChapter(anchorId);
+  }
+
+
   // SCROLL PRELOAD
 
   // Attaches throttled scroll listener used for imperative upward preload.
@@ -629,6 +634,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       requestAnimationFrame(() => {
         this.loadVisibleRange();
+        this.updateReadingPosition();
         this.scrollPreloadThrottled = false;
       });
     };
@@ -889,7 +895,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     if (full) {
       page.src = full.src;
-      page.pageNumber = full.pageNumber;
+      page.order = full.order;
     }
   }
 

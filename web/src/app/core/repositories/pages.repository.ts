@@ -9,42 +9,42 @@ export const PAGES_SEED: Page[] = [
     id: 1,
     tabId: 1,
     chapterId: 1,
-    pageNumber: 1,
+    order: 1,
     src: 'assets/favicon.ico?v=2'
   },
   {
     id: 2,
     tabId: 1,
     chapterId: 1,
-    pageNumber: 2,
+    order: 2,
     src: 'assets/favicon.ico?v=2'
   },
   {
     id: 3,
     tabId: 1,
     chapterId: 1,
-    pageNumber: 3,
+    order: 3,
     src: 'assets/favicon.ico?v=2'
   },
   {
     id: 4,
     tabId: 1,
     chapterId: 2,
-    pageNumber: 1,
+    order: 1,
     src: 'assets/favicon.ico?v=2'
   },
   {
     id: 5,
     tabId: 1,
     chapterId: 2,
-    pageNumber: 2,
+    order: 2,
     src: 'assets/favicon.ico?v=2'
   },
   {
     id: 6,
     tabId: 1,
     chapterId: 3,
-    pageNumber: 1,
+    order: 1,
     src: 'assets/favicon.ico?v=2'
   },
 ];
@@ -70,7 +70,7 @@ export class PagesRepository {
       }
 
       return await db.pages
-        .where('[tabId+chapterOrder+pageNumber]')
+        .where('[tabId+chapterOrder+order]')
         .between(
           [tabId, Dexie.minKey, Dexie.minKey],
           [tabId, Dexie.maxKey, Dexie.maxKey]
@@ -99,7 +99,7 @@ export class PagesRepository {
       }
 
       await db.pages
-        .where('[tabId+chapterOrder+pageNumber]')
+        .where('[tabId+chapterOrder+order]')
         .between(
           [tabId, Dexie.minKey, Dexie.minKey],
           [tabId, Dexie.maxKey, Dexie.maxKey]
@@ -151,7 +151,7 @@ export class PagesRepository {
 
     // take only needed amount of pages from previous chapter and merge with current
     const prevPages = await db.pages
-      .where('[tabId+chapterOrder+pageNumber]')
+      .where('[tabId+chapterOrder+order]')
       .between(
         [tabId, prevOrder, Dexie.minKey],
         [tabId, prevOrder, Dexie.maxKey]
@@ -169,7 +169,7 @@ export class PagesRepository {
     const pages = await db.pages
       .where('chapterId')
       .equals(chapterId)
-      .sortBy('pageNumber');
+      .sortBy('order');
 
     return pages.map(p => ({
       ...p,
@@ -181,14 +181,14 @@ export class PagesRepository {
     return db.pages
       .where('[tabId+chapterOrder]')
       .equals([tabId, chapterOrder])
-      .sortBy('pageNumber');
+      .sortBy('order');
   }
 
   async getByChapter(tabId: number, chapterId: number) {
     return db.pages
       .where('[tabId+chapterId]')
       .equals([tabId, chapterId])
-      .sortBy('pageNumber');
+      .sortBy('order');
   }
 
   async countByChapter(chapterId: number) {
@@ -202,7 +202,7 @@ export class PagesRepository {
     const pages = await db.pages
       .where('chapterId')
       .equals(chapterId)
-      .sortBy('pageNumber');
+      .sortBy('order');
 
     return pages[0] ?? null;
   }

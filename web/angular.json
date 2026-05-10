@@ -33,6 +33,7 @@
               "src/app/shared/styles/buttons.css",
               "src/app/shared/styles/textbox.css",
               "src/app/shared/styles/spinner.css",
+              "src/app/shared/styles/inputs.css",
               "src/app/shared/styles/window-container.css"
             ],
             "scripts": [],

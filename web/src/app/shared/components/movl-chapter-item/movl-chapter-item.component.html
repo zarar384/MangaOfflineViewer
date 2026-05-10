@@ -1,6 +1,12 @@
 <div class="chapter-item">
   <div class="chapter-header">
     <div class="left">
+      @if(isGlobalEditMode)
+      {
+      <!-- order -->
+      <input type="number" class="molv-order-input molv-order-input-small" [value]="chapter.order"
+        (change)="onOrderChange($event)" [disabled]="filesProcessing">
+      }
       @if(filesProcessing) {
       <div class="molv-spinner small"></div>
       }
@@ -24,7 +30,12 @@
         {{ 'save' | transloco }}
       </button>
 
-      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
+      <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="filesProcessing"
+        [class.disabled]="filesProcessing">
+        {{ 'delete' | transloco }}
+      </button>
+
+        <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
         [class.disabled]="filesProcessing">
         {{ 'cancel' | transloco }}
       </button>

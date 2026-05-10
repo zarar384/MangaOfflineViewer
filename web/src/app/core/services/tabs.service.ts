@@ -14,6 +14,7 @@ import { PageMeta } from 'src/app/shared/models/page-meta.model';
 import { SearchTagKey, SearchToken, SearchTokenType } from 'src/app/shared/models/search-token.model';
 import { ArtistsRepository } from '../repositories/artist.repository';
 import { TagsRepository } from '../repositories/tags.repository';
+import { ChaptersRepository } from '../repositories/chapters.repository';
 
 @Injectable({ providedIn: 'root' })
 export class TabsService {
@@ -43,6 +44,7 @@ export class TabsService {
     private url: ObjectUrlService,
     private uiState: UiStateService,
     private pagesRepo: PagesRepository,
+    private chaptersRepo: ChaptersRepository,
     private reader: ReaderService,
     private draftService: MangaDraftService,
     private userTabsRepo: UserTabsRepository,
@@ -90,6 +92,10 @@ export class TabsService {
     await this.refresh();
   }
 
+ async deleteChapter(chapterId: number) {
+    await this.chaptersRepo.delete(chapterId);
+ }
+  
   filterByTokens(
     tokens: SearchToken[],
     query: string

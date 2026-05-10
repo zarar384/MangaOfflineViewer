@@ -74,7 +74,7 @@ export class MangaDB extends Dexie {
       for (const [, pages] of pagesByTab) {
         pages.sort((a, b) => numericNameSort(`${a.name}`, `${b.name}`))
           .forEach((page, index) => {
-            page.pageNumber = index + 1;
+            page.order = index + 1;
           });
       }
 
@@ -217,6 +217,30 @@ export class MangaDB extends Dexie {
       chapters: '++id, tabId, order, [tabId+order]',
       artists: '++id, normalized',
       tags: '++id, normalized'
+    });
+
+    // v13 page.pageNumber => page.order, remove pageNumber field
+    this.version(13).stores({
+      userTabs: '++id, tabId',
+      tabs: '++id, updatedAt, createdAt, mode, *artistIds, *tagIds',
+      pages: '++id, tabId, chapterId, [tabId+chapterOrder+order], [tabId+chapterId]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, [tabId+order]',
+      artists: '++id, normalized',
+      tags: '++id, normalized'
+    }).upgrade(async tx => {
+      // migrate pages - rename pageNumber to order
+      const pages = await tx.table<Page>(STORE_PAGES).toArray();
+      await tx.table<Page>(STORE_PAGES).bulkPut(
+        pages.map(p => {
+          const { pageNumber, ...rest } = p as any;
+
+          return {
+            ...rest,
+            order: pageNumber ?? p.order
+          };
+        })
+      );
     });
 
     // future migrations can be added like version(n).upgrade(...)

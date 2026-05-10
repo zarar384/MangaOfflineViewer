@@ -13,7 +13,13 @@ import { UserTab } from 'src/app/core/models/usertab';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguageService } from 'src/app/core/services/language.service';
 import { PagesRepository } from 'src/app/core/repositories/pages.repository';
-import { PageMeta } from 'src/app/shared/models/page-meta.model';
+
+export interface ReaderPage
+{
+  id: number;
+  order?: number;
+  title?: string;
+}
 
 @Component({
   selector: 'reader-settings-window',
@@ -44,7 +50,7 @@ export class ReaderSettingsWindowComponent {
 
   activeTabId: number | null = null;
   bookmarks: Bookmark[] = [];
-  pages: PageMeta[] = [];
+  pages: ReaderPage[] = [];
   selectedBookmarkId: number | null = null;
   editingBookmarkId: number | null = null;
   originalTitle: string = '';
@@ -150,7 +156,7 @@ export class ReaderSettingsWindowComponent {
   get pageOptions() {
     return this.pages.map(n => ({
       value: n.id!,
-      label: `${n.pageNumber}`
+      label: `${n.title}`
     }));
   }
 
@@ -168,7 +174,11 @@ export class ReaderSettingsWindowComponent {
     if (!reader.mangaId) return;
 
     try {
-      this.pages = await this.pagesRepo.getMeta(reader.mangaId);
+      this.pages = (await this.pagesRepo.getMeta(reader.mangaId)).map(p => ({
+        id: p.id!,
+        order: p.order,
+        title: p.chapterId ? `${p.chapterOrder} - ${p.order}` : `${p.order}`
+      }));
     }
     catch (err) {
       console.log(`Error loading pages for manga ${reader.mangaId}`, err);
@@ -245,13 +255,13 @@ export class ReaderSettingsWindowComponent {
     // Load all bookmarks for current manga
     try {
       const page = this.pages.find(p => p.id === reader.currentPageBookmark);
-      if (!page || page.pageNumber === undefined) return;
+      if (!page || page.order === undefined) return;
 
       // check if bookmark for this page already exists
       var existingBookmark = await this.bookmarksRepo.exists(reader.mangaId!, page.id!);
 
       if (existingBookmark) {
-        console.log(`Bookmark for page ${page.pageNumber} already exists`);
+        console.log(`Bookmark for page ${page.order} already exists`);
         return;
       }
 
@@ -260,7 +270,7 @@ export class ReaderSettingsWindowComponent {
         pageId: page.id!,
         chapterId: reader.chapterId ?? null,
         createdAt: Date.now(),
-        title: `Page ${page.pageNumber}`
+        title: `Page ${page.order}`
       });
 
       this.loadBookmarks();

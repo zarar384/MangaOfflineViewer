@@ -113,28 +113,19 @@ export class TabsRepository {
       // }
 
       var chapterId: number | undefined = undefined;
-      let startPageNumber = 0;
 
       // save chapter if needed and get chapterId for pages
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
         chapterId = await db.chapters.put(chapter);
-
-        // calculate pageNumber for new pages based on existing ones in the tab
-        const lastPage = await db.pages
-          .where('tabId')
-          .equals(savedId as number)
-          .last();
-
-        startPageNumber = lastPage?.pageNumber ?? 0;
       }
 
-      // prepare pages and bulk put
+      // prepare pages — use within-chapter position as order; global order is assigned below
       const normalized: Page[] = pages.map((p: any, indx: number) => ({
         id: p.id,
         tabId: savedId as number,
         src: p.src ?? p.blob,
         name: p.name ?? null,
-        pageNumber: startPageNumber + indx + 1,
+        order: indx + 1,
         chapterId: p.chapterId ?? chapterId ?? null,
         chapterOrder: p.chapterOrder ?? chapter?.order ?? -1
       }));
@@ -158,14 +149,26 @@ export class TabsRepository {
         .filter(p => !incomingIds.has(p.id!))
         .map(p => p.id as number);
 
-      // delete old pages 
       if (toDelete.length) {
+        await db.bookmarks.where('pageId').anyOf(toDelete).delete();
         await db.pages.bulkDelete(toDelete);
       }
 
-      // add/update new pages
       if (normalized.length) {
         await db.pages.bulkPut(normalized);
+      }
+
+      // global renumber: sort all tab pages by [chapterOrder, order] -> reassign order 1..N
+      if (tabToSave.mode === ViewMod.Chapters) {
+        const allPages = await db.pages.where('tabId').equals(savedId as number).toArray();
+        allPages.sort((a, b) => {
+          const diff = (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0);
+          return diff !== 0 ? diff : (a.order ?? 0) - (b.order ?? 0);
+        });
+        for (let i = 0; i < allPages.length; i++) {
+          allPages[i].order = i + 1;
+        }
+        await db.pages.bulkPut(allPages);
       }
 
       return savedId as number;

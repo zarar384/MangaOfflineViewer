@@ -3,5 +3,6 @@ export interface PageMeta {
   tabId: number;   // FK
   chapterId?: number | null; // FK, nullable
   name?: string;
-  pageNumber?: number;
+  order?: number;
+  chapterOrder?: number | null;
 }

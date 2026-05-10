@@ -10,6 +10,7 @@ import { Tab } from '../../../core/models/tab.model';
 import { TabsService } from '../../../core/services/tabs.service';
 import { MolvModule } from '../molv-module.component';
 import { PageMeta } from '../../models/page-meta.model';
+import { ChaptersListService } from '../../../core/services/chapters-list.service';
 
 @Component({
   selector: 'movl-chapter-item',
@@ -21,6 +22,9 @@ import { PageMeta } from '../../models/page-meta.model';
 export class ChapterItemComponent implements OnChanges {
 
   @Input({ required: true }) chapter!: Chapter;
+  @Input() isGlobalEditMode = false; // if true, all items are in edit mode
+
+  private listService = inject(ChaptersListService);
 
   pages: PageMeta[] = [];
   pagesCount = 0;
@@ -131,6 +135,7 @@ export class ChapterItemComponent implements OnChanges {
 
       // wait for save to complete before closing edit mode
       queueMicrotask(async () => {
+        await this.listService.reload();
         this.isEditMode = false;
         this.isOpen = false;
         this.loadCount();
@@ -141,5 +146,36 @@ export class ChapterItemComponent implements OnChanges {
     }
     finally {
     }
+  }
+
+  async delete() {
+    if (!this.chapter.id) return;
+    
+    try{
+     await this.tabService.deleteChapter(this.chapter.id);
+      this.clearAll$.next();
+
+      // wait for delete to complete before closing edit mode
+      await this.listService.reload();
+
+      queueMicrotask(() => {
+        this.isEditMode = false;
+        this.isOpen = false;
+      });
+
+    }
+    catch (err) {
+      console.error('Error deleting chapter', err);
+    }
+  }
+
+  onOrderChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const newOrder = parseInt(input.value, 10);
+
+    if (isNaN(newOrder) || newOrder < 1)
+      return;
+
+    this.listService.moveChapter(this.chapter.id!, newOrder);
   }
 }

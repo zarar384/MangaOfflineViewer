@@ -1,10 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { Chapter } from '../../../core/models/chapter.model';
-import { ChaptersRepository } from '../../../core/repositories/chapters.repository';
+import { Component, effect, input } from '@angular/core';
 import { ChapterItemComponent } from '../movl-chapter-item/movl-chapter-item.component';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { LanguageService } from 'src/app/core/services/language.service';
+import { ChaptersListService } from '../../../core/services/chapters-list.service';
 
 @Component({
   selector: 'movl-chapter-list',
@@ -13,39 +11,20 @@ import { LanguageService } from 'src/app/core/services/language.service';
   imports: [CommonModule, ChapterItemComponent, TranslocoPipe],
   standalone: true
 })
-export class ChapterListComponent implements OnChanges {
+export class ChapterListComponent {
 
-  @Input() activeManga: number | null = null;
+  activeManga = input<number | null>(null);
+  isEditMode = input(false);
 
-  chapters: Chapter[] = [];
-
-  constructor(
-    private chaptersRepo: ChaptersRepository,
-    private langService: LanguageService) {
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['activeManga']?.currentValue != null) {
-      this.loadChapters();
-    }
-  }
-
-  async addChapter() {
-    if (!this.activeManga) return;
-    const order = await this.chaptersRepo.getNextOrder(this.activeManga);
-    await this.chaptersRepo.add({
-      tabId: this.activeManga,
-      title: `${this.langService.translate('chapter')} ${order}`,
-      order,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+  constructor(public listService: ChaptersListService) {
+    effect(() => {
+      this.listService.setMangaId(this.activeManga());
     });
-
-    await this.loadChapters();
   }
 
-  private async loadChapters() {
-    if (!this.activeManga) return;
-    this.chapters = await this.chaptersRepo.getAll(this.activeManga);
+  get chapters() { return this.listService.displayChapters; }
+
+  addChapter() {
+    this.listService.addChapter();
   }
 }

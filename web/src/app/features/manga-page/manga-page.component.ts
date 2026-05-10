@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, OnInit, SimpleChanges, effect, signal } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, SimpleChanges, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from '../../core/models/tab.model';
 import { TabsService } from '../../core/services/tabs.service';
@@ -14,12 +14,14 @@ import { TagsRepository } from 'src/app/core/repositories/tags.repository';
 import { ArtistsRepository } from 'src/app/core/repositories/artist.repository';
 import { MolvTextboxComponent } from 'src/app/shared/components/molv-textbox/molv-textbox';
 import { MolvMetaInputComponent } from 'src/app/shared/components/molv-meta-input/molv-meta-input.component';
+import { ChaptersListService } from '../../core/services/chapters-list.service';
 
 @Component({
   selector: 'manga-page',
   templateUrl: './manga-page.component.html',
   styleUrls: ['./manga-page.component.css'],
   imports: [ChapterListComponent, FormsModule, CommonModule, TranslocoPipe, MolvMetaInputComponent, MolvTextboxComponent],
+  providers: [ChaptersListService],
   standalone: true
 })
 export class MangaPageComponent implements OnChanges {
@@ -41,7 +43,8 @@ export class MangaPageComponent implements OnChanges {
     private tabsService: TabsService,
     public draftService: MangaDraftService,
     private artistsRepo: ArtistsRepository,
-    private tagsRepo: TagsRepository
+    private tagsRepo: TagsRepository,
+    private chaptersListService: ChaptersListService
   ) {
     effect(() => {
       this.updatePreview();
@@ -151,6 +154,7 @@ export class MangaPageComponent implements OnChanges {
   async cancel() {
 
     this.draftService.clear();
+    this.chaptersListService.discardPendingOrder();
 
     const current = this.tab();
 
@@ -225,6 +229,9 @@ export class MangaPageComponent implements OnChanges {
       } else {
         await this.tabsService.updateTab(tab);
       }
+
+      // commit pending chapter order in one bulk operation
+      await this.chaptersListService.commitPendingOrder();
 
       if (!this.activeManga) {
         this.activeManga = tab.id!;

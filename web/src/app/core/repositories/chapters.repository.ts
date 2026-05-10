@@ -60,15 +60,20 @@ export class ChaptersRepository {
 
   async update(chapter: Chapter): Promise<number> {
     chapter.updatedAt = Date.now();
+    chapter.createdAt = chapter.createdAt ?? Date.now();
     const id = await db.chapters.put(chapter);
+
+    await this.reorder(chapter.tabId, await this.getAll(chapter.tabId));
     return id as number;
   }
 
   async delete(id: number): Promise<void> {
+    await db.pages.where('chapterId').equals(id).delete();
     await db.chapters.delete(id);
   }
 
   async deleteByTab(tabId: number): Promise<void> {
+    await db.pages.where('tabId').equals(tabId).delete();
     await db.chapters.where('tabId').equals(tabId).delete();
   }
 
@@ -143,12 +148,44 @@ export class ChaptersRepository {
   }
 
   async reorder(tabId: number, reordered: Chapter[]): Promise<void> {
-    await db.transaction('rw', db.chapters, async () => {
+    await db.transaction('rw', db.chapters, db.pages, async () => {
+      // assign new sequential chapter orders
       for (let i = 0; i < reordered.length; i++) {
         reordered[i].order = i + 1;
         reordered[i].updatedAt = Date.now();
       }
       await db.chapters.bulkPut(reordered);
+
+      // load all pages for the manga
+      const allPages = await db.pages.where('tabId').equals(tabId).toArray();
+      if (!allPages.length) return;
+
+      // build chapterId -> newChapterOrder map
+      const chapterOrderMap = new Map<number, number>(reordered.map(c => [c.id!, c.order]));
+
+      // apply new chapterOrder to pages; keep current order as within-chapter sort key
+      for (const page of allPages) {
+        if (page.chapterId != null) {
+          const newChapterOrder = chapterOrderMap.get(page.chapterId);
+          if (newChapterOrder != null) {
+            page.chapterOrder = newChapterOrder;
+          }
+        }
+      }
+
+      // sort by [newChapterOrder, current order] to get correct global reading sequence
+      allPages.sort((a, b) => {
+        const diff = (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0);
+        return diff !== 0 ? diff : (a.order ?? 0) - (b.order ?? 0);
+      });
+
+      // assign globally sequential page.order (1 … N)
+      for (let i = 0; i < allPages.length; i++) {
+        allPages[i].order = i + 1;
+      }
+
+      // persist all page changes in one bulk write
+      await db.pages.bulkPut(allPages);
     });
   }
 }
