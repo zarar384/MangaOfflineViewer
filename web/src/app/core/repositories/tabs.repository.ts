@@ -6,6 +6,8 @@ import { Page } from '../models/page.model';
 import { PREVIEW_MAX_SIZE } from '../db.config';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
+import Dexie, { IndexableType, Table } from "dexie";
+import { isIOS } from 'src/app/shared/utils/constants';
 
 export const TABS_SEED: Tab[] = [
   {
@@ -80,20 +82,54 @@ export class TabsRepository {
     return db.tabs.orderBy('id').offset(offset).limit(perPage).toArray();
   }
 
-  async saveOrUpdateTabWithPages(tab: Tab, pages: Array<any>, options: SaveTabOptions = {}): Promise<number> {
+  async saveOrUpdateTabWithPages(
+    tab: Tab,
+    pages: Array<any>,
+    options: SaveTabOptions = {}
+  ): Promise<number> {
+
     const { previewMaxSize, deleteOldPages, chapter } = options;
 
     // preview
-    var preview: Blob | string | null = null;
-    if (tab.mode === ViewMod.Single) { // create preview from first page for single view
-      preview = await createPreviewFromFirstPage(pages, previewMaxSize || PREVIEW_MAX_SIZE);
+    let preview: Blob | string | null = null;
+
+    if (tab.mode === ViewMod.Single) {
+
+      // create preview from first page for single view
+      preview = await createPreviewFromFirstPage(
+        pages,
+        previewMaxSize || PREVIEW_MAX_SIZE
+      );
     }
-    else if (tab.mode === ViewMod.Chapters) { // the client choose himself
+    else if (tab.mode === ViewMod.Chapters) {
+
+      // the client choose himself
       preview = tab.preview ?? null;
     }
 
+    // prepare pages before transaction
+    // Safari/iPhone does not like long transactions
+    const normalized: Page[] = pages.map((p: any, indx: number) => ({
+      id: p.id,
+
+      // temporary
+      // real tabId/chapterId assigned later
+      tabId: tab.id ?? -1,
+
+      // avoid storing duplicated blob fields
+      src: p.src ?? p.blob,
+
+      name: p.name ?? null,
+
+      // order inside chapter
+      order: indx + 1,
+
+      chapterId: p.chapterId ?? chapter?.id ?? null,
+      chapterOrder: p.chapterOrder ?? chapter?.order ?? -1
+    }));
+
     // transaction to save tab and pages
-    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters,  async () => {
+    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
       const tabToSave = {
         ...tab,
         preview: preview ?? tab.preview,
@@ -108,71 +144,87 @@ export class TabsRepository {
       // save tab or update
       const savedId = await db.tabs.put(tabToSave);
 
-      // if (deleteOldPages || pages.length === 0) {
-      //   await db.pages.where('tabId').equals(savedId as number).delete();
-      // }
-
-      var chapterId: number | undefined = undefined;
+      let chapterId: number | undefined = undefined;
 
       // save chapter if needed and get chapterId for pages
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
         chapterId = await db.chapters.put(chapter);
       }
 
-      // prepare pages — use within-chapter position as order; global order is assigned below
-      const normalized: Page[] = pages.map((p: any, indx: number) => ({
-        id: p.id,
-        tabId: savedId as number,
-        src: p.src ?? p.blob,
-        name: p.name ?? null,
-        order: indx + 1,
-        chapterId: p.chapterId ?? chapterId ?? null,
-        chapterOrder: p.chapterOrder ?? chapter?.order ?? -1
-      }));
+      // update normalized pages with real ids
+      normalized.forEach(p => {
+        p.tabId = savedId as number;
 
-      // find existing pages for the tab and chapter(chapter mode) 
-      // to determine which ones to delete (those that have id and are not in incoming)
-      const existing = await db.pages
-        .where('tabId')
-        .equals(savedId as number)
-        .filter(p => (p.chapterId ?? null) === (chapterId ?? null))
-        .toArray();
-
-      const incomingIds = new Set(
-        normalized
-          .map(p => p.id)
-          .filter(id => id !== undefined)
-      );
-
-      // delete only those that have id and are not in incoming
-      const toDelete = existing
-        .filter(p => !incomingIds.has(p.id!))
-        .map(p => p.id as number);
-
-      if (toDelete.length) {
-        await db.bookmarks.where('pageId').anyOf(toDelete).delete();
-        await db.pages.bulkDelete(toDelete);
-      }
-
-      if (normalized.length) {
-        await db.pages.bulkPut(normalized);
-      }
-
-      // global renumber: sort all tab pages by [chapterOrder, order] -> reassign order 1..N
-      if (tabToSave.mode === ViewMod.Chapters) {
-        const allPages = await db.pages.where('tabId').equals(savedId as number).toArray();
-        allPages.sort((a, b) => {
-          const diff = (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0);
-          return diff !== 0 ? diff : (a.order ?? 0) - (b.order ?? 0);
-        });
-        for (let i = 0; i < allPages.length; i++) {
-          allPages[i].order = i + 1;
+        if (!p.chapterId) {
+          p.chapterId = chapterId ?? null;
         }
-        await db.pages.bulkPut(allPages);
+      });
+
+      // delete old pages if requested
+      if (deleteOldPages) {
+        const oldPageIds = await db.pages
+          .where('tabId')
+          .equals(savedId as number)
+          .primaryKeys();
+
+        if (oldPageIds.length) {
+
+          await db.bookmarks
+            .where('pageId')
+            .anyOf(oldPageIds as number[])
+            .delete();
+
+          await db.pages.bulkDelete(oldPageIds as number[]);
+        }
+      }
+      else {
+        let existing: Page[] = [];
+
+        if (chapterId == null) {
+          existing = await db.pages
+            .where('tabId')
+            .equals(savedId as number)
+            .filter(p => p.chapterId == null)
+            .toArray();
+        }
+        else {
+          existing = await db.pages
+            .where('[tabId+chapterId]')
+            .equals([savedId, chapterId] as any)
+            .toArray();
+        }
+
+        const incomingIds = new Set(
+          normalized.map(p => p.id)
+            .filter(id => id !== undefined)
+        );
+
+        // delete only those that have id and are not in incoming
+        const toDelete = existing
+          .filter(p => !incomingIds.has(p.id!))
+          .map(p => p.id as number);
+
+        if (toDelete.length) {
+          await db.bookmarks.where('pageId').anyOf(toDelete).delete();
+          await db.pages.bulkDelete(toDelete);
+        }
+      }
+
+      // save by chunks
+      // Safari/iPhone can freeze on very large bulkPut with blobs
+      if (normalized.length) {
+        const isMobile = isIOS;
+        const chunkSize = isMobile ? 10 : 50;
+
+        for (let i = 0; i < normalized.length; i += chunkSize) {
+          const chunk = normalized.slice(i, i + chunkSize);
+          await db.pages.bulkPut(chunk);
+        }
       }
 
       return savedId as number;
-    });
+    }
+    );
 
     return tabId;
   }

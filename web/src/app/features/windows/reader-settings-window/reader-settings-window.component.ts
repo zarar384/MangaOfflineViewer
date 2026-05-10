@@ -261,7 +261,7 @@ export class ReaderSettingsWindowComponent {
       var existingBookmark = await this.bookmarksRepo.exists(reader.mangaId!, page.id!);
 
       if (existingBookmark) {
-        console.log(`Bookmark for page ${page.order} already exists`);
+        console.log(`Bookmark for page ${page.title} already exists`);
         return;
       }
 
@@ -270,7 +270,7 @@ export class ReaderSettingsWindowComponent {
         pageId: page.id!,
         chapterId: reader.chapterId ?? null,
         createdAt: Date.now(),
-        title: `Page ${page.order}`
+        title: `${page.title}`
       });
 
       this.loadBookmarks();

@@ -243,6 +243,18 @@ export class MangaDB extends Dexie {
       );
     });
 
+    // v14
+    // optimize indexes for mobile devices and large manga collections
+    this.version(14).stores({
+      userTabs: '++id, tabId',
+      tabs: '++id, updatedAt, createdAt, mode, *artistIds, *tagIds',
+      pages: '++id, tabId, chapterId, chapterOrder, order, [tabId+chapterId], [tabId+chapterOrder+order]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, [tabId+order]',
+      artists: '++id, normalized',
+      tags: '++id, normalized'
+    });
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({
