@@ -1209,7 +1209,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const newAnchorViewportTop = newAnchorEl.getBoundingClientRect().top;
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
-        if (Math.abs(shift) > 0.5) {
+        if (Math.abs(shift) > 0.5 && !(isIOS && container.scrollTop === 0)) {
           container.scrollTop += shift;
         }
       }
