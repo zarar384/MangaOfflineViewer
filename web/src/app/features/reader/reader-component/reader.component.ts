@@ -215,13 +215,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const container = this.readerContainer?.nativeElement;
       if (container) container.scrollTop = 0;
 
-      this.isOpenSettling = true;
-
       requestAnimationFrame(() => {
         this.setupObserver();
         this.observeAllImages();
         this.setupScrollPreloadListener();
-        this.isOpenSettling = false;
 
         if (this.reader.isOpen()) {
           this.reader.resetIsOpen();
@@ -1157,7 +1154,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.visiblePages = newSlice;
   }
 
-  private isOpenSettling = false;
 
   // SCROLL HELPERS
 
@@ -1213,7 +1209,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const newAnchorViewportTop = newAnchorEl.getBoundingClientRect().top;
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
-        if (Math.abs(shift) > 0.5 && !(isIOS && this.isOpenSettling)) {
+        if (Math.abs(shift) > 0.5) {
           container.scrollTop += shift;
         }
       }
