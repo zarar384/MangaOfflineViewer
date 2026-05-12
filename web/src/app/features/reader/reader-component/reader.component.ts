@@ -531,7 +531,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       root,
       rootMargin: this.reader.mode() === 'page'
         ? '0px'
-        : (isIOS ? '1500px' : '2500px'),
+        : (isIOS ? '300px' : '2500px'),
       threshold: 0,
     });
   }
@@ -587,16 +587,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.imgRefs.forEach(ref => {
       const img = ref.nativeElement;
-
-      // Ignore placeholders / not-yet-laid-out images 
-      if (
-        !img.src ||
-        !img.complete ||
-        img.naturalHeight === 0
-      ) {
-        return;
-      }
-
       const rect = img.getBoundingClientRect();
       const overlapTop = Math.max(rect.top, containerTop);
       const overlapBottom = Math.min(rect.bottom, containerTop + containerHeight);
@@ -1258,16 +1248,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.imgRefs.forEach(ref => {
       const img = ref.nativeElement;
-
-      // Ignore placeholders / unloaded images.
-      if (
-        !img.src ||
-        !img.complete ||
-        img.naturalHeight === 0
-      ) {
-        return;
-      }
-
       const id = Number(img.dataset['pageId']);
       if (!id) return;
 
