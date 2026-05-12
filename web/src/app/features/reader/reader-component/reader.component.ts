@@ -120,9 +120,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         this.mergeChapterTracking(pages);
 
         const anchorId = untracked(() =>
-          this.getViewportAnchorPageId() ??
           this.reader.currentPageBookmark() ??
           this.reader.currentPageId() ??
+          this.getViewportAnchorPageId() ??
           this.visiblePages[0]?.id ??
           null
         );
