@@ -95,7 +95,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private scrollPreloadListener: (() => void) | null = null;
   private scrollPreloadThrottled = false;
 
-  private initialOpenComplete = false;
+  private initialOpenComplete = true;
   
   constructor(
     private urlService: ObjectUrlService,
@@ -217,6 +217,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const container = this.readerContainer?.nativeElement;
       if (container) container.scrollTop = 0;
 
+      this.initialOpenComplete = false;
+
       requestAnimationFrame(() => {
         this.setupObserver();
         this.observeAllImages();
@@ -229,9 +231,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
 
-          requestAnimationFrame(() => {
-    this.initialOpenComplete = true;
-  });
+        setTimeout(() => {
+          this.initialOpenComplete = true;
+        }, 1000);
       });
     });
 
