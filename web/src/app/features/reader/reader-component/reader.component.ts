@@ -1170,6 +1170,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    if (this.reader.isOpen()) {
+  callback();
+  return;
+}
+
     const container = this.readerContainer?.nativeElement;
 
     if (this.isNavigating || !container) {
@@ -1210,7 +1215,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
         if (Math.abs(shift) > 0.5) {
-         // container.scrollTop += shift;
+          container.scrollTop += shift;
         }
       }
 
