@@ -531,7 +531,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       root,
       rootMargin: this.reader.mode() === 'page'
         ? '0px'
-        : (isIOS ? '300px' : '2500px'),
+        : (isIOS ? '1500px' : '2500px'),
       threshold: 0,
     });
   }
@@ -1210,7 +1210,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
         if (Math.abs(shift) > 0.5) {
-          container.scrollTop += shift;
+         // container.scrollTop += shift;
         }
       }
 
