@@ -152,6 +152,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.updateVisiblePages(anchorIndex);
         }
 
+        if (isPrependMerge && isIOS && anchorId != null) {
+  requestAnimationFrame(() => {
+    this.scrollToPageImmediately(anchorId);
+  });
+}
+
         requestAnimationFrame(() => {
           this.observeNewImages();
           this.loadVisibleRange();
@@ -1209,7 +1215,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const newAnchorViewportTop = newAnchorEl.getBoundingClientRect().top;
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
-        if (Math.abs(shift) > 0.5 && container.scrollTop + shift >= 0) {
+        if (Math.abs(shift) > 0.5) {
           container.scrollTop += shift;
         }
       }
