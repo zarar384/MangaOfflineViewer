@@ -115,14 +115,28 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
 
       if (pagesUpdateKind === 'merge') {
+        // During initial open on iOS, merge compensation
+        // can fight against unstable image/layout state.
+        // Skip preserveScroll for the very first merge.
+        if (this.reader.isOpen() && isIOS) {
+          this.mergeChapterTracking(pages);
+
+          requestAnimationFrame(() => {
+            this.observeNewImages();
+            this.loadVisibleRange();
+          });
+
+          return;
+        }
+
         // Merge flow: extend metadata, preserve current viewport anchor,
         // update virtual window, then reconnect observer to new DOM nodes.
         this.mergeChapterTracking(pages);
 
         const anchorId = untracked(() =>
+          this.getViewportAnchorPageId() ??
           this.reader.currentPageBookmark() ??
           this.reader.currentPageId() ??
-          this.getViewportAnchorPageId() ??
           this.visiblePages[0]?.id ??
           null
         );
