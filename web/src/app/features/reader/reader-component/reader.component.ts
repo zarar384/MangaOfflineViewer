@@ -161,7 +161,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             // adjusted when ch2 pages were inserted above the viewport.
             // Explicitly scroll back to the anchor so the correct snap page stays
             // visible and the observer does not cascade-fetch earlier chapters.
-            if ((isIOS || this.reader.mode() === 'page' ) && anchorId != null) {
+            if (this.reader.mode() === 'page' && anchorId != null) {
               this.scrollToPageImmediately(anchorId);
             }
 
@@ -1210,6 +1210,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
         if (Math.abs(shift) > 0.5) {
+          if(isIOS){
+              const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:290px;left:0;right:0;z-index:99999;background:orange;color:black;font-size:11px;padding:4px;';
+  div.textContent = `preserveScroll shift=${Math.round(shift)} anchorId=${anchorId} scrollTop=${Math.round(container.scrollTop)}`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 8000);
+          }
           container.scrollTop += shift;
         }
       }
