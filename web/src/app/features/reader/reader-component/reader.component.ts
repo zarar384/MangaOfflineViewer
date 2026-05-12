@@ -217,7 +217,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       requestAnimationFrame(() => {
         this.setupObserver();
-        this.observeAllImages();
+        //this.observeAllImages();
         this.setupScrollPreloadListener();
 
         if (this.reader.isOpen()) {
