@@ -328,6 +328,27 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       .subscribe(() => {
         this.observeNewImages();
       });
+
+      // TO DELETE: iOS scroll logging for debugging viewport issues
+      if (isIOS) {
+    const log = document.createElement('div');
+    log.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(0,0,0,0.8);color:lime;font-size:10px;padding:4px;max-height:200px;overflow-y:auto;pointer-events:none;';
+    document.body.appendChild(log);
+
+    const container = this.readerContainer?.nativeElement;
+    if (container) {
+      let last = container.scrollTop;
+      setInterval(() => {
+        const current = container.scrollTop;
+        if (Math.abs(current - last) > 2) {
+          const div = document.createElement('div');
+          div.textContent = `scroll: ${Math.round(last)} → ${Math.round(current)}`;
+          log.prepend(div);
+          last = current;
+        }
+      }, 16);
+    }
+  }
   }
 
   private destroyed = false;
