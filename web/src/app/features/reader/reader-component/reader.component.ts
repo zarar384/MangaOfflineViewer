@@ -152,12 +152,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.updateVisiblePages(anchorIndex);
         }
 
-        if (isPrependMerge && isIOS && anchorId != null) {
-  requestAnimationFrame(() => {
-    this.scrollToPageImmediately(anchorId);
-  });
-}
-
         requestAnimationFrame(() => {
           this.observeNewImages();
           this.loadVisibleRange();

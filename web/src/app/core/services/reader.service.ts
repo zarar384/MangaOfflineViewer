@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
+import { isIOS } from 'src/app/shared/utils/constants';
 
 /**
  * Centralized state manager for Manga Reader.
@@ -103,7 +104,11 @@ export class ReaderService {
     this._pages.set(params.pages);
     this._currentPageId.set(params.currentPageId);
     this._currentPageBookmark.set(params.currentPageId);
-    this._navTick.update(v => v + 1);
+
+    if(isIOS)
+    {
+      this._mode.set('page'); // TODO: force page mode on iOS to avoid scroll jank
+    }
   }
 
   /** Close reader and reset all state */
