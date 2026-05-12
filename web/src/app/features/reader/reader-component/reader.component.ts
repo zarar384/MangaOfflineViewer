@@ -185,56 +185,64 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
       this.pageUrls.clear();
 
-      const currentPageId = untracked(() => this.reader.currentPageId());
-      const startIndex = currentPageId
-        ? (this.pageIndexMap.get(currentPageId) ?? 0)
-        : 0;
+      // const currentPageId = untracked(() => this.reader.currentPageId());
+      // const startIndex = currentPageId
+      //   ? (this.pageIndexMap.get(currentPageId) ?? 0)
+      //   : 0;
 
-      this.updateVisiblePages(startIndex);
+      // this.updateVisiblePages(startIndex);
 
-      this.loadingSet.clear();
-      this.loadingCount = 0;
-      this.visibleUnloadedCount = 0;
-      this.cancelLoaderDebounce();
+      // this.loadingSet.clear();
+      // this.loadingCount = 0;
+      // this.visibleUnloadedCount = 0;
+      // this.cancelLoaderDebounce();
 
-      this.focusPageId = null;
-      this.fetchingNext = false;
-      this.fetchingPrev = false;
+      // this.focusPageId = null;
+      // this.fetchingNext = false;
+      // this.fetchingPrev = false;
 
-      // Reset all state guards for a new reader session.
-      this.isPrepending = false;
-      this.isRestoringScroll = false;
-      this.isNavigating = false;
+      // // Reset all state guards for a new reader session.
+      // this.isPrepending = false;
+      // this.isRestoringScroll = false;
+      // this.isNavigating = false;
 
-      this.rebuildChapterTracking(pages);
-      this.showLoaderNow();
+      // this.rebuildChapterTracking(pages);
+      // this.showLoaderNow();
 
-      this.loadToken++;
-      this.navToken++;
+      // this.loadToken++;
+      // this.navToken++;
 
-      const container = this.readerContainer?.nativeElement;
-      if (container) container.scrollTop = 0;
+      // const container = this.readerContainer?.nativeElement;
+      // if (container) container.scrollTop = 0;
 
-      requestAnimationFrame(() => {
-        this.setupObserver();
-        this.observeAllImages();
-        this.setupScrollPreloadListener();
+      // requestAnimationFrame(() => {
+      //   this.setupObserver();
+      //   this.observeAllImages();
+      //   this.setupScrollPreloadListener();
 
-        if (this.reader.isOpen()) {
-          this.reader.resetIsOpen();
-          // On initial open, preload only next chapter.
-          // Prepending previous chapter at this moment can shift viewport on iOS.
-          this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
-        }
-      });
+      //   if (this.reader.isOpen()) {
+      //     this.reader.resetIsOpen();
+      //     // On initial open, preload only next chapter.
+      //     // Prepending previous chapter at this moment can shift viewport on iOS.
+      //     this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
+      //   }
+      // });
     });
 
 
     // EFFECT: reacts to navigation tick and starts programmatic page navigation.
 
     effect(() => {
-      this.reader.navTick();
+      const tick = this.reader.navTick();
       const pageId = untracked(() => this.reader.currentPageId());
+
+        if (isIOS) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;top:210px;left:0;right:0;z-index:99999;background:red;color:white;font-size:11px;padding:4px;';
+    div.textContent = `nav effect: tick=${tick}, pageId=${pageId}`;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 5000);
+  }
 
       if (!pageId) return;
 
@@ -244,79 +252,79 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     // EFFECT: mode change updates observer root and scroll anchor behavior.
 
-    effect(() => {
-      const mode = this.reader.mode();
-      untracked(() => {
-        if (!this.reader.pages().length) return;
+    // effect(() => {
+    //   const mode = this.reader.mode();
+    //   untracked(() => {
+    //     if (!this.reader.pages().length) return;
 
-        const anchorId =
-          this.getViewportAnchorPageId() ??
-          this.reader.currentPageBookmark() ??
-          this.reader.currentPageId() ??
-          null;
+    //     const anchorId =
+    //       this.getViewportAnchorPageId() ??
+    //       this.reader.currentPageBookmark() ??
+    //       this.reader.currentPageId() ??
+    //       null;
 
-        this.navToken++;
-        this.isNavigating = true;
-        this.focusPageId = anchorId;
+    //     this.navToken++;
+    //     this.isNavigating = true;
+    //     this.focusPageId = anchorId;
 
-        if (anchorId != null) {
-          const anchorIndex = this.pageIndexMap.get(anchorId);
-          if (anchorIndex !== undefined) {
-            this.updateVisiblePages(anchorIndex);
-          }
+    //     if (anchorId != null) {
+    //       const anchorIndex = this.pageIndexMap.get(anchorId);
+    //       if (anchorIndex !== undefined) {
+    //         this.updateVisiblePages(anchorIndex);
+    //       }
 
-          this.reader.setCurrentPage(anchorId);
-          this.reader.setCurrentPageBookmark(anchorId);
-          this.updateActiveChapter(anchorId);
-        }
+    //       this.reader.setCurrentPage(anchorId);
+    //       this.reader.setCurrentPageBookmark(anchorId);
+    //       this.updateActiveChapter(anchorId);
+    //     }
 
-        this.visibleUnloadedCount = 0;
-        this.cancelLoaderDebounce();
-        this.hideLoader();
+    //     this.visibleUnloadedCount = 0;
+    //     this.cancelLoaderDebounce();
+    //     this.hideLoader();
 
-        requestAnimationFrame(() => {
-          this.setupObserver();
-          this.observeAllImages();
+    //     requestAnimationFrame(() => {
+    //       this.setupObserver();
+    //       this.observeAllImages();
 
-          if (anchorId != null) {
-            this.scrollToPageImmediately(anchorId);
-          }
+    //       if (anchorId != null) {
+    //         this.scrollToPageImmediately(anchorId);
+    //       }
 
-          requestAnimationFrame(() => {
-            if (this.destroyed) return;
-            this.isNavigating = false;
-            this.focusPageId = null;
-            this.loadVisibleRange();
-          });
-        });
-      });
-    });
+    //       requestAnimationFrame(() => {
+    //         if (this.destroyed) return;
+    //         this.isNavigating = false;
+    //         this.focusPageId = null;
+    //         this.loadVisibleRange();
+    //       });
+    //     });
+    //   });
+    // });
 
     // EFFECT: zoom/gap change reflows layout and keeps viewport anchored.
 
-    effect(() => {
-      const zoom = this.reader.zoom();
-      const gap = this.reader.gap();
+    // effect(() => {
+    //   const zoom = this.reader.zoom();
+    //   const gap = this.reader.gap();
 
-      untracked(() => {
-        if (!this.reader.pages().length) return;
+    //   untracked(() => {
+    //     if (!this.reader.pages().length) return;
 
-        const anchorId =
-          this.getViewportAnchorPageId() ??
-          this.reader.currentPageBookmark() ??
-          this.reader.currentPageId() ??
-          null;
+    //     const anchorId =
+    //       this.getViewportAnchorPageId() ??
+    //       this.reader.currentPageBookmark() ??
+    //       this.reader.currentPageId() ??
+    //       null;
 
-        if (anchorId == null) return;
+    //     if (anchorId == null) return;
 
-        const anchorIndex = this.pageIndexMap.get(anchorId);
-        if (anchorIndex === undefined) return;
+    //     const anchorIndex = this.pageIndexMap.get(anchorId);
+    //     if (anchorIndex === undefined) return;
 
-        this.preserveScroll(anchorId, () => {
-          this.updateVisiblePages(anchorIndex);
-        });
-      });
-    });
+    //     this.preserveScroll(anchorId, () => {
+    //       this.updateVisiblePages(anchorIndex);
+    //     });
+    //   });
+    // });
   }
 
 
