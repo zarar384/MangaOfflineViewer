@@ -161,7 +161,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             // adjusted when ch2 pages were inserted above the viewport.
             // Explicitly scroll back to the anchor so the correct snap page stays
             // visible and the observer does not cascade-fetch earlier chapters.
-            if (this.reader.mode() === 'page' && anchorId != null) {
+            if ((isIOS || this.reader.mode() === 'page' ) && anchorId != null) {
               this.scrollToPageImmediately(anchorId);
             }
 
@@ -1021,13 +1021,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const target = await this.waitForTarget(pageId);
 
       if (target && container) {
-        if(isIOS){
-            const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;top:290px;left:0;right:0;z-index:99999;background:purple;color:white;font-size:11px;padding:4px;';
-  div.textContent = `scrollTo top=${Math.round(this.getContainerRelativeTop(target, container))} scrollTop=${Math.round(container.scrollTop)}`;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 5000);
-        }
         container.scrollTo({
           top: this.getContainerRelativeTop(target, container),
           behavior: 'auto',
