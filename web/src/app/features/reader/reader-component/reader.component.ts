@@ -190,7 +190,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         ? (this.pageIndexMap.get(currentPageId) ?? 0)
         : 0;
 
-     // this.updateVisiblePages(startIndex);
+      this.updateVisiblePages(startIndex);
 
       this.loadingSet.clear();
       this.loadingCount = 0;
