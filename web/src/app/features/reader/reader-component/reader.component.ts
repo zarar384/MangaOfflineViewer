@@ -95,6 +95,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private scrollPreloadListener: (() => void) | null = null;
   private scrollPreloadThrottled = false;
 
+  private initialOpenComplete = false;
+  
   constructor(
     private urlService: ObjectUrlService,
     private loading: LoadingService,
@@ -226,6 +228,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           // Prepending previous chapter at this moment can shift viewport on iOS.
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
+
+          requestAnimationFrame(() => {
+    this.initialOpenComplete = true;
+  });
       });
     });
 
@@ -471,7 +477,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             windowUpdated = true;
           }
 
-          this.tryLoadAdjacentChapters(globalIndex);
+          this.tryLoadAdjacentChapters(globalIndex, { allowPrev: this.initialOpenComplete });
         }
 
         const page = this.visiblePages.find(p => p.id === id);
@@ -1210,13 +1216,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
         if (Math.abs(shift) > 0.5) {
-          if(isIOS){
-              const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;top:290px;left:0;right:0;z-index:99999;background:orange;color:black;font-size:11px;padding:4px;';
-  div.textContent = `preserveScroll shift=${Math.round(shift)} anchorId=${anchorId} scrollTop=${Math.round(container.scrollTop)}`;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 8000);
-          }
           container.scrollTop += shift;
         }
       }
