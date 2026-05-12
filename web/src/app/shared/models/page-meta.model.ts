@@ -1,8 +1,13 @@
 export interface PageMeta {
   id?: number;
-  tabId: number;   // FK
-  chapterId?: number | null; // FK, nullable
   name?: string;
   order?: number;
+
+  width?: number | null;
+  height?: number | null;
+  
+  tabId: number;   // FK
+  chapterId?: number | null; // FK, nullable
+
   chapterOrder?: number | null;
 }

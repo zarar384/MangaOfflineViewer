@@ -120,7 +120,9 @@ export class TabsRepository {
       src: p.src ?? p.blob,
 
       name: p.name ?? null,
-
+      width: p.width ?? null,
+      height: p.height ?? null,
+      
       // order inside chapter
       order: indx + 1,
 

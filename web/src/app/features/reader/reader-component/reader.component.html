@@ -12,6 +12,8 @@
         #imgRef
         class="reader-img"
         [style.width.%]="readerMode === 'scroll' ? readerZoom * 100 : 100"
+        [attr.width]="page.width || null"
+        [attr.height]="page.height || null"
         [attr.data-page-id]="page.id"
         [alt]="'page ' + page.id"
       />

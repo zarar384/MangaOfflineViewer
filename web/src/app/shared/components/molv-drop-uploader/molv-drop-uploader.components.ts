@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, signal, inject, OnChanges, SimpleChanges, OnInit, OnDestroy } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import * as JSZip from 'jszip';
-import { calculateProgress, generateId, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
+import { calculateProgress, generateId, getImageSize, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from '../../../core/models/tab.model';
 import { TabsRepository } from '../../../core/repositories/tabs.repository';
 import { Page } from '../../../core/models/page.model';
@@ -201,6 +201,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   private async addBlobImage(blob: Blob, name?: string) {
     let pageSrc: Blob | string;
     let previewSrc: string;
+ 
+    const size = await getImageSize(blob);
 
     if (isIOS) {
       const reader = new FileReader();
@@ -215,7 +217,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       previewSrc = await this.urlService.createUrl(name!, blob);
     }
 
-    this.items.update(items => [...items, { page: { src: pageSrc, name, tabId: 0 }, url: previewSrc }]);
+    this.items.update(items => [...items, { page: { src: pageSrc, name, tabId: 0, width: size.width, height: size.height }, url: previewSrc }]);
   }
 
   remove(index: number) {

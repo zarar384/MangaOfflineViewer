@@ -133,6 +133,27 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
+export function getImageSize(blob: Blob): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    const url = URL.createObjectURL(blob);
+
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      });
+
+      URL.revokeObjectURL(url);
+    };
+
+    img.onerror = reject;
+
+    img.src = url;
+  });
+}
+
 export function getImageExtension(mimeType: string): string {
   switch (mimeType) {
     case 'image/png': return 'png';

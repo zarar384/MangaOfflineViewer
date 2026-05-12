@@ -255,6 +255,18 @@ export class MangaDB extends Dexie {
       tags: '++id, normalized'
     });
 
+    // v15
+    // page adds width and height fields for better performance when rendering page thumbnails and reader on mobile devices
+    this.version(15).stores({
+      userTabs: '++id, tabId',
+      tabs: '++id, updatedAt, createdAt, mode, *artistIds, *tagIds',
+      pages: '++id, tabId, chapterId, chapterOrder, order, width, height, [tabId+chapterId], [tabId+chapterOrder+order]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, [tabId+order]',
+      artists: '++id, normalized',
+      tags: '++id, normalized'
+    });
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({
