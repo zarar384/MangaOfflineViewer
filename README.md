@@ -1,20 +1,33 @@
+<div align="center">
+
 # MangaOfflineViewer
-Offline-first Manga Reader (PWA)
 
-No backend required
+<img 
+  src="https://raw.githubusercontent.com/zarar384/MangaOfflineViewer/angular-ver/web/src/assets/icons/maskable_icon_x192.png"
+  width="150"
+  height="150"
+/>
 
-IndexedDB + Dexie
+### Offline-first Manga Reader (PWA)
 
-## Scope
+Minimal • Fully Offline • No Backend Required
 
-Offline-first PWA for reading manga.  
-Primary focus: deterministic client-side behavior, local persistence, and minimal backend dependency.
+<p>
+  <a href="https://zarar384.github.io/MangaOfflineViewer/">Live Demo (GitHub Pages)</a>
+  •
+  <a href="https://manga-offline-viewer.netlify.app/">Live Demo (Netlify)</a>
+  •
+  <a href="https://youtu.be/-3GngfbSlKk">Video Demo</a>
+</p>
 
-[Open Live App (GitHub Pages)](https://zarar384.github.io/MangaOfflineViewer/)
+<p>
+  <img src="https://img.shields.io/badge/Angular-20-red?style=for-the-badge&logo=angular"/>
+  <img src="https://img.shields.io/badge/PWA-Offline--First-blue?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/IndexedDB-Dexie-green?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/Backend-Optional-black?style=for-the-badge"/>
+</p>
 
-[Open Live App (Netlify)](https://manga-offline-viewer.netlify.app/)
-
-[Watch the demo](https://youtu.be/-3GngfbSlKk)
+</div>
 
 ---
 
