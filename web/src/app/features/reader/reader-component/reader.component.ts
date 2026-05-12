@@ -233,9 +233,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     // EFFECT: reacts to navigation tick and starts programmatic page navigation.
 
     effect(() => {
-      const tick = this.reader.navTick();
-      if (tick === 0) return;
-
+      this.reader.navTick();
       const pageId = untracked(() => this.reader.currentPageId());
 
       if (!pageId) return;
