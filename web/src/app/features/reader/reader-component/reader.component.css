@@ -1,4 +1,4 @@
-.reader-container {  display: flex;  flex-direction: column;  align-items: stretch;  width: 100%;  height: 100vh;  overflow-y: scroll;  overflow-x: hidden;  -webkit-overflow-scrolling: touch;  margin: 0;  padding: 0; }
+.reader-container { overflow-anchor: none; display: flex;  flex-direction: column;  align-items: stretch;  width: 100%;  height: 100vh;  overflow-y: scroll;  overflow-x: hidden;  -webkit-overflow-scrolling: touch;  margin: 0;  padding: 0; }
 .reader-container::-webkit-scrollbar { display: none; }
 .reader-container { scrollbar-width: none; }
 
