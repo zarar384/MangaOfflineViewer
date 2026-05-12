@@ -213,11 +213,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.navToken++;
 
       const container = this.readerContainer?.nativeElement;
-      // if (container) container.scrollTop = 0;
+      if (container) container.scrollTop = 0;
 
       requestAnimationFrame(() => {
-        this.setupObserver();
-        this.observeAllImages();
+        // this.setupObserver();
+        // this.observeAllImages();
         this.setupScrollPreloadListener();
 
         if (this.reader.isOpen()) {
