@@ -8,6 +8,7 @@ import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
 import { TabsService } from 'src/app/core/services/tabs.service';
+import { isIOS } from 'src/app/shared/utils/constants';
 
 @Component({
   selector: 'app-manga-reader',
@@ -40,7 +41,8 @@ export class ReaderWrapperComoponent implements OnInit {
   ngOnInit(): void {
     // Restore UI settings from previous session
     this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
-    this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
+    // Force page mode on iOS to avoid scroll jank
+    this.mode = isIOS ? 'page' : this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
     this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
 
