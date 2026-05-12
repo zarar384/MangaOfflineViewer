@@ -212,21 +212,21 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.loadToken++;
       this.navToken++;
 
-      const container = this.readerContainer?.nativeElement;
-      if (container) container.scrollTop = 0;
+      // const container = this.readerContainer?.nativeElement;
+      // if (container) container.scrollTop = 0;
 
-      requestAnimationFrame(() => {
-        // this.setupObserver();
-        // this.observeAllImages();
-        this.setupScrollPreloadListener();
+      // requestAnimationFrame(() => {
+      //   this.setupObserver();
+      //   this.observeAllImages();
+      //   this.setupScrollPreloadListener();
 
-        if (this.reader.isOpen()) {
-          this.reader.resetIsOpen();
-          // On initial open, preload only next chapter.
-          // Prepending previous chapter at this moment can shift viewport on iOS.
-          this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
-        }
-      });
+      //   if (this.reader.isOpen()) {
+      //     this.reader.resetIsOpen();
+      //     // On initial open, preload only next chapter.
+      //     // Prepending previous chapter at this moment can shift viewport on iOS.
+      //     this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
+      //   }
+      // });
     });
 
 
