@@ -947,14 +947,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private async handleNavigation(pageId: number): Promise<void> {
     const navToken = ++this.navToken;
 
-    if(isIOS){
-        const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;top:250px;left:0;right:0;z-index:99999;background:blue;color:white;font-size:11px;padding:4px;';
-  div.textContent = `handleNavigation #${navToken} pageId=${pageId}`;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 5000);
-    }
-    
     this.focusPageId = pageId;
     this.showLoaderNow();
 
@@ -1029,6 +1021,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const target = await this.waitForTarget(pageId);
 
       if (target && container) {
+        if(isIOS){
+            const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:290px;left:0;right:0;z-index:99999;background:purple;color:white;font-size:11px;padding:4px;';
+  div.textContent = `scrollTo top=${Math.round(this.getContainerRelativeTop(target, container))} scrollTop=${Math.round(container.scrollTop)}`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+        }
         container.scrollTo({
           top: this.getContainerRelativeTop(target, container),
           behavior: 'auto',
