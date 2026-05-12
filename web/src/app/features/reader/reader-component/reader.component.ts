@@ -115,20 +115,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
 
       if (pagesUpdateKind === 'merge') {
-        // During initial open on iOS, merge compensation
-        // can fight against unstable image/layout state.
-        // Skip preserveScroll for the very first merge.
-        if (this.reader.isOpen() && isIOS) {
-          this.mergeChapterTracking(pages);
-
-          requestAnimationFrame(() => {
-            this.observeNewImages();
-            this.loadVisibleRange();
-          });
-
-          return;
-        }
-
         // Merge flow: extend metadata, preserve current viewport anchor,
         // update virtual window, then reconnect observer to new DOM nodes.
         this.mergeChapterTracking(pages);
@@ -238,7 +224,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.reader.resetIsOpen();
           // On initial open, preload only next chapter.
           // Prepending previous chapter at this moment can shift viewport on iOS.
-          this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
+          if (!isIOS) {
+            this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
+          }
         }
       });
     });
