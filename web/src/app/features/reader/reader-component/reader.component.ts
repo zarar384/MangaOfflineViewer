@@ -531,7 +531,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       root,
       rootMargin: this.reader.mode() === 'page'
         ? '0px'
-        : (isIOS ? '0px' : '2500px'),
+        : (isIOS ? '1500px' : '2500px'),
       threshold: 0,
     });
   }
