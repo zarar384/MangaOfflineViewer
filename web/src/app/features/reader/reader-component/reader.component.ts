@@ -95,8 +95,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private scrollPreloadListener: (() => void) | null = null;
   private scrollPreloadThrottled = false;
 
-  private initialOpenComplete = true;
-  
   constructor(
     private urlService: ObjectUrlService,
     private loading: LoadingService,
@@ -217,8 +215,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const container = this.readerContainer?.nativeElement;
       if (container) container.scrollTop = 0;
 
-      this.initialOpenComplete = false;
-
       requestAnimationFrame(() => {
         this.setupObserver();
         this.observeAllImages();
@@ -230,10 +226,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           // Prepending previous chapter at this moment can shift viewport on iOS.
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
-
-        setTimeout(() => {
-          this.initialOpenComplete = true;
-        }, 1000);
       });
     });
 
@@ -479,7 +471,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             windowUpdated = true;
           }
 
-          this.tryLoadAdjacentChapters(globalIndex, { allowPrev: this.initialOpenComplete });
+          this.tryLoadAdjacentChapters(globalIndex);
         }
 
         const page = this.visiblePages.find(p => p.id === id);
@@ -1217,7 +1209,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const newAnchorViewportTop = newAnchorEl.getBoundingClientRect().top;
         // Apply exact visual shift to keep anchor at the same screen position.
         const shift = newAnchorViewportTop - prevAnchorViewportTop;
-        if (Math.abs(shift) > 0.5) {
+        if (Math.abs(shift) > 0.5 && container.scrollTop + shift >= 0) {
           container.scrollTop += shift;
         }
       }
