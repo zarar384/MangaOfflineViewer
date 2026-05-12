@@ -1170,11 +1170,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    if (this.reader.isOpen()) {
-  callback();
-  return;
-}
-
     const container = this.readerContainer?.nativeElement;
 
     if (this.isNavigating || !container) {
