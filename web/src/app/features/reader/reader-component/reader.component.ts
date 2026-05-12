@@ -230,93 +230,93 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
 
 
-    // // EFFECT: reacts to navigation tick and starts programmatic page navigation.
+    // EFFECT: reacts to navigation tick and starts programmatic page navigation.
 
-    // effect(() => {
-    //   this.reader.navTick();
-    //   const pageId = untracked(() => this.reader.currentPageId());
+    effect(() => {
+      this.reader.navTick();
+      const pageId = untracked(() => this.reader.currentPageId());
 
-    //   if (!pageId) return;
+      if (!pageId) return;
 
-    //   this.handleNavigation(pageId);
-    // });
+      this.handleNavigation(pageId);
+    });
 
 
-    // // EFFECT: mode change updates observer root and scroll anchor behavior.
+    // EFFECT: mode change updates observer root and scroll anchor behavior.
 
-    // effect(() => {
-    //   const mode = this.reader.mode();
-    //   untracked(() => {
-    //     if (!this.reader.pages().length) return;
+    effect(() => {
+      const mode = this.reader.mode();
+      untracked(() => {
+        if (!this.reader.pages().length) return;
 
-    //     const anchorId =
-    //       this.getViewportAnchorPageId() ??
-    //       this.reader.currentPageBookmark() ??
-    //       this.reader.currentPageId() ??
-    //       null;
+        const anchorId =
+          this.getViewportAnchorPageId() ??
+          this.reader.currentPageBookmark() ??
+          this.reader.currentPageId() ??
+          null;
 
-    //     this.navToken++;
-    //     this.isNavigating = true;
-    //     this.focusPageId = anchorId;
+        this.navToken++;
+        this.isNavigating = true;
+        this.focusPageId = anchorId;
 
-    //     if (anchorId != null) {
-    //       const anchorIndex = this.pageIndexMap.get(anchorId);
-    //       if (anchorIndex !== undefined) {
-    //         this.updateVisiblePages(anchorIndex);
-    //       }
+        if (anchorId != null) {
+          const anchorIndex = this.pageIndexMap.get(anchorId);
+          if (anchorIndex !== undefined) {
+            this.updateVisiblePages(anchorIndex);
+          }
 
-    //       this.reader.setCurrentPage(anchorId);
-    //       this.reader.setCurrentPageBookmark(anchorId);
-    //       this.updateActiveChapter(anchorId);
-    //     }
+          this.reader.setCurrentPage(anchorId);
+          this.reader.setCurrentPageBookmark(anchorId);
+          this.updateActiveChapter(anchorId);
+        }
 
-    //     this.visibleUnloadedCount = 0;
-    //     this.cancelLoaderDebounce();
-    //     this.hideLoader();
+        this.visibleUnloadedCount = 0;
+        this.cancelLoaderDebounce();
+        this.hideLoader();
 
-    //     requestAnimationFrame(() => {
-    //       this.setupObserver();
-    //       this.observeAllImages();
+        requestAnimationFrame(() => {
+          this.setupObserver();
+          this.observeAllImages();
 
-    //       if (anchorId != null) {
-    //         this.scrollToPageImmediately(anchorId);
-    //       }
+          if (anchorId != null) {
+            this.scrollToPageImmediately(anchorId);
+          }
 
-    //       requestAnimationFrame(() => {
-    //         if (this.destroyed) return;
-    //         this.isNavigating = false;
-    //         this.focusPageId = null;
-    //         this.loadVisibleRange();
-    //       });
-    //     });
-    //   });
-    // });
+          requestAnimationFrame(() => {
+            if (this.destroyed) return;
+            this.isNavigating = false;
+            this.focusPageId = null;
+            this.loadVisibleRange();
+          });
+        });
+      });
+    });
 
-    // // EFFECT: zoom/gap change reflows layout and keeps viewport anchored.
+    // EFFECT: zoom/gap change reflows layout and keeps viewport anchored.
 
-    // effect(() => {
-    //   const zoom = this.reader.zoom();
-    //   const gap = this.reader.gap();
+    effect(() => {
+      const zoom = this.reader.zoom();
+      const gap = this.reader.gap();
 
-    //   untracked(() => {
-    //     if (!this.reader.pages().length) return;
+      untracked(() => {
+        if (!this.reader.pages().length) return;
 
-    //     const anchorId =
-    //       this.getViewportAnchorPageId() ??
-    //       this.reader.currentPageBookmark() ??
-    //       this.reader.currentPageId() ??
-    //       null;
+        const anchorId =
+          this.getViewportAnchorPageId() ??
+          this.reader.currentPageBookmark() ??
+          this.reader.currentPageId() ??
+          null;
 
-    //     if (anchorId == null) return;
+        if (anchorId == null) return;
 
-    //     const anchorIndex = this.pageIndexMap.get(anchorId);
-    //     if (anchorIndex === undefined) return;
+        const anchorIndex = this.pageIndexMap.get(anchorId);
+        if (anchorIndex === undefined) return;
 
-    //     this.preserveScroll(anchorId, () => {
-    //       this.updateVisiblePages(anchorIndex);
-    //     });
-    //   });
-    // });
+        this.preserveScroll(anchorId, () => {
+          this.updateVisiblePages(anchorIndex);
+        });
+      });
+    });
   }
 
 
