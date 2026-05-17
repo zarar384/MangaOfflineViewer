@@ -15,7 +15,10 @@ export class MolvSwitchComponent {
   @Output() checkedChange = new EventEmitter<boolean>();
 
   onChange(event: Event) {
-    const value = (event.target as HTMLInputElement).checked;
-    this.checkedChange.emit(value);
+    const target = event.target as HTMLInputElement;
+    // Revert the checkbox state immediately to prevent UI lag
+    // The actual state change will be handled by the parent component via the checkedChange event
+    target.checked = this.checked;
+    this.checkedChange.emit(!this.checked);
   }
 }

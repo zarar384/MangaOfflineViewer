@@ -1,4 +1,4 @@
-import { Component,  Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
@@ -8,7 +8,7 @@ import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { BookmarksRepository } from 'src/app/core/repositories/bookmark.repository';
 import { TabsService } from 'src/app/core/services/tabs.service';
-import { isIOS } from 'src/app/shared/utils/constants';
+import { ReadingMode } from '../engine/interfaces/reader-settings.interface';
 
 @Component({
   selector: 'app-manga-reader',
@@ -22,8 +22,7 @@ export class ReaderWrapperComoponent implements OnInit {
   @Input() activeManga: number | null = null;
 
   gap = 0.5;
-  mode: 'scroll' | 'page' = 'scroll';
-  zoom = 1;
+  mode: ReadingMode = 'scroll';
   downloadMod: 'mhtml' | 'zip' = 'mhtml';
 
   showSettingsWindow = true;
@@ -39,20 +38,13 @@ export class ReaderWrapperComoponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Restore UI settings from previous session
+    // Restore reader UI settings from last session.
     this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
-    // Force page mode on iOS to avoid scroll jank
-    this.mode = isIOS ? 'page' : this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
-    this.zoom = this.uiState.getValue<number>('readerZoom') || 1;
+    this.mode = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
 
-    // Apply restored settings to reader service
-    this.reader.setSettings({ gap: this.gap, mode: this.mode, zoom: this.zoom });
-  }
-
-  // SETTINGS WINDOW: MAIN
-  goToPage(pageId: number) {
-    this.reader.goToPage(pageId);
+    // Apply restored settings right away so reader opens in the same state.
+    this.reader.setSettings({ gap: this.gap, mode: this.mode });
   }
 
   goToBookmark = async (bookmarkId: number | string) => {
@@ -64,12 +56,10 @@ export class ReaderWrapperComoponent implements OnInit {
     this.reader.goToPage(bm.pageId);
   }
 
-  // SETTINGS WINDOW: VISUAL
   onSettingsWindowHide() {
     this.showSettingsWindow = false;
   }
 
-  // SETTINGS WINDOW: EXPORT
   async onExportButtonClicked(format: 'mhtml' | 'zip') {
     if (this.activeManga === null) return;
 

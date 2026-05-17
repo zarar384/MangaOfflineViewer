@@ -2,7 +2,10 @@
      tabindex="0"
      #readerContainer
      [class.page-mode]="readerMode === 'page'"
-     [class.scroll-mode]="readerMode === 'scroll'">
+     [class.scroll-mode]="readerMode === 'scroll'"
+     [class.horizontal-mode]="readerMode === 'horizontal'"
+     [class.dual-mode]="readerMode === 'dual'"
+     [class.dual-cover]="readerMode === 'dual' && dualPageCover">
 
   @for (page of visiblePages; track page.id) {
     <div class="image-container"
@@ -11,7 +14,7 @@
       <img
         #imgRef
         class="reader-img"
-        [style.width.%]="readerMode === 'scroll' ? readerZoom * 100 : 100"
+        [style.width.%]="100"
         [attr.width]="page.width || null"
         [attr.height]="page.height || null"
         [attr.data-page-id]="page.id"

@@ -137,9 +137,11 @@ export class MangaPageComponent implements OnChanges {
   }
 
   // Clear draft on unload to prevent stale data
-  @HostListener('window:unload')
-  onUnload() {
-    this.draftService.clear();
+  @HostListener('document:visibilitychange')
+  onVisibilityChange() {
+    if (document.hidden) {
+      this.draftService.clear();
+    }
   }
 
   // Actions

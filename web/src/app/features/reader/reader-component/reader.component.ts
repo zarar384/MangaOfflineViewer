@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild } from '@angular/core';
+﻿import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from '../../../core/models/page.model';
 import { ObjectUrlService } from '../../../core/services/object-url.service';
@@ -9,6 +9,12 @@ import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ChaptersRepository } from 'src/app/core/repositories/chapters.repository';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
+import { SettingsStoreService } from '../engine/settings-store.service';
+import { ImagePipelineService } from '../engine/image-pipeline.service';
+import { GestureEngineService, GestureEvent } from '../engine/gesture-engine.service';
+import { ScrollControllerService } from '../engine/scroll-controller.service';
+import { VirtualizationEngineService } from '../engine/virtualization-engine.service';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'manga-reader',
@@ -19,31 +25,20 @@ import { PageMeta } from 'src/app/shared/models/page-meta.model';
 })
 export class ReaderComponent implements AfterViewInit, OnDestroy {
 
-  /**
-   * References to rendered <img> elements.
-   * Used for observer attachment and scroll calculations.
-   */
+  // Rendered images used by observer and scroll calculations.
   @ViewChildren('imgRef')
   imgRefs!: QueryList<ElementRef<HTMLImageElement>>;
 
   @ViewChild('readerContainer')
   private readerContainer!: ElementRef<HTMLDivElement>;
 
-  /** Intersection observer for lazy loading */
+  // Observer drives image loading and reading position updates.
   private observer!: IntersectionObserver;
 
-  /**
-   * Set of page ids currently being observed.
-   * Used to add only NEW elements to the observer without disconnecting it,
-   * which would cancel all pending intersection callbacks.
-   */
+  // Keeps track of already observed ids so only attach new nodes.
   private observedPageIds = new Set<number>();
 
-  // State flags that synchronize async UI workflows:
-  // - isNavigating: true while programmatic page navigation owns scroll updates
-  // - isPrepending: true while previous pages are inserted before current viewport
-  // - isRestoringScroll: true while anchor-based scroll compensation is in progress
-  // - freezeBookmarkUpdates: combined gate for observer-driven page/bookmark writes
+  // These flags gate observer writes while navigation or restore is running.
   private isNavigating = false;
   private isPrepending = false;
   private isRestoringScroll = false;
@@ -54,18 +49,18 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private pageUrls = new Map<number, string>();
 
-  /** pageId -> index in the full pages buffer */
+  // Maps page id to global index in full buffer.
   private pageIndexMap = new Map<number, number>();
+
+  // Fired when index map is rebuilt after page merge.
+  private pageIndexMapUpdated$ = new Subject<void>();
 
   private MAX_LOAD = 12;
   private loadingCount = 0;
   private loadingSet = new Set<number>();
   private isLoaderVisible = false;
 
-  /**
-   * Navigation token is incremented on each navigation/open cycle.
-   * Async steps compare token snapshots to ignore stale continuations.
-   */
+  // Used to cancel stale async navigation steps.
   private navToken = 0;
 
   private visibleUnloadedCount = 0;
@@ -86,7 +81,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private loadedChapterIds = new Set<number>();
 
-  /** chapter id -> { firstPageId, lastPageId } for chapter boundary lookup */
+  // Stores first and last page id for each chapter.
   private chapterPageRanges = new Map<number, { first: number; last: number }>();
 
   private fetchingNext = false;
@@ -101,10 +96,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     public reader: ReaderService,
     private pagesRepo: PagesRepository,
     private chaptersRepo: ChaptersRepository,
-    private destroyRef: DestroyRef
+    private destroyRef: DestroyRef,
+    private settingsStore: SettingsStoreService,
+    private imagePipeline: ImagePipelineService,
+    private gestureEngine: GestureEngineService,
+    private scrollController: ScrollControllerService,
+    private virtualization: VirtualizationEngineService
   ) {
-
-    // EFFECT: reacts to full pages buffer changes (open and merge flows)
 
     effect(() => {
       const pages = this.reader.pages();
@@ -113,10 +111,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.pageIndexMap.clear();
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
+      this.virtualization.rebuildIndex(pages);
+      
+      // Needed by waitForPageIndexUpdate during async navigation.
+      this.pageIndexMapUpdated$.next();
 
       if (pagesUpdateKind === 'merge') {
-        // Merge flow: extend metadata, preserve current viewport anchor,
-        // update virtual window, then reconnect observer to new DOM nodes.
         this.mergeChapterTracking(pages);
 
         const anchorId = untracked(() =>
@@ -130,7 +130,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           ? (this.pageIndexMap.get(anchorId) ?? 0)
           : 0;
 
-        // Detect prepend by comparing the new first page index to current window start.
         const firstNewId = pages[0]?.id;
         const firstVisibleId = this.visiblePages[0]?.id;
         const isPrependMerge =
@@ -144,11 +143,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.isPrepending = true;
         }
 
-        if (anchorId != null) {
+        if (!this.isNavigating && anchorId != null) {
           this.preserveScroll(anchorId, () => {
             this.updateVisiblePages(anchorIndex);
           });
-        } else {
+        } else if (!this.isNavigating) {
           this.updateVisiblePages(anchorIndex);
         }
 
@@ -157,10 +156,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadVisibleRange();
 
           if (isPrependMerge) {
-            // In page mode, preserveScroll is a no-op, so scrollTop was not
-            // adjusted when ch2 pages were inserted above the viewport.
-            // Explicitly scroll back to the anchor so the correct snap page stays
-            // visible and the observer does not cascade-fetch earlier chapters.
+            // In page mode force anchor scroll after prepend.
             if (this.reader.mode() === 'page' && anchorId != null) {
               this.scrollToPageImmediately(anchorId);
             }
@@ -168,9 +164,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             requestAnimationFrame(() => {
               this.isPrepending = false;
 
-              // Run a wide-range preload pass after prepend guard is released.
-              // This warms all images that were inserted above viewport so upward
-              // scroll does not stall waiting for lazy-load to catch up.
+              // Warm newly prepended images with a larger preload range.
               requestAnimationFrame(() => {
                 this.loadVisibleRange(isIOS ? 8000 : 12000);
               });
@@ -180,15 +174,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      // Open flow: reset runtime state, clear caches, rebuild tracking and observers.
-
       this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
       this.pageUrls.clear();
+      
+      this.imagePipeline.revokeAll();
 
       const currentPageId = untracked(() => this.reader.currentPageId());
-      const startIndex = currentPageId
+      let startIndex = currentPageId
         ? (this.pageIndexMap.get(currentPageId) ?? 0)
         : 0;
+
+      if (this.reader.mode() === 'dual' && !this.dualPageCover && startIndex % 2 === 1) {
+        startIndex = Math.max(0, startIndex - 1);
+      }
 
       this.updateVisiblePages(startIndex);
 
@@ -201,7 +199,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.fetchingNext = false;
       this.fetchingPrev = false;
 
-      // Reset all state guards for a new reader session.
       this.isPrepending = false;
       this.isRestoringScroll = false;
       this.isNavigating = false;
@@ -213,7 +210,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.navToken++;
 
       const container = this.readerContainer?.nativeElement;
-      if (container) container.scrollTop = 0;
+      if (container) {
+        container.scrollTop = 0;
+        if (this.isHorizontalLikeMode()) {
+          container.scrollLeft = 0;
+        }
+      }
 
       requestAnimationFrame(() => {
         this.setupObserver();
@@ -222,15 +224,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         if (this.reader.isOpen()) {
           this.reader.resetIsOpen();
-          // On initial open, preload only next chapter.
-          // Prepending previous chapter at this moment can shift viewport on iOS.
+          // On open only preload next chapter to avoid shifting viewport.
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
       });
     });
-
-
-    // EFFECT: reacts to navigation tick and starts programmatic page navigation.
 
     effect(() => {
       this.reader.navTick();
@@ -242,17 +240,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
 
 
-    // EFFECT: mode change updates observer root and scroll anchor behavior.
-
     effect(() => {
       const mode = this.reader.mode();
       untracked(() => {
         if (!this.reader.pages().length) return;
 
         const anchorId =
-          this.getViewportAnchorPageId() ??
-          this.reader.currentPageBookmark() ??
           this.reader.currentPageId() ??
+          this.reader.currentPageBookmark() ??
+          this.getViewportAnchorPageId() ??
           null;
 
         this.navToken++;
@@ -260,8 +256,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         this.focusPageId = anchorId;
 
         if (anchorId != null) {
-          const anchorIndex = this.pageIndexMap.get(anchorId);
+          let anchorIndex = this.pageIndexMap.get(anchorId);
           if (anchorIndex !== undefined) {
+            if (mode === 'dual' && !this.dualPageCover && anchorIndex % 2 === 1) {
+              anchorIndex = Math.max(0, anchorIndex - 1);
+            }
             this.updateVisiblePages(anchorIndex);
           }
 
@@ -292,10 +291,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       });
     });
 
-    // EFFECT: zoom/gap change reflows layout and keeps viewport anchored.
-
     effect(() => {
-      const zoom = this.reader.zoom();
       const gap = this.reader.gap();
 
       untracked(() => {
@@ -323,6 +319,40 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.setupObserver();
 
+    const container = this.readerContainer?.nativeElement;
+    if (container) {
+      this.gestureEngine.attach(container, (event) => this.handleGesture(event));
+
+      const keyHandler = (e: KeyboardEvent) => {
+        const mode = this.reader.mode();
+        if (mode === 'horizontal' || mode === 'dual') {
+          if (e.key === 'ArrowRight') {
+            this.goToAdjacentPage(1);
+          } else if (e.key === 'ArrowLeft') {
+            this.goToAdjacentPage(-1);
+          }
+        }
+      };
+      document.addEventListener('keydown', keyHandler);
+
+      const wheelHandler = (e: WheelEvent) => {
+        const mode = this.reader.mode();
+        if (mode === 'horizontal' || mode === 'dual') {
+          if (e.deltaX > 50) {
+            this.goToAdjacentPage(1);
+          } else if (e.deltaX < -50) {
+            this.goToAdjacentPage(-1);
+          }
+        }
+      };
+      container.addEventListener('wheel', wheelHandler, { passive: false });
+
+      this.destroyRef.onDestroy(() => {
+        document.removeEventListener('keydown', keyHandler);
+        container.removeEventListener('wheel', wheelHandler);
+      });
+    }
+
     this.imgRefs.changes
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -335,39 +365,37 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     this.observer?.disconnect();
+    this.gestureEngine.detach();
     this.observedPageIds.clear();
     this.teardownScrollPreloadListener();
     this.cancelLoaderDebounce();
     this.hideLoader();
     this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
     this.pageUrls.clear();
+    
+    this.imagePipeline.revokeAll();
+    
+    this.pageIndexMapUpdated$.complete();
   }
-
-
-  // LOADER
 
   /** Returns true if image rect intersects current reader container viewport. */
   private isImageInViewport(img: HTMLImageElement): boolean {
-    const container = this.readerContainer?.nativeElement;
-    if (!container) {
-      const rect = img.getBoundingClientRect();
-      return rect.bottom > 0 && rect.top < window.innerHeight;
+    const bounds = this.getViewportBounds(this.readerContainer?.nativeElement);
+    const rect = img.getBoundingClientRect();
+
+    if (this.isHorizontalLikeMode()) {
+      return rect.right > bounds.start && rect.left < bounds.end;
     }
 
-    const containerRect = container.getBoundingClientRect();
-    const imgRect = img.getBoundingClientRect();
-
-    return imgRect.bottom > containerRect.top && imgRect.top < containerRect.bottom;
+    return this.scrollController.isInViewport(img, this.readerContainer?.nativeElement ?? null);
   }
 
-  // Shows loader immediately for explicit wait states.
   private showLoaderNow(): void {
     this.cancelLoaderDebounce();
     this.loading.show();
     this.isLoaderVisible = true;
   }
 
-  // Schedules loader with debounce to avoid flicker on fast loads.
   private scheduleLoader(): void {
     if (this.isLoaderVisible || this.loaderDebounceTimer) return;
 
@@ -380,7 +408,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }, this.LOADER_DELAY_MS);
   }
 
-  // Hides loader and clears delayed show request.
   private hideLoader(): void {
     this.cancelLoaderDebounce();
     if (this.isLoaderVisible) {
@@ -389,7 +416,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Cancels pending loader debounce timer.
   private cancelLoaderDebounce(): void {
     if (this.loaderDebounceTimer) {
       clearTimeout(this.loaderDebounceTimer);
@@ -397,10 +423,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-
-  // OBSERVER
-
-  // Creates observer and handles page tracking + lazy loading pipeline.
   private setupObserver() {
     this.observer?.disconnect();
     this.observedPageIds.clear();
@@ -409,16 +431,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.observer = new IntersectionObserver(async (entries) => {
 
-      // Skip observer writes while scroll/navigation/prepend workflows own state.
       if (this.isNavigating || this.isPrepending || this.isRestoringScroll) return;
 
       const token = this.loadToken;
 
       const containerRect = root?.getBoundingClientRect();
-      const containerHeight = containerRect?.height ?? window.innerHeight;
-      const containerTop = containerRect?.top ?? 0;
+      const containerSize = this.isHorizontalLikeMode()
+        ? (containerRect?.width ?? window.innerWidth)
+        : (containerRect?.height ?? window.innerHeight);
+      const containerStart = this.isHorizontalLikeMode()
+        ? (containerRect?.left ?? 0)
+        : (containerRect?.top ?? 0);
 
-      let centerY = containerHeight / 2;
+      let center = containerSize / 2;
 
       if (this.focusPageId !== null) {
         const el = this.imgRefs.find(r =>
@@ -427,20 +452,25 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
         if (el) {
           const rect = el.getBoundingClientRect();
-          centerY = (rect.top - containerTop) + rect.height / 2;
+          center = this.isHorizontalLikeMode()
+            ? (rect.left - containerStart) + rect.width / 2
+            : (rect.top - containerStart) + rect.height / 2;
         }
       }
 
       const visible = entries
         .filter(e => e.isIntersecting)
         .sort((a, b) => {
-          const aCenter = (a.boundingClientRect.top - containerTop) + a.boundingClientRect.height / 2;
-          const bCenter = (b.boundingClientRect.top - containerTop) + b.boundingClientRect.height / 2;
-          return Math.abs(aCenter - centerY) - Math.abs(bCenter - centerY);
+          const aCenter = this.isHorizontalLikeMode()
+            ? (a.boundingClientRect.left - containerStart) + a.boundingClientRect.width / 2
+            : (a.boundingClientRect.top - containerStart) + a.boundingClientRect.height / 2;
+          const bCenter = this.isHorizontalLikeMode()
+            ? (b.boundingClientRect.left - containerStart) + b.boundingClientRect.width / 2
+            : (b.boundingClientRect.top - containerStart) + b.boundingClientRect.height / 2;
+          return Math.abs(aCenter - center) - Math.abs(bCenter - center);
         })
         .slice(0, this.MAX_LOAD * 2);
 
-      // Update reading position from currently visible anchor page.
       this.updateReadingPosition();
 
       let windowUpdated = false;
@@ -464,8 +494,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
             globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
           ) {
-            // Shift virtual window around visible range and preserve viewport anchor.
-            if (!this.isPrepending && !this.isRestoringScroll) {
+            if (!this.isPrepending && !this.isRestoringScroll && !this.isNavigating) {
               this.preserveScroll(id, () => { this.updateVisiblePages(globalIndex); });
             }
             windowUpdated = true;
@@ -531,12 +560,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       root,
       rootMargin: this.reader.mode() === 'page'
         ? '0px'
-        : (isIOS ? '1500px' : '2500px'),
+        : this.isHorizontalLikeMode()
+          ? `0px ${isIOS ? '1500px' : '2500px'} 0px ${isIOS ? '1500px' : '2500px'}`
+          : `${isIOS ? '1500px' : '2500px'} 0px ${isIOS ? '1500px' : '2500px'} 0px`,
       threshold: 0,
     });
   }
 
-  // Connects observer to all currently rendered image elements.
   private observeAllImages() {
     this.observedPageIds.clear();
 
@@ -547,7 +577,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // Connects observer only to newly rendered images after DOM updates.
   private observeNewImages() {
     this.imgRefs.forEach(ref => {
       const id = Number(ref.nativeElement.dataset['pageId']);
@@ -569,28 +598,24 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-
-  // Updates current page / bookmark / chapter from the most-visible image in the viewport.
-  // Called both from the IntersectionObserver callback and the scroll listener so that
-  // scrolling up through already-loaded images (which produces no observer state changes)
-  // still updates the reading position correctly.
+  // Called from observer and scroll listener to keep bookmark in sync.
   private updateReadingPosition(): void {
     if (this.freezeBookmarkUpdates || this.focusPageId !== null) return;
 
-    const container = this.readerContainer?.nativeElement;
-    const containerRect = container?.getBoundingClientRect();
-    const containerHeight = containerRect?.height ?? window.innerHeight;
-    const containerTop = containerRect?.top ?? 0;
+    const bounds = this.getViewportBounds(this.readerContainer?.nativeElement);
 
     let anchorId: number | null = null;
     let bestOverlap = 0;
 
     this.imgRefs.forEach(ref => {
       const img = ref.nativeElement;
+      
+      if (!img.isConnected) return;
+      
       const rect = img.getBoundingClientRect();
-      const overlapTop = Math.max(rect.top, containerTop);
-      const overlapBottom = Math.min(rect.bottom, containerTop + containerHeight);
-      const overlap = Math.max(0, overlapBottom - overlapTop);
+      const overlap = this.isHorizontalLikeMode()
+        ? Math.max(0, Math.min(rect.right, bounds.end) - Math.max(rect.left, bounds.start))
+        : Math.max(0, Math.min(rect.bottom, bounds.end) - Math.max(rect.top, bounds.start));
       if (overlap > bestOverlap) {
         bestOverlap = overlap;
         anchorId = Number(img.dataset['pageId']) || null;
@@ -599,28 +624,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     if (!anchorId) return;
 
-    // In scroll mode observer owns active page tracking.
-    // In page mode currentPage is navigation state and
-    // must not be mutated from scroll observation,
-    // otherwise handleNavigation() re-triggers and teleports scroll.
-    if (this.reader.mode() !== 'page') {
+    // In page mode currentPage is owned by navigation flow.
+    if (this.reader.mode() !== 'page' && !this.isNavigating) {
       if (this.reader.currentPageId() !== anchorId) {
         this.reader.setCurrentPage(anchorId);
       }
     }
 
-    // Bookmark can still follow viewport in both modes.
-    if (this.reader.currentPageBookmark() !== anchorId) {
+    if (!this.isNavigating && this.reader.currentPageBookmark() !== anchorId) {
       this.reader.setCurrentPageBookmark(anchorId);
     }
 
     this.updateActiveChapter(anchorId);
   }
 
-
-  // SCROLL PRELOAD
-
-  // Attaches throttled scroll listener used for imperative upward preload.
   private setupScrollPreloadListener() {
     this.teardownScrollPreloadListener();
 
@@ -642,7 +659,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     container.addEventListener('scroll', this.scrollPreloadListener, { passive: true });
   }
 
-  // Removes scroll preload listener from current container.
   private teardownScrollPreloadListener() {
     if (!this.scrollPreloadListener) return;
 
@@ -657,16 +673,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Pass preloadPx to override the default lookahead distance (e.g. after prepend).
    */
   private loadVisibleRange(preloadPx?: number) {
-    // Avoid preload during active restore/prepend to keep layout stable.
     if (this.isPrepending || this.isRestoringScroll) return;
 
     const PRELOAD_PX = preloadPx ?? (isIOS ? 1500 : 2500);
     const token = this.loadToken;
 
-    const container = this.readerContainer?.nativeElement;
-    const containerRect = container?.getBoundingClientRect();
-    const containerTop = containerRect?.top ?? 0;
-    const containerBottom = containerRect?.bottom ?? window.innerHeight;
+    const bounds = this.getViewportBounds(this.readerContainer?.nativeElement);
 
     this.imgRefs.forEach(ref => {
       if (this.destroyed) return;
@@ -681,9 +693,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       const rect = img.getBoundingClientRect();
 
-      const inRange =
-        rect.bottom >= containerTop - PRELOAD_PX &&
-        rect.top <= containerBottom + PRELOAD_PX;
+      const inRange = this.isHorizontalLikeMode()
+        ? rect.right >= bounds.start - PRELOAD_PX && rect.left <= bounds.end + PRELOAD_PX
+        : rect.bottom >= bounds.start - PRELOAD_PX && rect.top <= bounds.end + PRELOAD_PX;
 
       if (!inRange) return;
 
@@ -712,7 +724,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           if (this.destroyed) return;
           this.cleanupFarImages(id);
         })
-        .catch(() => { /* silent - observer will retry on next scroll */ })
+        .catch(() => { })
         .finally(() => {
           this.loadingSet.delete(id);
           this.loadingCount--;
@@ -728,10 +740,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-
-  // CHAPTER TRACKING
-
-  // Rebuilds chapter ranges from scratch for clean open flow.
   private rebuildChapterTracking(pages: PageMeta[]): void {
     this.loadedChapterIds.clear();
     this.chapterPageRanges.clear();
@@ -754,7 +762,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Extends chapter ranges incrementally after merge updates.
   private mergeChapterTracking(pages: PageMeta[]): void {
     for (const page of pages) {
       const chapterId = page.chapterId;
@@ -783,10 +790,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-
-  // CHAPTER BOUNDARY TRACKING
-
-  // Resolves active chapter by current page index and cached ranges.
   private updateActiveChapter(currentPageId: number): void {
     const pageIndex = this.pageIndexMap.get(currentPageId);
     if (pageIndex === undefined) return;
@@ -806,9 +809,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-
-  // SEAMLESS CHAPTER LOADING
-
   /** Triggers adjacent chapter preload when reading position approaches buffer edges. */
   private tryLoadAdjacentChapters(
     globalIndex: number,
@@ -820,8 +820,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const allowPrev = options.allowPrev ?? true;
 
     if (!chapterId) return;
-
-    // next chapter
 
     if (allowNext && !this.fetchingNext && globalIndex >= total - this.CHAPTER_TRIGGER) {
       this.fetchingNext = true;
@@ -844,8 +842,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         })
         .catch(() => { this.fetchingNext = false; });
     }
-
-    // previous chapter
 
     if (allowPrev && !this.fetchingPrev && globalIndex <= this.CHAPTER_TRIGGER) {
       this.fetchingPrev = true;
@@ -870,80 +866,80 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-
-  // IMAGE LOADING
-
-  // Assigns image src and waits until load/error/timeout completion.
   private async loadImage(img: HTMLImageElement, url: string): Promise<void> {
-    return new Promise<void>((resolve) => {
-      if (img.src === url && img.complete) { resolve(); return; }
-
-      const timeout = setTimeout(resolve, 10000);
-
-      img.onload = () => { clearTimeout(timeout); resolve(); };
-      img.onerror = () => { clearTimeout(timeout); resolve(); };
-
-      img.src = url;
-    });
+    return this.imagePipeline.loadIntoElement(img, url);
   }
 
-  // Fetches full page payload lazily when metadata-only page is visible.
   private async ensurePageLoaded(page: Page): Promise<void> {
-    if (page.src) return;
-
-    const full = await this.pagesRepo.get(page.id!);
-
-    if (full) {
-      page.src = full.src;
-      page.order = full.order;
-    }
+    await this.imagePipeline.ensurePayload(page);
   }
 
-  // Returns direct url or creates cached object url for blob-based page source.
   private async getOrCreateUrl(page: Page): Promise<string> {
-    if (typeof page.src === 'string') return page.src;
-    if (!(page.src instanceof Blob) || page.id == null) return '';
+    const url = await this.imagePipeline.getUrl(page);
 
-    if (!this.pageUrls.has(page.id)) {
-      const url = await this.urlService.createUrl(`${page.id}`, page.src);
+    if (page.id != null && url && !this.pageUrls.has(page.id)) {
       this.pageUrls.set(page.id, url);
     }
 
-    return this.pageUrls.get(page.id)!;
+    return url;
   }
 
-  /** Revokes object URLs for pages outside cleanup radius around current page. */
-  private cleanupFarImages(currentId: number): void {
-    // Skip cleanup while restore is in progress to avoid repaint interference.
-    if (this.isRestoringScroll) return;
+  private handleGesture(event: GestureEvent): void {
+    switch (event.type) {
+      case 'swipe-next':
+      case 'swipe-prev':
+        const mode = this.reader.mode();
+        if (mode === 'horizontal' || mode === 'dual') {
+          this.goToAdjacentPage(event.type === 'swipe-next' ? 1 : -1);
+        }
+        return;
+      case 'tap':
+        return;
+    }
+  }
+
+  private goToAdjacentPage(step: 1 | -1): void {
+    const currentId = this.reader.currentPageBookmark() ?? this.reader.currentPageId();
+    if (currentId == null) return;
 
     const currentIndex = this.pageIndexMap.get(currentId);
     if (currentIndex === undefined) return;
 
-    const min = currentIndex - this.CLEANUP_RADIUS;
-    const max = currentIndex + this.CLEANUP_RADIUS;
+    const isDualMode = this.reader.mode() === 'dual';
+    const hasCover = isDualMode && this.settingsStore.dualPageCover();
 
-    this.imgRefs.forEach(ref => {
-      const img = ref.nativeElement;
-      const id = Number(img.dataset['pageId']);
-      const index = this.pageIndexMap.get(id);
+    let targetIndex: number;
 
-      if (index === undefined) return;
-
-      if (index < min || index > max) {
-        if (this.pageUrls.has(id)) {
-          this.urlService.revokeUrl(String(id));
-          this.pageUrls.delete(id);
-        }
-        this.loadingSet.delete(id);
+    if (isDualMode) {
+      if (hasCover && currentIndex === 0) {
+        targetIndex = step > 0 ? 1 : 0;
+      } else if (hasCover && currentIndex === 1) {
+        targetIndex = step > 0 ? 3 : 0;
+      } else if (hasCover) {
+        const spreadStart = currentIndex % 2 === 0 ? currentIndex : currentIndex - 1;
+        targetIndex = Math.max(1, Math.min(this.pages.length - 1, spreadStart + step * 2));
+      } else {
+        const spreadStart = Math.floor(currentIndex / 2) * 2;
+        targetIndex = Math.max(0, Math.min(this.pages.length - 1, spreadStart + step * 2));
       }
-    });
+    } else {
+      targetIndex = currentIndex + step;
+    }
+
+    if (targetIndex < 0 || targetIndex >= this.pages.length) return;
+    const targetPage = this.pages[targetIndex];
+    if (targetPage?.id == null) return;
+
+    this.reader.goToPage(targetPage.id);
   }
 
+  /** Revokes object URLs for pages outside cleanup radius around current page. */
+  private cleanupFarImages(currentId: number): void {
+    if (this.isRestoringScroll) return;
 
-  // NAVIGATION
+    this.imagePipeline.evictFarPages(currentId, this.pageIndexMap, this.CLEANUP_RADIUS);
+  }
 
-  // Performs controlled navigation to target page with preload and scroll sync.
   private async handleNavigation(pageId: number): Promise<void> {
     const navToken = ++this.navToken;
 
@@ -957,12 +953,17 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const index = await this.resolvePageIndexForNavigation(pageId);
       if (this.destroyed || navToken !== this.navToken) return;
 
-      if (index === undefined) return;
+      if (index === undefined) {
+        this.focusPageId = null;
+        this.hideLoader();
+        return;
+      }
 
       this.isNavigating = true;
       this.updateVisiblePages(index);
 
       await new Promise(r => requestAnimationFrame(r));
+
       if (navToken !== this.navToken) return;
 
       await this.waitForImages();
@@ -1021,10 +1022,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const target = await this.waitForTarget(pageId);
 
       if (target && container) {
-        container.scrollTo({
-          top: this.getContainerRelativeTop(target, container),
-          behavior: 'auto',
-        });
+        const pageMode = this.reader.mode();
+        this.scrollController.scrollToPage(
+          pageId,
+          (id) => this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement,
+          container,
+          pageMode,
+          0
+        );
       }
 
       this.reader.setCurrentPage(pageId);
@@ -1032,15 +1037,17 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.updateActiveChapter(pageId);
 
     } finally {
-      this.isNavigating = false;
       if (navToken === this.navToken) {
-        this.focusPageId = null;
         this.hideLoader();
       }
+      
+
+      this.isNavigating = false;
+      this.focusPageId = null;
     }
   }
 
-  // Ensures target page exists in buffer and returns its global index.
+  // Loads the target chapter into buffer when needed and returns page index.
   private async resolvePageIndexForNavigation(pageId: number): Promise<number | undefined> {
     const directIndex = this.pageIndexMap.get(pageId);
     if (directIndex !== undefined) return directIndex;
@@ -1070,99 +1077,53 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.loadedChapterIds.add(targetChapterId);
       this.reader.mergePages(newPages, direction);
+      
+      await this.waitForPageIndexUpdate(pageId);
     }
 
-    for (let i = 0; i < 10; i++) {
-      if (this.destroyed) return undefined;
-
-      const index = this.pageIndexMap.get(pageId);
-      if (index !== undefined) return index;
-
-      await new Promise<void>(resolve => {
-        requestAnimationFrame(() => resolve());
-      });
-    }
-
-    return this.pageIndexMap.get(pageId);
+    const finalIndex = this.pageIndexMap.get(pageId);
+    return finalIndex;
   }
 
+  /** Waits until pageIndexMap includes the requested page id. */
+  private async waitForPageIndexUpdate(pageId: number): Promise<void> {
+    if (this.pageIndexMap.get(pageId) !== undefined) {
+      return;
+    }
 
-  // VIRTUAL WINDOW
+    return new Promise<void>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        sub.unsubscribe();
+        resolve();
+      }, 10000);
 
-  // Recomputes virtual window slice around center index and evicts old urls.
+      const sub = this.pageIndexMapUpdated$
+        .pipe(
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe(() => {
+          if (this.pageIndexMap.get(pageId) !== undefined) {
+            clearTimeout(timeoutId);
+            sub.unsubscribe();
+            resolve();
+          }
+        });
+    });
+  }
+
   private updateVisiblePages(centerIndex: number): void {
-    const WINDOW = 60;
-    const JUMP_THRESHOLD = 50;
-
-    let start = centerIndex - WINDOW;
-    let end = centerIndex + WINDOW;
-
-    if (end >= this.pages.length) {
-      end = this.pages.length;
-      start = Math.max(0, end - WINDOW * 2);
-    }
-
-    if (start <= 0) {
-      start = 0;
-      end = Math.min(this.pages.length, WINDOW * 2);
-    }
-
-    const newSlice = this.pages.slice(start, end);
-
-    if (!this.visiblePages.length) {
-      this.visiblePages = newSlice;
-      return;
-    }
-
-    const firstId = this.visiblePages[0]?.id;
-    const lastId = this.visiblePages[this.visiblePages.length - 1]?.id;
-
-    const firstIndex = this.pageIndexMap.get(firstId!);
-    const lastIndex = this.pageIndexMap.get(lastId!);
-
-    if (firstIndex === undefined || lastIndex === undefined) {
-      this.visiblePages = newSlice;
-      return;
-    }
-
-    const currentCenter = Math.floor((firstIndex + lastIndex) / 2);
-    const distance = Math.abs(centerIndex - currentCenter);
-
-    if (distance >= JUMP_THRESHOLD) {
-      this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
-      this.pageUrls.clear();
-      this.visiblePages = newSlice;
-      return;
-    }
-
-    if (
-      this.visiblePages.length === newSlice.length &&
-      this.visiblePages.every((p, i) => p.id === newSlice[i].id)
-    ) {
-      return;
-    }
-
-    const newIds = new Set(newSlice.map(p => p.id));
-
-    this.pageUrls.forEach((_, id) => {
-      if (!newIds.has(id)) {
+    this.virtualization.updateWindow(this.pages, centerIndex, (evictedIds) => {
+      for (const id of evictedIds) {
         this.urlService.revokeUrl(String(id));
         this.pageUrls.delete(id);
       }
     });
 
-    this.visiblePages = newSlice;
+    this.visiblePages = this.virtualization.visiblePages();
   }
 
-
-  // SCROLL HELPERS
-
   /**
-   * Preserves viewport position around DOM mutations by anchoring to a page element.
-   * Workflow:
-   * - capture anchor top in viewport coordinates
-   * - apply mutation callback (window update / merge render)
-   * - in microtask, read new anchor top and apply scroll delta compensation
+   * Preserves viewport position while virtual window changes.
    */
   private preserveScroll(anchorId: number, callback: () => void): void {
     if (this.reader.mode() === 'page') {
@@ -1177,7 +1138,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // If restore is already running, defer compensation to the outer cycle.
     if (this.isRestoringScroll) {
       callback();
       return;
@@ -1189,28 +1149,31 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     if (!anchorEl) { callback(); return; }
 
-    // Capture current anchor position in viewport coordinates.
-    const prevAnchorViewportTop = anchorEl.getBoundingClientRect().top;
+    const prevAnchorViewportStart = this.isHorizontalLikeMode()
+      ? anchorEl.getBoundingClientRect().left
+      : anchorEl.getBoundingClientRect().top;
 
     this.isRestoringScroll = true;
 
     callback();
 
-    // Compensate in rAF so Angular has finished re-rendering the DOM before we
-    // read the new anchor position. queueMicrotask fires before Angular's CD
-    // updates the DOM, so the shift would be zero and compensation would be lost.
+    // Wait one frame so DOM is updated, then compensate anchor shift.
     requestAnimationFrame(() => {
-      // Re-query anchor after DOM update because original element can be replaced.
       const newAnchorEl = this.imgRefs.find(r =>
         Number(r.nativeElement.dataset['pageId']) === anchorId
       )?.nativeElement;
 
       if (newAnchorEl) {
-        const newAnchorViewportTop = newAnchorEl.getBoundingClientRect().top;
-        // Apply exact visual shift to keep anchor at the same screen position.
-        const shift = newAnchorViewportTop - prevAnchorViewportTop;
+        const newAnchorViewportStart = this.isHorizontalLikeMode()
+          ? newAnchorEl.getBoundingClientRect().left
+          : newAnchorEl.getBoundingClientRect().top;
+        const shift = newAnchorViewportStart - prevAnchorViewportStart;
         if (Math.abs(shift) > 0.5) {
-          container.scrollTop += shift;
+          if (this.isHorizontalLikeMode()) {
+            container.scrollLeft += shift;
+          } else {
+            container.scrollTop += shift;
+          }
         }
       }
 
@@ -1218,30 +1181,27 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // Scrolls container to a specific page without animation.
   private scrollToPageImmediately(pageId: number): void {
     const container = this.readerContainer?.nativeElement;
     if (!container) return;
 
-    const target = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === pageId
-    )?.nativeElement;
-
-    if (!target) return;
-
-    container.scrollTo({
-      top: this.getContainerRelativeTop(target, container),
-      behavior: 'auto',
-    });
+    this.scrollController.scrollToPage(
+      pageId,
+      (id) => this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement,
+      container,
+      this.reader.mode(),
+      0
+    );
   }
 
-  // Returns page id closest to viewport center for stable anchoring.
   private getViewportAnchorPageId(): number | null {
     const container = this.readerContainer?.nativeElement;
     if (!container || !this.imgRefs?.length) return null;
 
     const containerRect = container.getBoundingClientRect();
-    const viewportCenter = containerRect.top + containerRect.height / 2;
+    const viewportCenter = this.isHorizontalLikeMode()
+      ? containerRect.left + containerRect.width / 2
+      : containerRect.top + containerRect.height / 2;
 
     let bestId: number | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
@@ -1252,7 +1212,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       if (!id) return;
 
       const rect = img.getBoundingClientRect();
-      const center = rect.top + rect.height / 2;
+      const center = this.isHorizontalLikeMode()
+        ? rect.left + rect.width / 2
+        : rect.top + rect.height / 2;
       const distance = Math.abs(center - viewportCenter);
 
       if (distance < bestDistance) {
@@ -1264,17 +1226,56 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     return bestId;
   }
 
-  // Converts element position into container scroll coordinates.
   private getContainerRelativeTop(target: HTMLElement, container: HTMLElement): number {
     const targetRect = target.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
+    if (this.isHorizontalLikeMode()) {
+      return targetRect.left - containerRect.left + container.scrollLeft;
+    }
+    return targetRect.top - containerRect.top + container.scrollTop;
+  }
+
+  private isHorizontalLikeMode(): boolean {
+    const mode = this.reader.mode();
+    return mode === 'horizontal' || mode === 'dual';
+  }
+
+  private getViewportBounds(container: HTMLElement | null): { start: number; end: number; center: number } {
+    const rect = container?.getBoundingClientRect();
+
+    if (this.isHorizontalLikeMode()) {
+      const start = rect?.left ?? 0;
+      const end = rect?.right ?? window.innerWidth;
+      return { start, end, center: start + ((end - start) / 2) };
+    }
+
+    const start = rect?.top ?? 0;
+    const end = rect?.bottom ?? window.innerHeight;
+    return { start, end, center: start + ((end - start) / 2) };
+  }
+
+  private getElementAxisBounds(el: HTMLElement): { start: number; end: number; center: number } {
+    const rect = el.getBoundingClientRect();
+
+    if (this.isHorizontalLikeMode()) {
+      return { start: rect.left, end: rect.right, center: rect.left + rect.width / 2 };
+    }
+
+    return { start: rect.top, end: rect.bottom, center: rect.top + rect.height / 2 };
+  }
+
+  private getContainerAxisOffset(target: HTMLElement, container: HTMLElement): number {
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    if (this.isHorizontalLikeMode()) {
+      return targetRect.left - containerRect.left + container.scrollLeft;
+    }
+
     return targetRect.top - containerRect.top + container.scrollTop;
   }
 
 
-  // DOM WAIT HELPERS
-
-  // Waits until image refs are present after render updates.
   private async waitForImages(): Promise<void> {
     let tries = 0;
     while (this.imgRefs && this.imgRefs.length === 0 && tries < 10) {
@@ -1283,7 +1284,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Polls DOM frames until requested page element appears.
   private async waitForTarget(pageId: number): Promise<HTMLElement | undefined> {
     let attempts = 0;
 
@@ -1302,25 +1302,19 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
 
-  // TEMPLATE GETTERS
-
-  // Template accessor for full pages buffer.
   get pages(): PageMeta[] {
     return this.reader.pages();
   }
 
-  // Template accessor for current reader mode.
   get readerMode() {
     return this.reader.mode();
   }
 
-  // Template accessor for current zoom coefficient.
-  get readerZoom() {
-    return this.reader.zoom();
-  }
-
-  // Template accessor for page gap in scroll mode.
   get readerGap() {
     return this.reader.gap();
+  }
+
+  get dualPageCover(): boolean {
+    return this.settingsStore.dualPageCover();
   }
 }

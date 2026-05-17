@@ -1,665 +1,266 @@
-# Reader Image Loading Flow (ReaderComponent + ReaderService)
+# Reader runtime flow
 
----
+## 1] Основные сущности
 
-## 1] DEFINITIONS
-
-**P = {p₁, p₂, ..., pₙ}**
-
-* полный буфер страниц
-* растёт через mergePages(next / prev)
-* никогда не режется
-
----
-
-**pᵢ.src = ∅**
-
-* загружена только meta
-* картинки ещё нет
-* lazy fetch через ensurePageLoaded
-
----
-
-**I: id -> index**
-
-* pageIndexMap
-* pageId -> global index
-* O(1) lookup
-
----
-
-**V ⊆ P -> visiblePages**
-
-* виртуальное окно
-* только visiblePages существуют в DOM
-* остальные страницы не рендерятся
-
----
-
-## 2] INITIALIZATION (OPEN)
-
-### OPEN FLOW
+P = полный буфер страниц из [reader.service.ts](../../core/services/reader.service.ts).
 
 ```txt
-reader.pages() change
--> rebuild pageIndexMap
--> reset runtime state
--> updateVisiblePages()
--> rebuildChapterTracking()
--> showLoaderNow()
--> loadToken++
--> navToken++
--> setupObserver()
--> observeAllImages()
--> setupScrollPreloadListener()
--> tryLoadAdjacentChapters()
+P растет через mergePages(next/prev)
+P не режется в reader.service
 ```
 
----
-
-### RESET
-
-полная очистка runtime состояния:
+I = pageIndexMap в [reader.component.ts](reader-component/reader.component.ts).
 
 ```txt
-revoke all object URLs
--> pageUrls.clear()
--> loadingSet.clear()
--> loadingCount = 0
--> visibleUnloadedCount = 0
--> cancelLoaderDebounce()
--> focusPageId = null
--> fetchingNext = false
--> fetchingPrev = false
--> isPrepending = false
--> isRestoringScroll = false
--> isNavigating = false
--> observedPageIds.clear()
--> teardownScrollPreloadListener()
--> hideLoader()
--> scrollTop = 0
+pageId -> global index
 ```
 
----
-
-### TOKENS
+V = visiblePages.
 
 ```txt
+V = виртуальное окно
+в DOM только V
+```
+
+## 2] Open flow
+
+Триггер: change в `reader.pages()`.
+
+```txt
+rebuild pageIndexMap
+rebuild virtualization index
+reset runtime flags and counters
+clear url caches
+updateVisiblePages(startIndex)
+rebuildChapterTracking()
+showLoaderNow()
 loadToken++
 navToken++
+setupObserver()
+observeAllImages()
+setupScrollPreloadListener()
+tryLoadAdjacentChapters(startIndex, allowPrev=false)
 ```
 
----
-
-### UPDATE TYPES
+Ключевое правило open:
 
 ```txt
-open
-merge
-navigation
-mode switch
-zoom/gap change
+на первом кадре preload только next chapter
+prev preload отключен чтобы не сдвигать viewport
 ```
 
----
+## 3] Merge flow
 
-## 3] MERGE FLOW
-
-### PURPOSE
-
-merge расширяет полный буфер P
-
----
-
-### TYPES
+Триггер: `reader.pagesUpdateKind() === 'merge'`.
 
 ```txt
-mergePages(next)
-mergePages(prev)
+mergeChapterTracking()
+resolve anchorId
+detect prepend
+preserveScroll(anchorId)
+updateVisiblePages(anchorIndex)
+observeNewImages()
+loadVisibleRange()
 ```
 
----
-
-### FLOW
+Prepend detection:
 
 ```txt
-merge pages
--> mergeChapterTracking()
--> resolve anchorId
--> detect prepend
--> preserveScroll()
--> updateVisiblePages()
--> observeNewImages()
--> loadVisibleRange()
+firstNewId идет раньше firstVisibleId в global index
 ```
 
----
-
-### PREPEND DETECTION
-
-```txt
-firstNewIndex < firstVisibleIndex
--> isPrepending = true
-```
-
----
-
-### PREPEND FIX
-
-в page mode preserveScroll не компенсирует scroll
-
----
-
-поэтому:
+Поведение в page mode после prepend:
 
 ```txt
 scrollToPageImmediately(anchorId)
 ```
 
----
-
-### POST PREPEND PRELOAD
-
-после prepend:
+После снятия `isPrepending`:
 
 ```txt
-loadVisibleRange(8000 / 12000)
+loadVisibleRange(8000 iOS / 12000 others)
 ```
 
----
+## 4] Virtual window
 
-### PURPOSE
-
-прогревает страницы вставленные выше viewport
-
----
-
-## 4] VIRTUAL WINDOW
-
-### WINDOW
+Параметры в [virtualization-engine.service.ts](engine/virtualization-engine.service.ts):
 
 ```txt
 WINDOW = 60
+JUMP_THRESHOLD = 50
 ```
 
----
-
-### STRUCTURE
+Следствие:
 
 ```txt
-visiblePages = pages.slice(start, end)
+обычно в DOM до ~120 страниц
 ```
 
----
-
-### LIMIT
-
-в DOM максимум ~120 страниц
-
----
-
-### WINDOW UPDATE
+Обновление окна:
 
 ```txt
 start = centerIndex - WINDOW
 end = centerIndex + WINDOW
+clamp to [0, total]
 ```
 
----
-
-### EDGE FIX
-
-если окно выходит за границы массива:
+Большой jump:
 
 ```txt
-clamp start/end
+distance >= JUMP_THRESHOLD
+evict old ids
+replace whole visible slice
 ```
 
----
+## 5] Observer
 
-### JUMP DETECTION
-
-```txt
-JUMP_THRESHOLD = 50
-```
-
----
-
-если jump слишком большой:
-
-```txt
-revoke all urls
--> pageUrls.clear()
--> replace visiblePages
-```
-
----
-
-### BUFFER SHIFT
-
-```txt
-BUFFER = 15
-```
-
----
-
-если пользователь близко к краю окна:
-
-```txt
-preserveScroll()
--> updateVisiblePages()
-```
-
----
-
-## 5] INTERSECTION OBSERVER
-
-### ROOT
+Observer создается в `setupObserver()`.
 
 ```txt
 root = readerContainer
+threshold = 0
 ```
 
----
-
-### ROOT MARGIN
+Root margin:
 
 ```txt
-iOS -> 1500px
-others -> 2500px
+page mode: 0px
+horizontal/dual: 1500px iOS, 2500px others по X
+scroll: 1500px iOS, 2500px others по Y
 ```
 
----
-
-### THRESHOLD
+Порядок обработки entries:
 
 ```txt
-0
+берутся только intersecting
+сортировка по расстоянию до center
 ```
 
----
+Если есть `focusPageId`, center смещается к нему.
 
-### PRIORITY SORTING
+Блокировки observer:
 
 ```txt
-entries
--> intersecting only
--> sort by distance to center
--> closest first
+isNavigating
+isPrepending
+isRestoringScroll
 ```
 
----
-
-### CENTER LOGIC
-
-если есть focusPageId:
+Правило обновления позиции:
 
 ```txt
-center = focused image center
+scroll mode: можно писать currentPage
+page mode: currentPage не трогается из observer
+bookmark обновляется только когда нет активной navigation
 ```
 
----
+## 6] Image loading pipeline
 
-иначе:
+Пайплайн вызывается из observer и из `loadVisibleRange()`.
 
 ```txt
-center = viewport center
+ensurePageLoaded(page)
+getOrCreateUrl(page)
+loadImage(img, url)
+cleanupFarImages(currentId)
 ```
 
----
-
-### LIMITS
+Ограничения:
 
 ```txt
 MAX_LOAD = 12
-visible candidates = 24
+loadingSet защищает от дублей
 ```
 
----
-
-### OBSERVER FLOW
+В [image-pipeline.service.ts](engine/image-pipeline.service.ts):
 
 ```txt
-intersection
--> update reading position
--> maybe update virtual window
--> tryLoadAdjacentChapters()
--> lazy image loading
+loadIntoElement timeout = 12s
+img.onerror не роняет пайплайн
+decode() используется когда доступен
 ```
 
----
+## 7] Loader
 
-### OBSERVER REUSE
-
-observer не пересоздаётся при merge
-
----
-
-используется:
+`visibleUnloadedCount` растет только для реально видимых изображений.
 
 ```txt
-observeNewImages()
+start visible load -> visibleUnloadedCount++
+finish visible load -> visibleUnloadedCount--
 ```
 
----
-
-подключаются только новые DOM nodes
-
----
-
-### OBSERVER BLOCK CONDITIONS
-
-observer полностью блокируется при:
+Показ:
 
 ```txt
-isNavigating = true
-isPrepending = true
-isRestoringScroll = true
+scheduleLoader() with LOADER_DELAY_MS = 300
 ```
 
----
-
-### BOOKMARK UPDATE RULE
-
-в scroll mode:
+Скрытие:
 
 ```txt
-observer updates currentPage
+visibleUnloadedCount == 0 -> hideLoader()
 ```
 
----
+## 8] Memory cleanup
 
-в page mode:
+Радиус очистки:
 
 ```txt
-observer updates bookmark only
+CLEANUP_RADIUS = 20 iOS
+CLEANUP_RADIUS = 50 others
 ```
 
----
-
-navigation state не мутируется observer
-
----
-
-## 6] LOADING PIPELINE
-
-### CONDITIONS
+Очистка в [image-pipeline.service.ts](engine/image-pipeline.service.ts):
 
 ```txt
-!loadingSet.has(id)
-loadingCount < MAX_LOAD
+revoke url outside [currentIndex - radius, currentIndex + radius]
+remove id from pageUrls and loadingSet
 ```
 
----
-
-### PIPELINE
+Блок:
 
 ```txt
-loadingSet.add(id)
--> loadingCount++
--> ensurePageLoaded()
--> getOrCreateUrl()
--> loadImage()
--> cleanupFarImages()
+cleanup не запускается при isRestoringScroll
 ```
 
----
+## 9] Scroll preload
 
-### ensurePageLoaded
-
-если page.src отсутствует:
+`setupScrollPreloadListener()` добавляет throttled scroll listener.
 
 ```txt
-pagesRepo.get(page.id)
--> hydrate page
+listener -> requestAnimationFrame
+loadVisibleRange()
+updateReadingPosition()
 ```
 
----
-
-### getOrCreateUrl
+Default preload range в `loadVisibleRange()`:
 
 ```txt
-string src -> direct return
-
-Blob
--> create object URL
--> cache in pageUrls
+1500px iOS
+2500px others
 ```
 
----
-
-### loadImage
+`loadVisibleRange()` пропускается при:
 
 ```txt
-img.src = url
--> wait load/error
--> timeout 10s
+isPrepending
+isRestoringScroll
 ```
 
----
+## 10] Adjacent chapter loading
 
-### FINISH
-
-```txt
-loadingSet.delete(id)
--> loadingCount--
-```
-
----
-
-### PROTECTION
-
-```txt
-loadToken mismatch -> abort
-destroyed = true -> abort
-```
-
----
-
-## 7] LOADER
-
-### visibleUnloadedCount
-
-увеличивается только если image реально виден
-
----
-
-### START
-
-```txt
-visible image starts loading
--> visibleUnloadedCount++
-```
-
----
-
-### FINISH
-
-```txt
-load finished
--> visibleUnloadedCount--
-```
-
----
-
-### SHOW
-
-```txt
-visibleUnloadedCount > 0
--> scheduleLoader()
-```
-
----
-
-### DEBOUNCE
-
-```txt
-LOADER_DELAY_MS = 300
-```
-
----
-
-### CONTROL
-
-```txt
-open -> showLoaderNow()
-navigation -> showLoaderNow()
-all visible loaded -> hideLoader()
-```
-
----
-
-### IMPORTANT
-
-background preload loader не показывает
-
----
-
-## 8] MEMORY CLEANUP
-
-### CLEANUP RADIUS
-
-```txt
-iOS -> 20
-others -> 50
-```
-
----
-
-### LOGIC
-
-берётся currentIndex
-
----
-
-всё вне диапазона:
-
-```txt
-[currentIndex - radius, currentIndex + radius]
-```
-
----
-
-очищается:
-
-```txt
-revoke object URL
--> delete from pageUrls
--> loadingSet.delete(id)
-```
-
----
-
-### BLOCK CONDITION
-
-cleanup не работает при:
-
-```txt
-isRestoringScroll = true
-```
-
----
-
-## 9] SCROLL PRELOAD
-
-### LISTENER
-
-```txt
-readerContainer.scroll
-```
-
----
-
-### THROTTLE
-
-```txt
-requestAnimationFrame
-```
-
----
-
-### RANGE
-
-```txt
-iOS -> 1500px
-others -> 2500px
-```
-
----
-
-### PURPOSE
-
-scroll preload:
-
-* дополняет observer
-* особенно важен для upward preload
-* уменьшает задержки при быстром scroll вверх
-
----
-
-### CONDITIONS
-
-```txt
-image not loaded
-!loadingSet.has(id)
-loadingCount < MAX_LOAD
-```
-
----
-
-### PIPELINE
-
-тот же pipeline что и observer
-
----
-
-### BLOCK CONDITIONS
-
-```txt
-isNavigating = true
-isPrepending = true
-isRestoringScroll = true
-```
-
----
-
-## 10] CHAPTER LOADING
-
-### TRIGGER
+Порог:
 
 ```txt
 CHAPTER_TRIGGER = 20
 ```
 
----
-
-считается относительно полного P
-
----
-
-### NEXT CHAPTER
-
 ```txt
-globalIndex >= total - CHAPTER_TRIGGER
--> getNextChapter()
--> getMetaByChapter()
--> mergePages(next)
+near end -> getNextChapter + mergePages(next)
+near start -> getPrevChapter + mergePages(prev)
 ```
 
----
-
-### PREV CHAPTER
-
-```txt
-globalIndex <= CHAPTER_TRIGGER
--> getPrevChapter()
--> getMetaByChapter()
--> mergePages(prev)
-```
-
----
-
-### PROTECTION
+Защиты:
 
 ```txt
 fetchingNext
@@ -667,339 +268,170 @@ fetchingPrev
 loadedChapterIds
 ```
 
----
+## 11] Chapter tracking
 
-одна глава не грузится дважды
-
----
-
-## 11] CHAPTER TRACKING
-
-### STRUCTURE
+Структура:
 
 ```txt
 chapterId -> { first, last }
 ```
 
----
-
-### OPEN
+Open:
 
 ```txt
 rebuildChapterTracking()
 ```
 
----
-
-### MERGE
+Merge:
 
 ```txt
 mergeChapterTracking()
 ```
 
----
-
-### ACTIVE CHAPTER
+Активная глава:
 
 ```txt
-currentPageId
--> pageIndex lookup
--> chapter range lookup
--> reader.setChapterId()
+updateActiveChapter(currentPageId)
 ```
 
----
+## 12] Navigation
 
-## 12] NAVIGATION
-
-### FLOW
+`handleNavigation(pageId)` использует `navToken` для отмены старых асинхронных цепочек.
 
 ```txt
 navToken++
--> focusPageId = pageId
--> showLoaderNow()
--> waitForImages()
--> resolvePageIndexForNavigation()
--> isNavigating = true
--> updateVisiblePages()
--> preload target area
--> forced reflow
--> waitForTarget()
--> scrollTo()
--> update state
--> hideLoader()
+focusPageId = pageId
+showLoaderNow()
+waitForImages()
+resolvePageIndexForNavigation()
+isNavigating = true
+updateVisiblePages(index)
+preload around target
+requestAnimationFrame + forced reflow
+waitForTarget(pageId)
+scrollController.scrollToPage()
+setCurrentPage + setCurrentPageBookmark + updateActiveChapter
+hideLoader()
+isNavigating = false
 ```
 
----
-
-### TARGET PRELOAD
+Target preload range:
 
 ```txt
 before = MAX_LOAD * 2
 after = MAX_LOAD
 ```
 
----
+## 13] Navigation outside current buffer
 
-### PRELOAD LOGIC
-
-```txt
-Promise.all(load pages around target)
-```
-
----
-
-### FORCED REFLOW
-
-```txt
-void document.body.offsetHeight
-```
-
----
-
-### STATE UPDATE
-
-```txt
-reader.setCurrentPage()
-reader.setCurrentPageBookmark()
-updateActiveChapter()
-```
-
----
-
-### PROTECTION
-
-```txt
-navToken mismatch -> abort
-```
-
----
-
-новая navigation инвалидирует старую
-
----
-
-## 13] NAVIGATION OUTSIDE BUFFER
-
-если page отсутствует в pageIndexMap:
+Если target page отсутствует в `pageIndexMap`:
 
 ```txt
 pagesRepo.get(pageId)
--> resolve chapter
--> getMetaByChapter()
--> mergePages()
+resolve target chapter
+getMetaByChapter(targetChapter)
+mergePages(next|prev)
+waitForPageIndexUpdate(pageId)
 ```
 
----
-
-### DIRECTION DETECTION
+`waitForPageIndexUpdate`:
 
 ```txt
-target.order < current.order
--> prev
-else
--> next
+слушает pageIndexMapUpdated$
+timeout = 10s
 ```
 
----
+## 14] preserveScroll
 
-### DOM WAIT
-
-после merge:
+Используется когда меняется виртуальное окно и нужно удержать якорь в том же месте экрана.
 
 ```txt
-wait requestAnimationFrame
--> retry lookup
+capture anchor position
+callback() mutates DOM/window
+next animation frame
+re-query anchor
+apply shift compensation to scrollTop/scrollLeft
 ```
 
----
-
-## 14] SCROLL PRESERVATION
-
-### preserveScroll(anchorId)
-
-используется при:
-
-* merge prepend
-* virtual window shift
-* zoom change
-* gap change
-
----
-
-### FLOW
-
-```txt
-capture anchor viewport top
--> callback()
--> requestAnimationFrame
--> recalc anchor top
--> apply scroll compensation
-```
-
----
-
-### COMPENSATION
-
-```txt
-shift = newTop - oldTop
-container.scrollTop += shift
-```
-
----
-
-### PURPOSE
-
-* no jumping
-* stable viewport
-* stable prepend behavior
-
----
-
-### BLOCK CONDITIONS
-
-preserveScroll bypass:
+Bypass conditions:
 
 ```txt
 mode = page
-isNavigating = true
-isRestoringScroll = true
+isNavigating
+isRestoringScroll
+missing anchor
 ```
 
----
+## 15] Mode / gap reflow
 
-## 15] VIEWPORT ANCHOR
-
-### getViewportAnchorPageId()
-
-поиск страницы ближайшей к центру viewport
-
----
-
-### FLOW
+Mode change effect:
 
 ```txt
-calculate viewport center
--> iterate imgRefs
--> minimal distance wins
+resolve anchor
+set isNavigating=true
+updateVisiblePages(anchorIndex)
+setupObserver + observeAllImages
+scrollToPageImmediately(anchor)
+loadVisibleRange()
+release flags
 ```
 
----
-
-### USAGE
-
-используется при:
-
-* merge
-* mode switch
-* zoom change
-* gap change
-
----
-
-## 16] MODE SWITCH
-
-### FLOW
+Gap change effect:
 
 ```txt
-navToken++
--> isNavigating = true
--> focusPageId = anchorId
--> resolve anchor
--> updateVisiblePages()
--> setupObserver()
--> observeAllImages()
--> scrollToPageImmediately()
--> loadVisibleRange()
--> isNavigating = false
+resolve anchor
+preserveScroll(anchor)
+updateVisiblePages(anchorIndex)
 ```
 
----
+## 16] Input behavior
 
-### PURPOSE
-
-mode switch сохраняет anchor и viewport position
-
----
-
-### EXTRA
-
-observer использует focusPageId для priority sorting
-
----
-
-## 17] ZOOM / GAP REFLOW
-
-### FLOW
+Keyboard:
 
 ```txt
-zoom/gap changed
--> resolve anchor
--> preserveScroll()
--> updateVisiblePages()
+ArrowRight/ArrowLeft работают только в horizontal и dual
 ```
 
----
-
-### PURPOSE
-
-layout меняется без viewport jump
-
----
-
-## 18] STATE FLAGS
-
-### isNavigating
-
-navigation владеет scroll/state
-
----
-
-### isPrepending
-
-идёт prepend merge
-
----
-
-### isRestoringScroll
-
-идёт scroll compensation
-
----
-
-### freezeBookmarkUpdates
+Wheel:
 
 ```txt
+deltaX обрабатывается только в horizontal и dual
+```
+
+Gesture:
+
+```txt
+swipe-next/swipe-prev обрабатываются только в horizontal и dual
+tap event пробрасывается
+```
+
+## 17] State guards
+
+Флаги:
+
+```txt
+isNavigating
 isPrepending
-|| isNavigating
-|| isRestoringScroll
+isRestoringScroll
+freezeBookmarkUpdates = isPrepending || isNavigating || isRestoringScroll
 ```
 
----
+Назначение:
 
-блокирует observer state updates
+```txt
+блокировать гонки между observer, merge и navigation
+```
 
----
+## 18] Tokens
 
-## 19] TOKENS
+`navToken`:
 
-### navToken
+```txt
+новая navigation отменяет старую async цепочку
+```
 
-новая navigation инвалидирует старую
+`loadToken`:
 
----
-
-### loadToken
-
-новый open/reset инвалидирует старые async load
-
----
-
-### PURPOSE
-
-защита от:
-
-* race conditions
-* stale async continuation
-* delayed observer callbacks
-* async merge conflicts
+```txt
+новый open/reset отменяет старые async load continuation
+```

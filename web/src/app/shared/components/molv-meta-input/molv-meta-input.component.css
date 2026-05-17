@@ -69,7 +69,7 @@
 }
 
 .meta-suggestion:hover {
-  filter: brightness(1.1);
+  opacity: 0.92;
 }
 
 .meta-input-wrapper {

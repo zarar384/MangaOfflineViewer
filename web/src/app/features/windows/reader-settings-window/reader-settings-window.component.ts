@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, EventEmitter, Input, Output } from '@angular/core';
+import { Component, effect, EventEmitter, inject, Input, Output } from '@angular/core';
 import { Bookmark } from '../../../core/models/bookmark';
 import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
 import { UiStateService } from '../../../core/services/ui-state.service';
@@ -13,12 +13,16 @@ import { UserTab } from 'src/app/core/models/usertab';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguageService } from 'src/app/core/services/language.service';
 import { PagesRepository } from 'src/app/core/repositories/pages.repository';
+import { TabsService } from 'src/app/core/services/tabs.service';
+import { SettingsStoreService } from '../../reader/engine/settings-store.service';
+import { ReadingMode, FitMode } from '../../reader/engine/interfaces/reader-settings.interface';
 
 export interface ReaderPage
 {
   id: number;
   order?: number;
   title?: string;
+  chapterId?: number | null;
 }
 
 @Component({
@@ -30,23 +34,20 @@ export interface ReaderPage
 })
 export class ReaderSettingsWindowComponent {
   @Input() isVisible = false;
-  @Input() mode: 'scroll' | 'page' = 'scroll';
+  @Input() mode: ReadingMode = 'scroll';
   @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
-  @Input() zoomLevel = 0;
   @Input() gapLevel = 0;
   @Input() selectedPageId: number | null = null;
 
   @Output() hideWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
-  @Output() modeChange = new EventEmitter<'scroll' | 'page'>();
-  @Output() zoomLevelChange = new EventEmitter<number>();
+  @Output() modeChange = new EventEmitter<ReadingMode>();
   @Output() gapLevelChange = new EventEmitter<number>();
   @Output() selectedBookmarkIdChange = new EventEmitter<number | null>();
   @Output() downloadModChange = new EventEmitter<'mhtml' | 'zip'>();
 
   @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
   @Output() goToBookmarkClicked = new EventEmitter<number>();
-  @Output() goToPageClicked = new EventEmitter<number>();
 
   activeTabId: number | null = null;
   bookmarks: Bookmark[] = [];
@@ -55,27 +56,26 @@ export class ReaderSettingsWindowComponent {
   editingBookmarkId: number | null = null;
   originalTitle: string = '';
 
+  readonly settingsStore = inject(SettingsStoreService);
+
   constructor(
     private uiState: UiStateService,
     private bookmarksRepo: BookmarksRepository,
     private pagesRepo: PagesRepository,
     private reader: ReaderService,
+    private tabService: TabsService,
     private langService: LanguageService) {
 
-    // load states 
-    this.mode = this.uiState.getValue<'scroll' | 'page'>('readerMode') || 'scroll';
+    // load states
+    this.mode        = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
-    this.zoomLevel = this.uiState.getValue<number>('readerZoom') || 0;
-    this.gapLevel = this.uiState.getValue<number>('readerGap') || 0;
+    this.gapLevel    = this.uiState.getValue<number>('readerGap') || 0;
 
     effect(() => {
       const isOpen = this.reader.isOpen();
-
-      // if (!chapterId) return;
-
       Promise.resolve().then(() => {
-        this.loadBookmarks()
-        this.loadPages()
+        this.loadBookmarks();
+        this.loadPages();
       });
     });
   }
@@ -84,38 +84,38 @@ export class ReaderSettingsWindowComponent {
     this.hideWindow.emit();
   }
 
-  // MOD
-  get modeIsPage(): boolean {
-    return this.mode === 'page';
-  }
+  // ── Reading mode ────────────────────────────────────────────────────────
+
+  /** Legacy boolean toggle: scroll ↔ page (keeps backward compat). */
+  get modeIsPage(): boolean { return this.mode === 'page'; }
 
   set modeIsPage(value: boolean) {
-    this.mode = value ? 'page' : 'scroll';
-
-    this.uiState.saveState({ readerMode: this.mode });
-    this.uiState.saveState({ downloadMod: this.downloadMod });
-
-    this.reader.setSettings({ mode: this.mode });
-
-    this.modeChange.emit(this.mode);
+    this.setMode(value ? 'page' : 'scroll');
   }
 
-  // ZOOM
-  get zoom(): number {
-    return this.zoomLevel;
+  get modeIsHorizontal(): boolean { return this.mode === 'horizontal'; }
+  set modeIsHorizontal(value: boolean) {
+    this.setMode(value ? 'horizontal' : 'scroll');
   }
 
-  set zoom(value: number) {
-    this.zoomLevel = value;
-
-    this.uiState.saveState({ readerZoom: this.zoomLevel });
-
-    this.reader.setSettings({ zoom: this.zoomLevel });
-
-    this.zoomLevelChange.emit(value);
+  get modeIsDual(): boolean { return this.mode === 'dual'; }
+  set modeIsDual(value: boolean) {
+    this.setMode(value ? 'dual' : 'scroll');
   }
 
-  // RANGE
+  setMode(mode: ReadingMode): void {
+    this.mode = mode;
+    this.uiState.saveState({ readerMode: mode });
+    this.reader.setSettings({ mode });
+    this.modeChange.emit(mode);
+  }
+
+  // ── Fit mode ────────────────────────────────────────────────────────────
+
+  get fitMode(): FitMode { return this.settingsStore.fitMode(); }
+  set fitMode(value: FitMode) { this.settingsStore.setFitMode(value); }
+
+  // ── Gap ──────────────────────────────────────────────────────────────────
   get gap(): number {
     return this.gapLevel;
   }
@@ -165,8 +165,23 @@ export class ReaderSettingsWindowComponent {
 }
 
   // PAGE
-  goToPage() {
-    this.goToPageClicked.emit(+this.selectedPageId!)
+  async goToPage() {
+    const pageId = Number(this.selectedPageId);
+    if (!pageId) return;
+
+    const snapshot = this.reader.getSnapshot();
+    if (!snapshot.mangaId) return;
+
+    const page = this.pages.find(p => p.id === pageId);
+
+    await this.tabService.open({
+      mangaId: snapshot.mangaId,
+      pageId,
+      chapterId: page?.chapterId ?? snapshot.chapterId ?? undefined,
+    });
+
+    // Ensure navigation lands on the requested page after reader reopen.
+    this.reader.goToPage(pageId);
   }
   
   async loadPages() {
@@ -177,6 +192,7 @@ export class ReaderSettingsWindowComponent {
       this.pages = (await this.pagesRepo.getMeta(reader.mangaId)).map(p => ({
         id: p.id!,
         order: p.order,
+        chapterId: p.chapterId,
         title: p.chapterId ? `${p.chapterOrder} - ${p.order}` : `${p.order}`
       }));
     }

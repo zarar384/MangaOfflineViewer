@@ -1,5 +1,8 @@
-.reader-container-wrapper {  flex: 1;   overflow-y: auto;   -ms-overflow-style: none;  scrollbar-width: none;}
-.reader-container-wrapper::-webkit-scrollbar {  display: none; }
+﻿/* Host must stretch and allow inner reader to control scroll. */
+:host { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
-/* ADAPT */
-/* @media (max-width: 768px) {  .reader-container-wrapper {    padding: 8px;  }} */
+/*
+ Keep overflow hidden here.
+ If this becomes scrollable, nested scrolling breaks snap and momentum.
+*/
+.reader-container-wrapper { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }

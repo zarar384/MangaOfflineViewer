@@ -10,6 +10,8 @@
     "mode": "Mode",
     "scrollMode": "Scroll Mode",
     "pageMode": "Page Mode",
+    "horizontalMode": "Horizontal Mode",
+    "dualPageMode": "Dual Page Mode",
     "download": "Download",
     "mhtml": "MHTML",
     "zip": "ZIP",

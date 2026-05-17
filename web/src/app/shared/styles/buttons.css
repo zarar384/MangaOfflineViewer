@@ -11,7 +11,7 @@
 }
 
 .molv-btn:hover {
-  filter: brightness(1.1);
+  opacity: 0.92;
 }
 
 .molv-btn:disabled {
@@ -60,7 +60,7 @@
 }
 
 .molv-btn-small-remove:hover {
-  filter: brightness(1.1);
+  opacity: 0.92;
 }
 
 .molv-btn-small-remove:focus {
@@ -84,7 +84,6 @@
 
 .molv-mode-btn.active {
   opacity: 1;
-  filter: brightness(1.1);
   box-shadow: 0 0 6px rgba(255, 120, 120, 0.4);
 }
 

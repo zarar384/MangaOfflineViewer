@@ -1,95 +1,59 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
 import { isIOS } from 'src/app/shared/utils/constants';
+import { ReadingMode } from '../../features/reader/engine/interfaces/reader-settings.interface';
 
 /**
- * Centralized state manager for Manga Reader.
- * Provides reactive signals for reader state and settings,
- * and methods to manipulate them.
+ * Reader state store.
  */
 @Injectable({ providedIn: 'root' })
 export class ReaderService {
 
-  //  STATE 
-  // TODO: save current manga info in uiState 
-    //private uiState = inject(UiStateService);
-
-  
-  /** Current manga identifier */
   private _mangaId = signal<number | null>(null);
 
-  /**
-   * Chapter the user is currently reading.
-   * Updated by the component when bookmark crosses a chapter boundary.
-   * NEVER changed by mergePages - merge is invisible to this field.
-   */
+  // Updated from viewport tracking, not from mergePages.
   private _chapterId = signal<number | null>(null);
 
-  /**
-   * Full pages buffer - grows as adjacent chapters are merged in.
-   * Memory is managed by the component (cleanupFarImages + updateVisiblePages).
-   * This array is NEVER trimmed here - trimming caused the "only 2 chapters" bug.
-   */
+  // Full page buffer grows when adjacent chapters are merged.
   private _pages = signal<PageMeta[]>([]);
 
-  /** Target page for scroll navigation */
   private _currentPageId = signal<number | undefined>(undefined);
 
-  /** Bookmark tracking the last visible page (does not trigger scroll) */
+  // Last visible page marker. Does not trigger navigation.
   private _currentPageBookmark = signal<number | undefined>(undefined);
 
-  /** Navigation trigger - forces scroll even if pageId didn't change */
+  // Increments on navigation so effects rerun even for same page id.
   private _navTick = signal(0);
 
-  /** Reader visibility state */
   private _isOpen = signal<boolean>(false);
 
-  /**
-   * Describes how the pages buffer was last updated.
-   * Stored as a signal so component effects can reliably distinguish
-   * a clean open from a seamless prev/next chapter merge.
-   */
+  // Helps component distinguish open flow from merge flow.
   private _pagesUpdateKind = signal<'open' | 'merge' | 'reset'>('reset');
 
-  //  UI SETTINGS 
+  private _mode = signal<ReadingMode>('scroll');
 
-  /** Reading mode: 'scroll' | 'page' */
-  private _mode = signal<'scroll' | 'page'>('scroll');
-
-  /** Zoom level (1 = 100%) */
-  private _zoom = signal<number>(1);
-
-  /** Gap between pages in scroll mode (in px) */
   private _gap = signal<number>(0.5);
 
-  //  COMPUTED 
-
-  readonly isOpen              = computed(() => this._isOpen());
-  readonly pages               = computed(() => this._pages());
-  readonly mangaId             = computed(() => this._mangaId());
-  readonly chapterId           = computed(() => this._chapterId());
-  readonly currentPageId       = computed(() => this._currentPageId());
+  readonly isOpen = computed(() => this._isOpen());
+  readonly pages = computed(() => this._pages());
+  readonly mangaId = computed(() => this._mangaId());
+  readonly chapterId = computed(() => this._chapterId());
+  readonly currentPageId = computed(() => this._currentPageId());
   readonly currentPageBookmark = computed(() => this._currentPageBookmark());
-  readonly navTick             = computed(() => this._navTick());
-  readonly pagesUpdateKind     = computed(() => this._pagesUpdateKind());
-  readonly mode                = computed(() => this._mode());
-  readonly zoom                = computed(() => this._zoom());
-  readonly gap                 = computed(() => this._gap());
+  readonly navTick = computed(() => this._navTick());
+  readonly pagesUpdateKind = computed(() => this._pagesUpdateKind());
+  readonly mode = computed(() => this._mode());
+  readonly gap = computed(() => this._gap());
 
-  //  SETTINGS 
-
-  setSettings(settings: { mode?: 'scroll' | 'page'; zoom?: number; gap?: number }) {
+  setSettings(settings: {
+    mode?:      ReadingMode;
+    gap?:       number;
+  }): void {
     if (settings.mode !== undefined) this._mode.set(settings.mode);
-    if (settings.zoom !== undefined) this._zoom.set(settings.zoom);
     if (settings.gap !== undefined) this._gap.set(settings.gap);
   }
 
-  //  LIFECYCLE 
-
-  /**
-   * Open reader with fresh chapter data.
-   * Resets all state including scroll position.
-   */
+  /** Opens reader with fresh chapter data. */
   open(params: {
     mangaId: number;
     chapterId: number | null;
@@ -106,7 +70,7 @@ export class ReaderService {
     this._currentPageBookmark.set(params.currentPageId);
   }
 
-  /** Close reader and reset all state */
+  /** Closes reader and clears state. */
   close(): void {
     this._pagesUpdateKind.set('reset');
     this._isOpen.set(false);
@@ -117,76 +81,63 @@ export class ReaderService {
     this._currentPageBookmark.set(undefined);
   }
 
-  /**
-   * Navigate to specific page inside reader.
-   * Triggers scroll even if pageId is the same.
-   */
+  /** Navigates to page and forces nav effect. */
   goToPage(pageId: number): void {
     this._currentPageId.set(pageId);
+    this._currentPageBookmark.set(pageId);
     this._navTick.update(v => v + 1);
   }
 
-  /** Update current page id without triggering scroll */
+  /** Updates current page marker without navigation side effects. */
   setCurrentPage(pageId: number): void {
-    if(this._currentPageId() === pageId) return; // no update if pageId is the same
-    
+    if(this._currentPageId() === pageId) return;
     this._currentPageId.set(pageId);
-    //this.uiState.saveState({ lastPageId: pageId });
   }
 
-  /** Update bookmark to the last observed visible page */
+  /** Updates bookmark marker for current viewport page. */
   setCurrentPageBookmark(pageId: number): void {
-    this._currentPageBookmark.set(pageId);
+    if (this._currentPageBookmark() !== pageId)
+      this._currentPageBookmark.set(pageId);
   }
 
-  /**
-   * Update the active chapter id.
-   * Called by the component when bookmark crosses a chapter boundary.
-   */
+  /** Updates active chapter inferred from visible page. */
   setChapterId(chapterId: number): void {
+    console.warn('[setChapterId]', { from: this._chapterId(), to: chapterId,
+      stack: new Error().stack?.split('\n').slice(1,6).join(' | ') });
     this._chapterId.set(chapterId);
   }
 
-  /* Reset after check if pages is valid */
+  /** Marks open flag as consumed by UI flow. */
   resetIsOpen() {
     this._isOpen.set(false);
   }
 
-  /* Set pages */
+  /** Replaces full pages buffer. */
   setPages(pages: PageMeta[]) {
     this._pages.set(pages);
   }
 
   /**
-   * Seamlessly append or prepend pages from an adjacent chapter.
-   *
-   * For 'next': append new pages at the end of the buffer.
-   * For 'prev': prepend new pages at the start of the buffer.
-   *
-   * The buffer is NEVER trimmed here - it only grows.
-   * Memory cleanup is handled by the component via cleanupFarImages
-   * and updateVisiblePages (which only renders a ~120 page window).
-   *
-   * The update kind is marked as `merge` before mutating the signal so the
-   * component can reliably preserve scroll and skip clean-open reset logic.
+   * Merges adjacent chapter pages into existing buffer.
+   * Buffer only grows here, trimming is handled in component render window.
    */
   mergePages(newPages: PageMeta[], direction: 'next' | 'prev'): void {
-    const current    = this._pages();
+    const current = this._pages();
     const currentIds = new Set(current.map(p => p.id));
 
-    // filter duplicates - pages already in buffer are skipped
+    // Skip pages that already exist in buffer.
     const fresh = newPages.filter(p => !currentIds.has(p.id));
     if (!fresh.length) return;
 
     const merged = direction === 'next'
-      ? [...current, ...fresh]   // append at end
-      : [...fresh, ...current];  // prepend at start
+      ? [...current, ...fresh]
+      : [...fresh, ...current];
 
     this._pagesUpdateKind.set('merge');
     this._pages.set(merged);
   }
 
-  /** Returns current state snapshot (for imperative use only) */
+  /** Returns current state snapshot. */
   getSnapshot() {
     return {
       mangaId:             this._mangaId(),

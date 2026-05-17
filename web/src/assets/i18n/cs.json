@@ -10,6 +10,8 @@
     "mode": "Režim",
     "scrollMode": "Režim posouvání",
     "pageMode": "Stránkový režim",
+    "horizontalMode": "Horizontální režim",
+    "dualPageMode": "Dvoustránkový režim",
     "download": "Stáhnout",
     "mhtml": "MHTML",
     "zip": "ZIP",

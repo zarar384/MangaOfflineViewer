@@ -13,14 +13,25 @@
         <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
       </div>
 
-      <div class="setting-right">
-        <span class="setting-label">{{'zoom' | transloco}}:</span>
-        <molv-slider [min]="0.5" [max]="3" [step]="0.1" [(value)]="zoom"></molv-slider>
+      <!-- Reading mode toggles -->
+      <div class="setting-left">
+        <span class="setting-label">{{ 'scrollMode' | transloco }}:</span>
+        <molv-switch [checked]="mode === 'scroll'" (checkedChange)="mode !== 'scroll' && setMode('scroll')"></molv-switch>
       </div>
 
       <div class="setting-left">
-        <span class="setting-label">{{ mode === 'scroll' ? ('scrollMode' | transloco) : ('pageMode' | transloco) }}:</span>
+        <span class="setting-label">{{ 'pageMode' | transloco }}:</span>
         <molv-switch [(checked)]="modeIsPage"></molv-switch>
+      </div>
+
+      <div class="setting-left">
+        <span class="setting-label">{{ 'horizontalMode' | transloco }}:</span>
+        <molv-switch [(checked)]="modeIsHorizontal"></molv-switch>
+      </div>
+
+      <div class="setting-left">
+        <span class="setting-label">{{ 'dualPageMode' | transloco }}:</span>
+        <molv-switch [(checked)]="modeIsDual"></molv-switch>
       </div>
 
       <div class="setting-left-group">

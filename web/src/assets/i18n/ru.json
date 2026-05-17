@@ -10,6 +10,8 @@
     "mode": "Режим",
     "scrollMode": "Режим прокрутки",
     "pageMode": "Режим страниц",
+    "horizontalMode": "Горизонтальный режим",
+    "dualPageMode": "Двустраничный режим",
     "download": "Скачать",
     "mhtml": "MHTML",
     "zip": "ZIP",
