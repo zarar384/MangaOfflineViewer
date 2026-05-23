@@ -6,6 +6,7 @@ import { MolvTabsComponent } from '../../shared/components/molv-tabs/molv-tabs.c
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { UserTab } from 'src/app/core/models/usertab';
+import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
 
 @Component({
   selector: 'app-manga-navbar',
@@ -23,12 +24,16 @@ export class NavbarComponent {
   @Input() activeManga: number | null = null;
   @Output() mangaSelected = new EventEmitter<number | null>();
   @Output() openUploadWindowClicked = new EventEmitter<void>();
+  @Output() openSettingsWindowClicked = new EventEmitter<void>();
 
   selectedMangaId = this.uiState.selectedMangaId;
 
   // page & perPage as signals (read-only)
   page = computed(() => this.uiState.getValue<number>('page') ?? 1);
   perPage = computed(() => this.uiState.getValue<number>('perPage') ?? 10);
+
+  // just for easier template access
+  readonly ViewMod = ViewMod;
 
   // tabs from service
   private userTabsState = this.tabsService.userTabsState;
@@ -62,5 +67,14 @@ export class NavbarComponent {
 
   openUploadWindow() {
     this.openUploadWindowClicked.emit();
+  }
+  
+  openSettingsWindow() {
+    this.openSettingsWindowClicked.emit();
+  }
+
+  // Getters for template
+  get viewMode() {
+    return this.uiState.currentView();
   }
 }

@@ -36,6 +36,12 @@ export class UiStateService {
   // Upload window
   private uploadWindowSignal = signal(false);
 
+  // Settings window
+  private settingsWindowSignal = signal(false);
+
+  // Reader settings window
+  private readerSettingsWindowSignal = signal(false);
+
   // Selected manga
   private selectedMangaIdSignal = signal<number | null>(null);
 
@@ -136,6 +142,24 @@ export class UiStateService {
 
   uploadWindow() {
     return this.uploadWindowSignal();
+  }
+
+  // SETTINGS WINDOW
+  setSettingsWindow(value: boolean) {
+    this.settingsWindowSignal.set(value);
+  }
+
+  settingsWindow() {
+    return this.settingsWindowSignal();
+  }
+
+  // READER SETTINGS WINDOW
+  setReaderSettingsWindow(value: boolean) {
+    this.readerSettingsWindowSignal.set(value);
+  }
+
+  readerSettingsWindow() {
+    return this.readerSettingsWindowSignal();
   }
 
   // SELECTED MANGA

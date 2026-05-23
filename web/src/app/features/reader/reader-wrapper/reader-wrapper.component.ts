@@ -25,7 +25,9 @@ export class ReaderWrapperComoponent implements OnInit {
   mode: ReadingMode = 'scroll';
   downloadMod: 'mhtml' | 'zip' = 'mhtml';
 
-  showSettingsWindow = true;
+  get showSettingsWindow() {
+    return this.uiState.readerSettingsWindow();
+  }
 
   constructor(
     private tabsService: TabsService,
@@ -57,7 +59,7 @@ export class ReaderWrapperComoponent implements OnInit {
   }
 
   onSettingsWindowHide() {
-    this.showSettingsWindow = false;
+    this.uiState.setReaderSettingsWindow(false);
   }
 
   async onExportButtonClicked(format: 'mhtml' | 'zip') {

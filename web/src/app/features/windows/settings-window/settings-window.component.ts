@@ -16,7 +16,7 @@ import { SwUpdate } from '@angular/service-worker';
 })
 export class SettingsWindowComponent {
   @Input() isVisible = false;
-  @Output() hideWindow = new EventEmitter<void>();
+  @Output() closeWindow = new EventEmitter<void>();
 
   private updates = inject(SwUpdate, { optional: true });
   private uiState = inject(UiStateService);
@@ -34,8 +34,8 @@ export class SettingsWindowComponent {
     this.language = this.uiState.getValue<SupportedLangs>('language') || this.langService.getLang();
   }
 
-  onWindowHide() {
-    this.hideWindow.emit();
+  onWindowClose() {
+    this.closeWindow.emit();
   }
 
   // LANGUAGE SETTINGS

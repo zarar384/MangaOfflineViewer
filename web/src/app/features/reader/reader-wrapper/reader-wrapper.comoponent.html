@@ -1,6 +1,6 @@
 <reader-settings-window
-  [isVisible]="showSettingsWindow" 
-  (hideWindow)="onSettingsWindowHide()"
+  [isVisible]="showSettingsWindow"
+  (closeWindow)="onSettingsWindowHide()"
   (goToBookmarkClicked)="goToBookmark($event)"
   (exportButtonClicked)="onExportButtonClicked($event)"
   [(gapLevel)]="gap"

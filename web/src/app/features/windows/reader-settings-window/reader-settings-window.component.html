@@ -1,5 +1,5 @@
-<app-window [visible]="isVisible" title="{{'settingsMangas' | transloco}}" [width]="'500px'" [height]="'400px'" position="bottom-right"
-  [showClose]="false" [showHide]="true" [blockBackground]="false" [showTransparency]="true" (hide)="onWindowHide()">
+<app-window [visible]="isVisible" title="{{'readSettings' | transloco}}" [width]="'500px'" [height]="'400px'" position="center"
+  [showClose]="true" [showHide]="false" [blockBackground]="false" [showTransparency]="true" (close)="onWindowClose()">
 
   <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId"
     (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>

@@ -39,7 +39,7 @@ export class ReaderSettingsWindowComponent {
   @Input() gapLevel = 0;
   @Input() selectedPageId: number | null = null;
 
-  @Output() hideWindow = new EventEmitter<void>();
+  @Output() closeWindow = new EventEmitter<void>();
   @Output() gapChange = new EventEmitter<number>();
   @Output() modeChange = new EventEmitter<ReadingMode>();
   @Output() gapLevelChange = new EventEmitter<number>();
@@ -80,11 +80,11 @@ export class ReaderSettingsWindowComponent {
     });
   }
 
-  onWindowHide() {
-    this.hideWindow.emit();
+  onWindowClose() {
+    this.closeWindow.emit();
   }
 
-  // ── Reading mode ────────────────────────────────────────────────────────
+  // Reading mode
 
   /** Legacy boolean toggle: scroll ↔ page (keeps backward compat). */
   get modeIsPage(): boolean { return this.mode === 'page'; }
@@ -110,12 +110,12 @@ export class ReaderSettingsWindowComponent {
     this.modeChange.emit(mode);
   }
 
-  // ── Fit mode ────────────────────────────────────────────────────────────
+  // Fit mode 
 
   get fitMode(): FitMode { return this.settingsStore.fitMode(); }
   set fitMode(value: FitMode) { this.settingsStore.setFitMode(value); }
 
-  // ── Gap ──────────────────────────────────────────────────────────────────
+  // Gap
   get gap(): number {
     return this.gapLevel;
   }

@@ -7,7 +7,7 @@
   font-weight: 600;
   font-size: 20px; 
   transition: all 0.2s ease;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .molv-btn:hover {

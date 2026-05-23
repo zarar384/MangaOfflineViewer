@@ -1,7 +1,7 @@
 <div class="app-shell">
 
   <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)"
-    (openUploadWindowClicked)="onOpenUploadWindowClicked()">
+    (openUploadWindowClicked)="onOpenUploadWindowClicked()" (openSettingsWindowClicked)="onOpenSettingsWindowClicked()">
   </app-manga-navbar>
 
 
@@ -27,4 +27,6 @@
 
   <upload-file-window [isVisible]="showUploadWindow()" [tabId]="selectedMangaId" [viewMode]="viewMode"
     (closeWindow)="onUploadWindowClose()"></upload-file-window>
+
+  <settings-window [isVisible]="showSettingsWindow()" (closeWindow)="onSettingsWindowClose()"></settings-window>
 </div>

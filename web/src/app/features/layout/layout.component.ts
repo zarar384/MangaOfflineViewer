@@ -8,6 +8,7 @@ import { TabsService } from '../../core/services/tabs.service';
 import { MangaPageComponent } from "../manga-page/manga-page.component";
 import { UploadFileWindowComponent } from '../windows/upload-file-window/upload-file-window.component';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
+import { SettingsWindowComponent } from '../windows/settings-window/settings-window.component';
 
 @Component({
   selector: 'app-manga-layout',
@@ -18,7 +19,8 @@ import { ViewMod } from '../../shared/enums/viewmod.enum';
     ReaderWrapperComoponent,
     CommonModule,
     MangaPageComponent,
-    UploadFileWindowComponent
+    UploadFileWindowComponent,
+    SettingsWindowComponent
   ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css'],
@@ -36,6 +38,9 @@ export class LayoutComponent implements OnInit {
   // Upload window 
   showUploadWindow = signal(false);
 
+  // Settings window
+  showSettingsWindow = signal(false);
+
   constructor(
     private uiState: UiStateService,
     private tabsService: TabsService,
@@ -43,6 +48,11 @@ export class LayoutComponent implements OnInit {
     effect(() => {
       const value = this.uiState.uploadWindow();
       this.showUploadWindow.set(value);
+    });
+
+    effect(() => {
+      const value = this.uiState.settingsWindow();
+      this.showSettingsWindow.set(value);
     });
   }
 
@@ -69,6 +79,19 @@ export class LayoutComponent implements OnInit {
 
   onUploadWindowClose() {
     this.uiState.setUploadWindow(false);
+  }
+
+  // Settings window
+  onOpenSettingsWindowClicked() {
+    if (this.viewMode === ViewMod.Single) {
+      this.uiState.setReaderSettingsWindow(true);
+    } else {
+      this.uiState.setSettingsWindow(true);
+    }
+  }
+
+  onSettingsWindowClose() {
+    this.uiState.setSettingsWindow(false);
   }
 
   // View mode
