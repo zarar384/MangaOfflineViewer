@@ -8,8 +8,3 @@
 .meta-title { color: rgba(255,255,255,0.9); font-weight:600; }
 .meta-actions { color: #ffd6e8; font-weight:700; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-
-/* NAVBAR ICONS */
-.molv-btn-small-remove{display:flex;align-items:center;justify-content:center;}
-.molv-btn-small-remove .molv-settings-icon{width:14px;height:14px;display:block;object-fit:contain;flex-shrink:0;}
-.molv-btn-small-remove .molv-close-icon{width:14px;height:14px;display:block;object-fit:contain;flex-shrink:0;}

@@ -3,22 +3,6 @@
 .molv-settings-icon { width:clamp(16px,1.8vw,20px); height:clamp(16px,1.8vw,20px); object-fit:contain; flex:0 0 auto; }
 .molv-close-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 
-/* OPTIONAL EFFECT */
-.molv-upload-icon, .molv-settings-icon, .molv-close-icon {
-    display:block;
-    user-select:none;
-    pointer-events:none;
-    transition:transform .2s ease, filter .2s ease;
-}
-
-/* HOVER */
-button:hover .molv-upload-icon,
-button:hover .molv-settings-icon,
-button:hover .molv-close-icon {
-    transform:scale(1.08);
-    filter:drop-shadow(0 0 4px rgba(255,255,255,.35));
-}
-
 /* MOBILE */
 @media (max-width:480px) {
     .molv-upload-icon { width:20px; height:20px; }

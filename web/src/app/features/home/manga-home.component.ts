@@ -19,7 +19,6 @@ import { SearchToken } from 'src/app/shared/models/search-token.model';
     TabsComponent,
     CommonModule,
     MolvPaginationComponent,
-    SettingsWindowComponent,
     EditTabWindowComponent,
     MolvSearchComponent
   ]

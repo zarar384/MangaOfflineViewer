@@ -6,12 +6,6 @@
 .tabs-right { flex:0 0 auto; display:flex; flex-direction:row; align-items:center; gap:6px; padding: 6px }
 .tabs-right .molv-btn { display:flex; align-items:center; justify-content:center; white-space:nowrap; height:36px; min-width:auto; }
 
-/* NAVBAR ICONS */
-.tabs-right .molv-upload-icon { width:14px; height:14px; margin-right:6px; }
-.tabs-right .molv-settings-icon { width:14px; height:14px; margin-right:6px; }
-.tab-close .molv-close-icon { width:10px; height:10px; }
-
-
 .mobile-icon { display:none; }
 
 molv-tabs { display:flex; flex:1 1 0; min-width:0; }
