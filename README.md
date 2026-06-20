@@ -17,7 +17,7 @@ Minimal • Fully Offline • No Backend Required
   •
   <a href="https://manga-offline-viewer.netlify.app/">Live Demo (Netlify)</a>
   •
-  <a href="https://youtu.be/-3GngfbSlKk">Video Demo</a>
+  <a href="https://www.youtube.com/watch?v=Wr_oV1NXK68">Video Demo</a>
 </p>
 
 <p>
