@@ -33,9 +33,9 @@ Minimal • Fully Offline • No Backend Required
 
 ## Quick Overview
 
-![hippo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3dwbG1obXl3YmRndXM4MHQzZjQ5cW1penJyanVqMG4xZDdqNzVqNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/XxMug8hiYGjyfeymY3/giphy.gif)
+<img src="docs/images/i1.gif" width="900" alt="overview1" />
+<img src="docs/images/i2.gif" width="900" alt="overview2" />
 
-![hippo](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGpwNHlmZWd6ZXYwNTllbzh2cDFpNmQycDNuNGxjNm0wN3dqNWpzOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GOicNM0CI4NaqgExyd/giphy.gif)
 
 ---
 
@@ -78,7 +78,7 @@ Optional Helper Server
 
 ## Main Page
 
-![hippo](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExOXJxeXkyemRzeDZkcmg4cTliZnFtejl4cTNsZmxpZzl2NzZzc2p2ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/asFvzjOoB0wvWOwVIk/giphy.gif)
+<img src="docs/images/main.gif" width="900" alt="main" />
 
 ---
 
@@ -158,7 +158,7 @@ Characteristics:
 
 ## Reader Page
 
-![hippo](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3pjNHRxZnM3MzIxdmEwa3ZjMnVocTg3OWQ1eGs0YjZqajZucGo1byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/PhFRehmCR858WmAzOY/giphy.gif)
+<img src="docs/images/readerpage.gif" width="900" alt="main" />
 
 ---
 
