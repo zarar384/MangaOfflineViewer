@@ -13,11 +13,19 @@
       @else {
       <span class="arrow" (click)="toggle()" [class.open]="isOpen"></span>
       }
-
+      
       <div class="title-container">
-         <molv-textbox [value]="isEditMode ? editTitle : chapter.title" (valueChange)="editTitle = $event" [isEditMode]="isEditMode"> </molv-textbox>
+        <molv-textbox [value]="isEditMode ? editTitle : chapter.title" (valueChange)="editTitle = $event"
+          [isEditMode]="isEditMode"> </molv-textbox>
+      
+        @if(bookmarksCount > 0) {
+        <span class="bookmark-count">
+          {{ bookmarksCount }}
+          {{ bookmarksCount === 1 ? ('bookmark' | transloco) : ('bookmarks' | transloco) }}
+        </span>
+        }
       </div>
-    </div>
+      </div>
 
     <div class="right">
       <span class="count">
@@ -35,7 +43,7 @@
         {{ 'delete' | transloco }}
       </button>
 
-        <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
+      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
         [class.disabled]="filesProcessing">
         {{ 'cancel' | transloco }}
       </button>
@@ -55,14 +63,19 @@
   <div class="pages" *ngIf="isOpen">
     @if(isEditMode) {
     <!-- uploader -->
-    <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$" [chapterId]="chapter.id" [tabId]="chapter.tabId"
-      (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event">
+    <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
+      [chapterId]="chapter.id" [tabId]="chapter.tabId" (onDropFinished)="onUploadFinished()"
+      (filesProcessing)="filesProcessing = $event">
     </molv-drop-uploader>
     }
     @else {
     <!-- pages -->
     <div class="page-item" *ngFor="let page of pages; let i = index" (click)="openPage(page.id!)">
-      {{ i + 1 }} {{ pagesCount  !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
+      {{ i + 1 }} {{ pagesCount !== 1 ? ('pages' | transloco) : ('page' | transloco) }}
+      
+      @if(hasBookmark(page.id!)) {
+      <img src="assets/icons/molv-bookmark.svg" class="molv-bookmark-icon">
+      }
     </div>
     }
   </div>

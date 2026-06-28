@@ -69,3 +69,13 @@
 .page-item:hover {
   text-shadow: 0 0 6px var(--accent-color);
 }
+
+.bookmark-count {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--accent-color);
+  font-size: 0.8rem;
+  font-weight: 500;
+}

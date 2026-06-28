@@ -11,6 +11,7 @@ import { TabsService } from '../../../core/services/tabs.service';
 import { MolvModule } from '../molv-module.component';
 import { PageMeta } from '../../models/page-meta.model';
 import { ChaptersListService } from '../../../core/services/chapters-list.service';
+import { BookmarksService } from 'src/app/core/services/bookmarks.service';
 
 @Component({
   selector: 'movl-chapter-item',
@@ -41,6 +42,7 @@ export class ChapterItemComponent implements OnChanges {
   constructor(
     private pagesRepo: PagesRepository,
     private tabService: TabsService,
+    private bookmarksService: BookmarksService
   ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -177,5 +179,16 @@ export class ChapterItemComponent implements OnChanges {
       return;
 
     this.listService.moveChapter(this.chapter.id!, newOrder);
+  }
+
+  // Bookmarks
+  get bookmarksCount(): number {
+    if (!this.chapter.id) return 0;
+    return this.bookmarksService.getBookmarksCount(this.chapter.id);
+  }
+
+  hasBookmark(pageId: number): boolean {
+    if (!this.chapter.id) return false;
+    return this.bookmarksService.hasBookmark(this.chapter.id, pageId);
   }
 }

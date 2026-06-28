@@ -2,10 +2,12 @@
 .molv-upload-icon { width:clamp(18px,2vw,22px); height:clamp(18px,2vw,22px); object-fit:contain; flex:0 0 auto; }
 .molv-settings-icon { width:clamp(16px,1.8vw,20px); height:clamp(16px,1.8vw,20px); object-fit:contain; flex:0 0 auto; }
 .molv-close-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
+.molv-bookmark-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 
 /* MOBILE */
 @media (max-width:480px) {
     .molv-upload-icon { width:20px; height:20px; }
     .molv-settings-icon { width:18px; height:18px; }
     .molv-close-icon { width:14px; height:14px; }
+    .molv-bookmark-icon { width:14px; height:14px; }
 }

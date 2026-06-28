@@ -15,13 +15,14 @@ import { ArtistsRepository } from 'src/app/core/repositories/artist.repository';
 import { MolvTextboxComponent } from 'src/app/shared/components/molv-textbox/molv-textbox';
 import { MolvMetaInputComponent } from 'src/app/shared/components/molv-meta-input/molv-meta-input.component';
 import { ChaptersListService } from '../../core/services/chapters-list.service';
+import { BookmarksService } from 'src/app/core/services/bookmarks.service';
 
 @Component({
   selector: 'manga-page',
   templateUrl: './manga-page.component.html',
   styleUrls: ['./manga-page.component.css'],
   imports: [ChapterListComponent, FormsModule, CommonModule, TranslocoPipe, MolvMetaInputComponent, MolvTextboxComponent],
-  providers: [ChaptersListService],
+  providers: [ChaptersListService, BookmarksService],
   standalone: true
 })
 export class MangaPageComponent implements OnChanges {
@@ -44,17 +45,18 @@ export class MangaPageComponent implements OnChanges {
     public draftService: MangaDraftService,
     private artistsRepo: ArtistsRepository,
     private tagsRepo: TagsRepository,
-    private chaptersListService: ChaptersListService
+    private chaptersListService: ChaptersListService,
+    private bookmarksService: BookmarksService
   ) {
     effect(() => {
       this.updatePreview();
     });
   }
 
-  ngOnChanges(changes: SimpleChanges) {
+    async ngOnChanges(changes: SimpleChanges) {
     if (changes['activeManga']) {
       const id = changes['activeManga'].currentValue;
-      this.loadManga(id);
+     await this.loadManga(id);
     }
   }
 
@@ -123,7 +125,7 @@ export class MangaPageComponent implements OnChanges {
     );
 
     this.tab.set(tab);
-
+    await this.bookmarksService.loadBookmarksForManga(tab.id!);
     this.isEditMode.set(false);
   }
 
