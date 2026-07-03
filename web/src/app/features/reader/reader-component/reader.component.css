@@ -7,7 +7,6 @@
 .reader-container.page-mode { scroll-snap-type:y mandatory; scroll-behavior:auto!important; animation:none!important; transition:none!important; -webkit-scroll-behavior:auto!important; }
 .reader-container.horizontal-mode,
 .reader-container.dual-mode { flex-direction:row; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:auto!important; }
-.reader-container.dual-mode { justify-content:center; }
 
 /* Horizontal mode: full width per page, always snap */
 .reader-container.horizontal-mode .image-container { flex:0 0 100%; width:100%; height:100vh; height:100dvh; scroll-snap-align:start; scroll-snap-stop:always; animation:none!important; transition:none!important; }
