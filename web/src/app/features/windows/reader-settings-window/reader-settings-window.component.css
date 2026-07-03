@@ -11,3 +11,13 @@
 .bookmarks-list {  display: flex;  flex-direction: column;  gap: 10px;}
 
 molv-slider {  flex: 1;  max-width: 200px;}
+
+/* Reading mode selector: 2x2 grid of mutually exclusive mode buttons */
+.setting-label + .reading-mode-grid { margin-top: 6px; }
+.reading-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.reading-mode-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; box-sizing: border-box; font-size: 14px; opacity: 0.75; box-shadow: none; transform: scale(1); }
+.reading-mode-btn:hover { opacity: 0.92; }
+.reading-mode-btn.active { opacity: 1; box-shadow: 0 0 10px rgba(255, 90, 130, 0.6); transform: scale(1.03); }
+.reading-mode-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 480px) { .reading-mode-text { display: none; } }

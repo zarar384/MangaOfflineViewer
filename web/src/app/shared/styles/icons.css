@@ -4,10 +4,22 @@
 .molv-close-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 .molv-bookmark-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 
+/* reader settings icons */
+.scroll-mode-icon { width:clamp(26px,3vw,32px); height:clamp(26px,3vw,32px); object-fit:contain; flex:0 0 auto; }
+.dual-page-mode-icon { width:clamp(26px,3vw,32px); height:clamp(26px,3vw,32px); object-fit:contain; flex:0 0 auto; }
+.page-mode-icon { width:clamp(26px,3vw,32px); height:clamp(26px,3vw,32px); object-fit:contain; flex:0 0 auto; }
+.horizontal-mode-icon { width:clamp(26px,3vw,32px); height:clamp(26px,3vw,32px); object-fit:contain; flex:0 0 auto; }
+
 /* MOBILE */
 @media (max-width:480px) {
     .molv-upload-icon { width:20px; height:20px; }
     .molv-settings-icon { width:18px; height:18px; }
     .molv-close-icon { width:14px; height:14px; }
     .molv-bookmark-icon { width:14px; height:14px; }
+
+    /* reader settings icons */
+    .scroll-mode-icon { width:24px; height:24px; }
+    .dual-page-mode-icon { width:24px; height:24px; }
+    .page-mode-icon { width:24px; height:24px; }
+    .horizontal-mode-icon { width:24px; height:24px; }
 }

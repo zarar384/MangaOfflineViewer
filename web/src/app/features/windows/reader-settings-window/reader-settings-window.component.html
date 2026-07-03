@@ -1,37 +1,49 @@
-<app-window [visible]="isVisible" title="{{'readSettings' | transloco}}" [width]="'500px'" [height]="'400px'" position="center"
-  [showClose]="true" [showHide]="false" [blockBackground]="false" [showTransparency]="true" (close)="onWindowClose()">
+<app-window [visible]="isVisible" title="{{'readSettings' | transloco}}" [width]="'500px'" [height]="'400px'"
+  position="center" [showClose]="true" [showHide]="false" [blockBackground]="false" [showTransparency]="true"
+  (close)="onWindowClose()">
 
-  <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId"
-    (homeClicked)="onHomeTab()" (tabSelected)="onTabSelected($event)"></molv-tabs>
+  <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId" (homeClicked)="onHomeTab()"
+    (tabSelected)="onTabSelected($event)"></molv-tabs>
 
   <div class="tab-content">
     @if(activeTab === 'home')
     {
     <div class="controls">
+
+      <!-- Reading mode selector  -->
+      <div class="reading-mode-section">
+        <span class="setting-label">{{'readingMode' | transloco}}:</span>
+        <div class="reading-mode-grid">
+          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'scroll'"
+            title="{{ 'scrollMode' | transloco }}" (click)="setMode('scroll')">
+            <img src="assets/icons/scroll-mode.svg" class="scroll-mode-icon">
+            <span class="reading-mode-text">{{ 'scrollMode' | transloco }}</span>
+          </button>
+
+          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'dual'"
+            title="{{ 'dualPageMode' | transloco }}" (click)="setMode('dual')">
+            <img src="assets/icons/dual-page-mode.svg" class="dual-page-mode-icon">
+            <span class="reading-mode-text">{{ 'dualPageMode' | transloco }}</span>
+          </button>
+
+          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'page'"
+            title="{{ 'pageMode' | transloco }}" (click)="setMode('page')">
+            <img src="assets/icons/page-mode.svg" class="page-mode-icon">
+            <span class="reading-mode-text">{{ 'pageMode' | transloco }}</span>
+          </button>
+
+          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'horizontal'"
+            title="{{ 'horizontalMode' | transloco }}" (click)="setMode('horizontal')">
+            <img src="assets/icons/horizontal-mode.svg" class="horizontal-mode-icon">
+            <span class="reading-mode-text">{{ 'horizontalMode' | transloco }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- other settings -->
       <div class="setting-right">
         <span class="setting-label">{{'gap' | transloco}}:</span>
         <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
-      </div>
-
-      <!-- Reading mode toggles -->
-      <div class="setting-left">
-        <span class="setting-label">{{ 'scrollMode' | transloco }}:</span>
-        <molv-switch [checked]="mode === 'scroll'" (checkedChange)="mode !== 'scroll' && setMode('scroll')"></molv-switch>
-      </div>
-
-      <div class="setting-left">
-        <span class="setting-label">{{ 'pageMode' | transloco }}:</span>
-        <molv-switch [(checked)]="modeIsPage"></molv-switch>
-      </div>
-
-      <div class="setting-left">
-        <span class="setting-label">{{ 'horizontalMode' | transloco }}:</span>
-        <molv-switch [(checked)]="modeIsHorizontal"></molv-switch>
-      </div>
-
-      <div class="setting-left">
-        <span class="setting-label">{{ 'dualPageMode' | transloco }}:</span>
-        <molv-switch [(checked)]="modeIsDual"></molv-switch>
       </div>
 
       <div class="setting-left-group">
@@ -41,17 +53,20 @@
             <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId" placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
-          <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId" (click)="goToPage()">{{'go' | transloco}}</button>
+          <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId" (click)="goToPage()">{{'go' |
+            transloco}}</button>
         </div>
 
         <!-- bookmarks -->
         <div class="setting-left">
           <div class="setting-label">
-            <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId" placeholder="{{'select' | transloco}}">
+            <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId"
+              placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
           <button class="molv-btn molv-btn-pink" (click)="saveBookmark()">{{'save' | transloco}}</button>
-          <button class="molv-btn molv-btn-pink" [disabled]="!selectedBookmarkId" (click)="goToBookmark()">{{'go' | transloco}}</button>
+          <button class="molv-btn molv-btn-pink" [disabled]="!selectedBookmarkId" (click)="goToBookmark()">{{'go' |
+            transloco}}</button>
         </div>
 
         <!-- button to download tab-->
@@ -60,7 +75,7 @@
             <molv-dropdown [(value)]="dwnldMod" [options]="[
             { value: 'mhtml', label: 'MHTML' },
             { value: 'zip', label: 'ZIP' }
-            ]" >
+            ]">
             </molv-dropdown>
           </div>
           <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">{{'download' | transloco}}</button>
@@ -72,7 +87,8 @@
     <div class="controls bookmarks-list">
       @for (bm of bookmarks; track $index) {
       <div style="display: flex; align-items: center; gap: 6px;">
-        <molv-textbox [(value)]="bm.title!" placeholder="{{'bookmarkTitle' | transloco}}" [isEditMode]="isEditing(bm)"></molv-textbox>
+        <molv-textbox [(value)]="bm.title!" placeholder="{{'bookmarkTitle' | transloco}}"
+          [isEditMode]="isEditing(bm)"></molv-textbox>
         @if(isEditing(bm)) {
         <button class="molv-btn molv-btn-green" (click)="saveBookmarkEdit(bm)">
           {{'save' | transloco}}

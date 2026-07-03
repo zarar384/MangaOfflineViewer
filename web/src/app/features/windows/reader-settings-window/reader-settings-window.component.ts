@@ -234,20 +234,20 @@ export class ReaderSettingsWindowComponent {
     }
   }
 
-  cancelBookmarkEdit(bm: Bookmark) {
-    bm.title = this.originalTitle;
+  cancelBookmarkEdit(bookmark: Bookmark) {
+    bookmark.title = this.originalTitle;
     this.editingBookmarkId = null;
   }
 
-  startEditBookmark(bm: Bookmark) {
+  startEditBookmark(bookmark: Bookmark) {
     if (this.editingBookmarkId !== null) return; // block if another bookmark is being edited
 
-    this.editingBookmarkId = bm.id!;
-    this.originalTitle = bm.title || '';
+    this.editingBookmarkId = bookmark.id!;
+    this.originalTitle = bookmark.title || '';
   }
 
-  isEditing(bm: Bookmark): boolean {
-    return this.editingBookmarkId === bm.id;
+  isEditing(bookmark: Bookmark): boolean {
+    return this.editingBookmarkId === bookmark.id;
   }
 
   async editBookmarkTitle(bookmark: Bookmark, newTitle?: string) {
