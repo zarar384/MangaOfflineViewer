@@ -113,7 +113,7 @@ This avoids synchronization complexity and enables full offline usage.
 ### Implementation
 
 - Uses Angular built-in Service Worker
-- Configured via `ngsw-config.json`
+- Configured per environment via `ngsw-config.local.json` / `ngsw-config.gh.json`
 - No custom worker logic
 
 ### Responsibilities
@@ -140,9 +140,9 @@ Characteristics:
 - Required for reading and navigation
 
 Examples:
-- Manga metadata
+- Manga metadata (tabs, chapters, artists, tags)
 - Pages and extracted images
-- Reading progress
+- Bookmarks / reading progress
 
 ### UI-related State
 
@@ -183,7 +183,9 @@ The server exists to offload tasks that are inefficient or unsafe in a browser c
 Primary use case:
 - Parsing and preprocessing complex **MHTML** files
 - Extracting structured data consumable by the client
-  
+
+If the server is unreachable, the client automatically falls back to an in-browser Web Worker parser, so MHTML import keeps working without a backend.
+
 ---
 
 ## Communication Model
