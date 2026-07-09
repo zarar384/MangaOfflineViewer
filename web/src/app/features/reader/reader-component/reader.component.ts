@@ -1384,6 +1384,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * and is intended for development/debugging only.
    */
   private dbg(tag: string, data?: unknown): void {
+    untracked(() => {
     if (!this.isDebugMode) return;
 
     const container = document.querySelector<HTMLElement>('.reader-container');
@@ -1398,6 +1399,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         scrollLeft: container?.scrollLeft
       }
     );
+    });
   }
 
   /**
@@ -1405,9 +1407,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * triggered a reader event.
    */
   private dbgTrace(tag: string): void {
+    untracked(() => {
     if (!this.isDebugMode) return;
 
     console.trace(`[READER-DBG-TRACE] ${tag} - call stack`);
+    });
   }
 
   get pages(): PageMeta[] {
