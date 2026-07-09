@@ -105,7 +105,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const pages = this.reader.pages();
       const pagesUpdateKind = this.reader.pagesUpdateKind();
+
       if (!pages?.length) return;
+
+      const mode = this.reader.mode();
+      const isOpen = this.reader.isOpen();
+
+      this.dbg('pages-effect:fired', {
+        pagesUpdateKind,
+        mode,
+        isOpen,
+        len: pages.length,
+        first: pages[0]?.id,
+        last: pages.at(-1)?.id,
+      });
 
       this.pageIndexMap.clear();
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
@@ -185,7 +198,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         ? (this.pageIndexMap.get(currentPageId) ?? 0)
         : 0;
 
-      if (this.reader.mode() === 'dual' && !this.dualPageCover && startIndex % 2 === 1) {
+      if (mode === 'dual' && !this.dualPageCover && startIndex % 2 === 1) {
         startIndex = Math.max(0, startIndex - 1);
       }
 
@@ -238,7 +251,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           });
         }
 
-        if (this.reader.isOpen()) {
+        if (isOpen) {
           this.reader.resetIsOpen();
           // Only preload the next chapter on initial open to avoid shifting the viewport.
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
@@ -974,7 +987,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
 
     this.focusPageId = pageId;
-    this.showLoaderNow();
+
+    if (!this.isHorizontalLikeMode()) {
+      this.showLoaderNow();
+    }
 
     try {
       await this.waitForImages();
@@ -985,7 +1001,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       if (index === undefined) {
         this.focusPageId = null;
-        this.hideLoader();
+
+        if (!this.isHorizontalLikeMode()) {
+          this.hideLoader();
+        }
+
         return;
       }
 
@@ -994,6 +1014,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       await new Promise(r => requestAnimationFrame(r));
 
+      this.dbg(`handleNavigation:after-resolve:${pageId}`, { navToken, currentNavToken: this.navToken });
       if (navToken !== this.navToken) return;
 
       await this.waitForImages();
@@ -1062,7 +1083,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       // Only the still-current navigation may clear these shared flags;
       // a stale/superseded call must not stomp on a newer in-flight navigation.
       if (navToken === this.navToken) {
-        this.hideLoader();
+        if (!this.isHorizontalLikeMode()) {
+          this.hideLoader();
+        }
         this.isNavigating = false;
         this.focusPageId = null;
       }
@@ -1134,31 +1157,33 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private updateVisiblePages(centerIndex: number): void {
-    const beforeFirst = this.visiblePages[0]?.id;
-    const beforeLast = this.visiblePages[this.visiblePages.length - 1]?.id;
+    untracked(() => {
+      const beforeFirst = this.visiblePages[0]?.id;
+      const beforeLast = this.visiblePages[this.visiblePages.length - 1]?.id;
 
-    let evictedCount = 0;
-    this.virtualization.updateWindow(this.pages, centerIndex, (evictedIds) => {
-      evictedCount = evictedIds.length;
-      for (const id of evictedIds) {
-        this.imagePipeline.releaseUrl(id);
+      let evictedCount = 0;
+      this.virtualization.updateWindow(this.pages, centerIndex, (evictedIds) => {
+        evictedCount = evictedIds.length;
+        for (const id of evictedIds) {
+          this.imagePipeline.releaseUrl(id);
+        }
+      });
+
+
+      this.visiblePages = this.virtualization.visiblePages();
+      const afterFirst = this.visiblePages[0]?.id;
+      const afterLast = this.visiblePages[this.visiblePages.length - 1]?.id;
+      this.dbg('updateVisiblePages', {
+        centerIndex,
+        beforeFirst, beforeLast,
+        afterFirst, afterLast,
+        evictedCount,
+        windowChanged: beforeFirst !== afterFirst || beforeLast !== afterLast,
+      });
+      if (beforeFirst !== afterFirst || beforeLast !== afterLast) {
+        this.dbgTrace('updateVisiblePages window changed');
       }
     });
-
-
-    this.visiblePages = this.virtualization.visiblePages();
-    const afterFirst = this.visiblePages[0]?.id;
-    const afterLast = this.visiblePages[this.visiblePages.length - 1]?.id;
-    this.dbg('updateVisiblePages', {
-      centerIndex,
-      beforeFirst, beforeLast,
-      afterFirst, afterLast,
-      evictedCount,
-      windowChanged: beforeFirst !== afterFirst || beforeLast !== afterLast,
-    });
-    if (beforeFirst !== afterFirst || beforeLast !== afterLast) {
-      this.dbgTrace('updateVisiblePages window changed');
-    }
   }
 
   /**

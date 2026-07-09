@@ -6,20 +6,20 @@
 
     <!-- selection mode -->
     <div class="molv-mode-switch">
-      <button class="molv-btn molv-btn-orange molv-mode-btn active" title="{{'uploadSingleChapter' | transloco}}">
+      <button class="molv-btn molv-btn-orange molv-mode-btn active" title="{{'uploadSingleChapter' | transloco}}" [disabled]="filesProcessing" >
         {{'single' | transloco}}
       </button>
 
-      <button class="molv-btn molv-btn-pink molv-mode-btn" title="{{'uploadMultipleChapters' | transloco}}"
+      <button class="molv-btn molv-btn-pink molv-mode-btn" title="{{'uploadMultipleChapters' | transloco}}" [disabled]="filesProcessing"
         (click)="openChaptersMode()">
         {{'multi' | transloco}}
       </button>
     </div>
 
     <!-- form -->
-    <input type="text" class="molv-txtbx" placeholder="{{'mangaName' | transloco}}" [(ngModel)]="fileName" />
+    <input type="text" class="molv-txtbx" placeholder="{{'mangaName' | transloco}}" [(ngModel)]="fileName" [disabled]="filesProcessing">
 
-    <button class="molv-btn molv-btn-pink" (click)="saveAndClose()">
+    <button class="molv-btn molv-btn-pink" (click)="saveAndClose()" [disabled]="filesProcessing || !fileName">
       {{'save' | transloco}}
     </button>
 
