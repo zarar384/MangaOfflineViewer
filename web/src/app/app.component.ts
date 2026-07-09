@@ -2,7 +2,6 @@ import { Component, inject, NgZone } from '@angular/core';
 import { LayoutComponent } from './features/layout/layout.component';
 import { MolvLoaderComponent } from './shared/components/molv-loader/molv-loader.component';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
-import { filter } from 'rxjs/operators';
 import { SeedService } from './core/services/seed.service';
 import { LoadingService } from './core/services/loading.service';
 import { UiStateService } from './core/services/ui-state.service';

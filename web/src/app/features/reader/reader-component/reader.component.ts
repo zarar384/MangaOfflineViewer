@@ -1,7 +1,6 @@
 ﻿import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from '../../../core/models/page.model';
-import { ObjectUrlService } from '../../../core/services/object-url.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { ReaderService } from '../../../core/services/reader.service';
 import { isIOS } from '../../../shared/utils/constants';
@@ -47,8 +46,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     return this.isPrepending || this.isNavigating || this.isRestoringScroll;
   }
 
-  private pageUrls = new Map<number, string>();
-
   // Maps page id to global index in full buffer.
   private pageIndexMap = new Map<number, number>();
 
@@ -87,11 +84,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private fetchingNext = false;
   private fetchingPrev = false;
 
+  private loggedChapterContextOnce = false;
+
   private scrollPreloadListener: (() => void) | null = null;
   private scrollPreloadThrottled = false;
 
   constructor(
-    private urlService: ObjectUrlService,
     private loading: LoadingService,
     public reader: ReaderService,
     private pagesRepo: PagesRepository,
@@ -112,7 +110,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.pageIndexMap.clear();
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
       this.virtualization.rebuildIndex(pages);
-      
+
       // Needed by waitForPageIndexUpdate during async navigation.
       this.pageIndexMapUpdated$.next();
 
@@ -156,11 +154,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.loadVisibleRange();
 
           if (isPrependMerge) {
-            // In page mode force anchor scroll after prepend.
-            if (this.reader.mode() === 'page' && anchorId != null) {
-              this.scrollToPageImmediately(anchorId);
-            }
-
+            // preserveScroll() above already compensates the anchor shift
+            // uniformly for every mode (including page mode) - no need for
+            // a mode-specific re-scroll here anymore.
             requestAnimationFrame(() => {
               this.isPrepending = false;
 
@@ -174,12 +170,17 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
-      this.pageUrls.clear();
-      
+      // ImagePipelineService owns the blob URL cache.
+      // Always revoke URLs through it to keep all caches in sync.
       this.imagePipeline.revokeAll();
 
-      const currentPageId = untracked(() => this.reader.currentPageId());
+      // Use the bookmark instead of currentPageId.
+      // currentPageId is intentionally not updated in page mode, so restoring from
+      // it can jump back to the initial page. The bookmark always reflects the
+      // current reading position.
+      const currentPageId = untracked(() =>
+        this.reader.currentPageBookmark() ?? this.reader.currentPageId()
+      );
       let startIndex = currentPageId
         ? (this.pageIndexMap.get(currentPageId) ?? 0)
         : 0;
@@ -218,13 +219,28 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
       requestAnimationFrame(() => {
+        // Scroll to the target page before enabling the observer.
+        // Otherwise the observer may initialize from the wrong page and
+        // update the virtualization window incorrectly.
+        if (currentPageId != null) {
+          this.scrollToPageImmediately(currentPageId);
+        }
+
         this.setupObserver();
         this.observeAllImages();
         this.setupScrollPreloadListener();
 
+        if (currentPageId != null) {
+          // On the first open, the target page may not be rendered yet.
+          // Retry once it becomes available.
+          this.waitForTarget(currentPageId).then(() => {
+            if (!this.destroyed) this.scrollToPageImmediately(currentPageId);
+          });
+        }
+
         if (this.reader.isOpen()) {
           this.reader.resetIsOpen();
-          // On open only preload next chapter to avoid shifting viewport.
+          // Only preload the next chapter on initial open to avoid shifting the viewport.
           this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
         }
       });
@@ -244,6 +260,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const mode = this.reader.mode();
       untracked(() => {
         if (!this.reader.pages().length) return;
+
+        this.dbg('mode-effect:fired', { mode });
+        this.dbgTrace('mode-effect');
 
         const anchorId =
           this.reader.currentPageId() ??
@@ -296,6 +315,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       untracked(() => {
         if (!this.reader.pages().length) return;
+
+        this.dbg('gap-effect:fired', { gap });
+        this.dbgTrace('gap-effect');
 
         const anchorId =
           this.getViewportAnchorPageId() ??
@@ -370,11 +392,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.teardownScrollPreloadListener();
     this.cancelLoaderDebounce();
     this.hideLoader();
-    this.pageUrls.forEach((_, id) => { this.urlService.revokeUrl(String(id)); });
-    this.pageUrls.clear();
-    
     this.imagePipeline.revokeAll();
-    
     this.pageIndexMapUpdated$.complete();
   }
 
@@ -494,6 +512,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             globalIndex < this.pageIndexMap.get(first)! + this.BUFFER ||
             globalIndex > this.pageIndexMap.get(last)! - this.BUFFER
           ) {
+            this.dbg('observer:BUFFER-recenter-triggered', {
+              id, globalIndex,
+              firstId: first, firstIndex: first !== undefined ? this.pageIndexMap.get(first) : undefined,
+              lastId: last, lastIndex: last !== undefined ? this.pageIndexMap.get(last) : undefined,
+              isPrepending: this.isPrepending, isRestoringScroll: this.isRestoringScroll, isNavigating: this.isNavigating,
+            });
+
             if (!this.isPrepending && !this.isRestoringScroll && !this.isNavigating) {
               this.preserveScroll(id, () => { this.updateVisiblePages(globalIndex); });
             }
@@ -506,54 +531,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         const page = this.visiblePages.find(p => p.id === id);
         if (!page) continue;
 
-        if (this.loadingSet.has(id)) continue;
-        if (this.loadingCount >= this.MAX_LOAD) continue;
-
-        const inViewport = this.isImageInViewport(img);
-        if (inViewport) {
-          this.visibleUnloadedCount++;
-          this.scheduleLoader();
-        }
-
-        this.loadingSet.add(id);
-        this.loadingCount++;
-
-        try {
-
-          await this.ensurePageLoaded(page);
-          if (this.destroyed) return;
-
-          if (token !== this.loadToken) return;
-
-          const alreadyExists = this.pageUrls.has(page.id!);
-
-          const url = await this.getOrCreateUrl(page);
-          if (this.destroyed) return;
-
-          if (token !== this.loadToken) {
-            if (!alreadyExists && url) this.urlService.revokeUrl(url);
-            return;
-          }
-
-          if (!url) continue;
-
-          await this.loadImage(img, url);
-          if (this.destroyed) return;
-
-          this.cleanupFarImages(id);
-
-        } finally {
-          this.loadingSet.delete(id);
-          this.loadingCount--;
-
-          if (inViewport && this.visibleUnloadedCount > 0) {
-            this.visibleUnloadedCount--;
-          }
-
-          if (this.visibleUnloadedCount === 0) {
-            this.hideLoader();
-          }
-        }
+        // Single shared load pipeline used by every reading mode/path.
+        await this.loadOnePage(page, img, token);
       }
 
     }, {
@@ -609,9 +588,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     this.imgRefs.forEach(ref => {
       const img = ref.nativeElement;
-      
+
       if (!img.isConnected) return;
-      
+
       const rect = img.getBoundingClientRect();
       const overlap = this.isHorizontalLikeMode()
         ? Math.max(0, Math.min(rect.right, bounds.end) - Math.max(rect.left, bounds.start))
@@ -632,6 +611,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     }
 
     if (!this.isNavigating && this.reader.currentPageBookmark() !== anchorId) {
+      this.dbg('updateReadingPosition:setCurrentPageBookmark', {
+        from: this.reader.currentPageBookmark(), to: anchorId,
+      });
       this.reader.setCurrentPageBookmark(anchorId);
     }
 
@@ -688,8 +670,6 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const id = Number(img.dataset['pageId']);
 
       if (img.src && img.complete && img.naturalHeight > 0) return;
-      if (this.loadingSet.has(id)) return;
-      if (this.loadingCount >= this.MAX_LOAD) return;
 
       const rect = img.getBoundingClientRect();
 
@@ -702,41 +682,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const page = this.visiblePages.find(p => p.id === id);
       if (!page) return;
 
-      const inViewport = this.isImageInViewport(img);
-      if (inViewport) {
-        this.visibleUnloadedCount++;
-        this.scheduleLoader();
-      }
-
-      this.loadingSet.add(id);
-      this.loadingCount++;
-
-      this.ensurePageLoaded(page)
-        .then(() => {
-          if (this.destroyed || token !== this.loadToken) return;
-          return this.getOrCreateUrl(page);
-        })
-        .then(url => {
-          if (!url || this.destroyed || token !== this.loadToken) return;
-          return this.loadImage(img, url);
-        })
-        .then(() => {
-          if (this.destroyed) return;
-          this.cleanupFarImages(id);
-        })
-        .catch(() => { })
-        .finally(() => {
-          this.loadingSet.delete(id);
-          this.loadingCount--;
-
-          if (inViewport && this.visibleUnloadedCount > 0) {
-            this.visibleUnloadedCount--;
-          }
-
-          if (this.visibleUnloadedCount === 0) {
-            this.hideLoader();
-          }
-        });
+      // Single shared load pipeline used by every reading mode/path.
+      void this.loadOnePage(page, img, token);
     });
   }
 
@@ -819,6 +766,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const allowNext = options.allowNext ?? true;
     const allowPrev = options.allowPrev ?? true;
 
+    if (!this.loggedChapterContextOnce) {
+      this.loggedChapterContextOnce = true;
+      this.dbg('tryLoadAdjacentChapters:context(once)', { chapterId, total, CHAPTER_TRIGGER: this.CHAPTER_TRIGGER });
+    }
+
     if (!chapterId) return;
 
     if (allowNext && !this.fetchingNext && globalIndex >= total - this.CHAPTER_TRIGGER) {
@@ -835,6 +787,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           return this.pagesRepo.getMetaByChapter(nextId).then(newPages => {
             if (!newPages?.length) { this.fetchingNext = false; return; }
 
+            this.dbg('tryLoadAdjacentChapters:MERGE NEXT', { chapterId, nextId, globalIndex, total, newPagesCount: newPages.length });
             this.loadedChapterIds.add(nextId);
             this.reader.mergePages(newPages, 'next');
             this.fetchingNext = false;
@@ -874,14 +827,80 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     await this.imagePipeline.ensurePayload(page);
   }
 
+  // ImagePipelineService is the single source of truth for blob URLs.
+  // Always resolve URLs through it to avoid cache desynchronization.
   private async getOrCreateUrl(page: Page): Promise<string> {
-    const url = await this.imagePipeline.getUrl(page);
+    return this.imagePipeline.getUrl(page);
+  }
 
-    if (page.id != null && url && !this.pageUrls.has(page.id)) {
-      this.pageUrls.set(page.id, url);
+  /**
+   * Resolves the page data, gets its blob URL from ImagePipelineService,
+   * and loads it into the image element.
+   *
+   * If the request becomes stale while loading, releases any newly created
+   * URL to avoid leaking unused blob URLs.
+   */
+  private async resolveAndLoad(
+    page: PageMeta,
+    img: HTMLImageElement,
+    isStale: () => boolean
+  ): Promise<boolean> {
+    if (page.id == null) return false;
+    const pageId = page.id;
+    const alreadyExists = this.imagePipeline.hasUrl(pageId);
+
+    await this.ensurePageLoaded(page);
+    if (this.destroyed || isStale()) return false;
+
+    const url = await this.getOrCreateUrl(page);
+    if (this.destroyed) return false;
+
+    if (isStale()) {
+      if (!alreadyExists) this.imagePipeline.releaseUrl(pageId);
+      return false;
     }
 
-    return url;
+    if (!url) return false;
+
+    await this.loadImage(img, url);
+    return !this.destroyed;
+  }
+
+  /**
+   * Loads a single page and handles loading state, loader visibility,
+   * and cleanup around resolveAndLoad().
+   */
+  private async loadOnePage(page: PageMeta, img: HTMLImageElement, token: number): Promise<void> {
+    if (page.id == null) return;
+    const id = page.id;
+
+    if (this.loadingSet.has(id)) return;
+    if (this.loadingCount >= this.MAX_LOAD) return;
+
+    const inViewport = this.isImageInViewport(img);
+    if (inViewport) {
+      this.visibleUnloadedCount++;
+      this.scheduleLoader();
+    }
+
+    this.loadingSet.add(id);
+    this.loadingCount++;
+
+    try {
+      const loaded = await this.resolveAndLoad(page, img, () => this.destroyed || token !== this.loadToken);
+      if (loaded) this.cleanupFarImages();
+    } finally {
+      this.loadingSet.delete(id);
+      this.loadingCount--;
+
+      if (inViewport && this.visibleUnloadedCount > 0) {
+        this.visibleUnloadedCount--;
+      }
+
+      if (this.visibleUnloadedCount === 0) {
+        this.hideLoader();
+      }
+    }
   }
 
   private handleGesture(event: GestureEvent): void {
@@ -933,15 +952,26 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.reader.goToPage(targetPage.id);
   }
 
-  /** Revokes object URLs for pages outside cleanup radius around current page. */
-  private cleanupFarImages(currentId: number): void {
+  /**
+ * Releases URLs for pages outside the cleanup radius around the current
+ * reading position. Eviction is always anchored to the reading position,
+ * not the most recently loaded page.
+ */
+  private cleanupFarImages(): void {
     if (this.isRestoringScroll) return;
+
+    const currentId = this.reader.currentPageBookmark() ?? this.reader.currentPageId();
+    if (currentId == null) return;
 
     this.imagePipeline.evictFarPages(currentId, this.pageIndexMap, this.CLEANUP_RADIUS);
   }
 
   private async handleNavigation(pageId: number): Promise<void> {
     const navToken = ++this.navToken;
+
+    this.dbg('handleNavigation:ENTER', { pageId, navToken });
+    this.dbgTrace('handleNavigation');
+
 
     this.focusPageId = pageId;
     this.showLoaderNow();
@@ -981,26 +1011,18 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       await Promise.all(
         toLoad.map(async (page) => {
-          if (this.loadingSet.has(page.id!)) return;
-          this.loadingSet.add(page.id!);
+          if (page.id == null || this.loadingSet.has(page.id)) return;
+          this.loadingSet.add(page.id);
 
           try {
-            await this.ensurePageLoaded(page);
-            if (this.destroyed || navToken !== this.navToken) return;
-
-            const url = await this.getOrCreateUrl(page);
-            if (this.destroyed || navToken !== this.navToken) return;
-            if (!url) return;
-
             const img = this.imgRefs.find(r =>
               Number(r.nativeElement.dataset['pageId']) === page.id
             )?.nativeElement;
 
             if (!img) return;
 
-            await this.loadImage(img, url);
-            if (this.destroyed) return;
-
+            // Single shared load pipeline used by every reading mode/path.
+            await this.resolveAndLoad(page, img, () => this.destroyed || navToken !== this.navToken);
           } finally {
             this.loadingSet.delete(page.id!);
           }
@@ -1037,13 +1059,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.updateActiveChapter(pageId);
 
     } finally {
+      // Only the still-current navigation may clear these shared flags;
+      // a stale/superseded call must not stomp on a newer in-flight navigation.
       if (navToken === this.navToken) {
         this.hideLoader();
+        this.isNavigating = false;
+        this.focusPageId = null;
       }
-      
-
-      this.isNavigating = false;
-      this.focusPageId = null;
     }
   }
 
@@ -1077,7 +1099,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.loadedChapterIds.add(targetChapterId);
       this.reader.mergePages(newPages, direction);
-      
+
       await this.waitForPageIndexUpdate(pageId);
     }
 
@@ -1112,33 +1134,48 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   }
 
   private updateVisiblePages(centerIndex: number): void {
+    const beforeFirst = this.visiblePages[0]?.id;
+    const beforeLast = this.visiblePages[this.visiblePages.length - 1]?.id;
+
+    let evictedCount = 0;
     this.virtualization.updateWindow(this.pages, centerIndex, (evictedIds) => {
+      evictedCount = evictedIds.length;
       for (const id of evictedIds) {
-        this.urlService.revokeUrl(String(id));
-        this.pageUrls.delete(id);
+        this.imagePipeline.releaseUrl(id);
       }
     });
 
+
     this.visiblePages = this.virtualization.visiblePages();
+    const afterFirst = this.visiblePages[0]?.id;
+    const afterLast = this.visiblePages[this.visiblePages.length - 1]?.id;
+    this.dbg('updateVisiblePages', {
+      centerIndex,
+      beforeFirst, beforeLast,
+      afterFirst, afterLast,
+      evictedCount,
+      windowChanged: beforeFirst !== afterFirst || beforeLast !== afterLast,
+    });
+    if (beforeFirst !== afterFirst || beforeLast !== afterLast) {
+      this.dbgTrace('updateVisiblePages window changed');
+    }
   }
 
   /**
-   * Preserves viewport position while virtual window changes.
-   */
+  * Preserves the viewport position while the virtual window changes.
+  * Applies to all reading modes.
+  */
   private preserveScroll(anchorId: number, callback: () => void): void {
-    if (this.reader.mode() === 'page') {
-      callback();
-      return;
-    }
-
     const container = this.readerContainer?.nativeElement;
 
     if (this.isNavigating || !container) {
+      this.dbg('preserveScroll:skip(isNavigating||!container)', { anchorId, isNavigating: this.isNavigating });
       callback();
       return;
     }
 
     if (this.isRestoringScroll) {
+      this.dbg('preserveScroll:skip(isRestoringScroll)', { anchorId });
       callback();
       return;
     }
@@ -1147,11 +1184,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       Number(r.nativeElement.dataset['pageId']) === anchorId
     )?.nativeElement;
 
-    if (!anchorEl) { callback(); return; }
+    if (!anchorEl) {
+      callback();
+      return;
+    }
 
     const prevAnchorViewportStart = this.isHorizontalLikeMode()
       ? anchorEl.getBoundingClientRect().left
       : anchorEl.getBoundingClientRect().top;
+
+    this.dbg('preserveScroll:start', { anchorId, prevAnchorViewportStart });
 
     this.isRestoringScroll = true;
 
@@ -1168,6 +1210,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           ? newAnchorEl.getBoundingClientRect().left
           : newAnchorEl.getBoundingClientRect().top;
         const shift = newAnchorViewportStart - prevAnchorViewportStart;
+        this.dbg('preserveScroll:compensate', { anchorId, newAnchorViewportStart, shift, willApply: Math.abs(shift) > 0.5 });
         if (Math.abs(shift) > 0.5) {
           if (this.isHorizontalLikeMode()) {
             container.scrollLeft += shift;
@@ -1175,6 +1218,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             container.scrollTop += shift;
           }
         }
+      } else {
+        this.dbg('preserveScroll:compensate:no newAnchorEl (anchor page got evicted!)', { anchorId });
       }
 
       this.isRestoringScroll = false;
@@ -1185,6 +1230,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const container = this.readerContainer?.nativeElement;
     if (!container) return;
 
+    this.dbg('scrollToPageImmediately:before', { pageId });
+    this.dbgTrace('scrollToPageImmediately');
+
     this.scrollController.scrollToPage(
       pageId,
       (id) => this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement,
@@ -1192,6 +1240,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.reader.mode(),
       0
     );
+
   }
 
   private getViewportAnchorPageId(): number | null {
@@ -1301,6 +1350,40 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     return undefined;
   }
 
+  // Debugging helpers
+  /**
+   * Reader-specific diagnostic logger.
+   *
+   * Use this to trace state transitions, scroll position, and other events while
+   * investigating reader-related issues. Logging is controlled by `isDebugMode`
+   * and is intended for development/debugging only.
+   */
+  private dbg(tag: string, data?: unknown): void {
+    if (!this.isDebugMode) return;
+
+    const container = document.querySelector<HTMLElement>('.reader-container');
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[READER-DBG] ${tag}`,
+      'color:#e91e63;font-weight:bold',
+      {
+        ...(typeof data === 'object' && data ? data : { data }),
+        scrollTop: container?.scrollTop,
+        scrollLeft: container?.scrollLeft
+      }
+    );
+  }
+
+  /**
+   * Prints the current call stack to help identify the execution path that
+   * triggered a reader event.
+   */
+  private dbgTrace(tag: string): void {
+    if (!this.isDebugMode) return;
+
+    console.trace(`[READER-DBG-TRACE] ${tag} - call stack`);
+  }
 
   get pages(): PageMeta[] {
     return this.reader.pages();
@@ -1316,5 +1399,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   get dualPageCover(): boolean {
     return this.settingsStore.dualPageCover();
+  }
+
+  get isDebugMode(): boolean {
+    return this.reader.debug();
   }
 }

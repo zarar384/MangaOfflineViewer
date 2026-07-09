@@ -81,6 +81,13 @@
           <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">{{'download' | transloco}}</button>
         </div>
       </div>
+
+      <div class="setting-left-group">
+        <div class="setting-left">
+        <span class="setting-label">{{ 'diagnosticLogging' | transloco }}:</span>
+        <molv-switch [(checked)]="isDebug"></molv-switch>
+      </div>
+      </div>
     </div>
     }
     @else {

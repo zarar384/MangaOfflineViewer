@@ -70,6 +70,7 @@ export class ReaderSettingsWindowComponent {
     this.mode        = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
     this.gapLevel    = this.uiState.getValue<number>('readerGap') || 0;
+    this.isDebug     = this.uiState.getValue<boolean>('readerDebug') || false;
 
     effect(() => {
       const isOpen = this.reader.isOpen();
@@ -85,8 +86,6 @@ export class ReaderSettingsWindowComponent {
   }
 
   // Reading mode
-
-  /** Legacy boolean toggle: scroll ↔ page (keeps backward compat). */
   get modeIsPage(): boolean { return this.mode === 'page'; }
 
   set modeIsPage(value: boolean) {
@@ -114,6 +113,14 @@ export class ReaderSettingsWindowComponent {
 
   get fitMode(): FitMode { return this.settingsStore.fitMode(); }
   set fitMode(value: FitMode) { this.settingsStore.setFitMode(value); }
+
+  // Debug mode
+  get isDebug(): boolean { return this.settingsStore.debug(); }
+  set isDebug(value: boolean) 
+  { 
+    this.settingsStore.setDebug(value); 
+    this.reader.setOtherSettings({ debug: value });
+  }
 
   // Gap
   get gap(): number {

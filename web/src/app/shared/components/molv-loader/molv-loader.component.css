@@ -1,4 +1,5 @@
-.overlay { pointer-events: all; position: fixed;  inset: 0;  background: rgba(30, 10, 40, 0.45); backdrop-filter: blur(6px);  display: flex;  justify-content: center;  align-items: center;  z-index: 9999;  backdrop-filter: blur(3px);}
+.overlay { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(30, 10, 40, 0.45); backdrop-filter: blur(3px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms ease, visibility 0s linear 180ms; z-index: 9999; }
+.overlay.visible { opacity: 1; visibility: visible; pointer-events: all; transition: opacity 180ms ease, visibility 0s; }
 
 /* heart */
 .spinner {  width: 80px;  height: 80px;  position: relative;  animation: pulse 1.2s infinite ease-in-out;}

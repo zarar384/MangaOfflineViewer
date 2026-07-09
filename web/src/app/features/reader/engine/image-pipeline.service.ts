@@ -83,6 +83,17 @@ export class ImagePipelineService implements OnDestroy {
   }
 
   /**
+ * Releases the cached URL for a page.
+ * Always use this method to keep the local cache in sync with ObjectUrlService.
+ * Otherwise a revoked blob URL may be returned later.
+ */
+  releaseUrl(pageId: number): void {
+    this.urlService.revokeUrl(String(pageId));
+    this.pageUrls.delete(pageId);
+    this.loadingSet.delete(pageId);
+  }
+
+  /**
    * Revokes urls for pages outside the active radius around current page.
    */
   evictFarPages(
@@ -99,9 +110,7 @@ export class ImagePipelineService implements OnDestroy {
     for (const [id] of this.pageUrls) {
       const idx = pageIndexMap.get(id);
       if (idx === undefined || idx < min || idx > max) {
-        this.urlService.revokeUrl(String(id));
-        this.pageUrls.delete(id);
-        this.loadingSet.delete(id);
+        this.releaseUrl(id);
       }
     }
   }

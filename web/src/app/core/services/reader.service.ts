@@ -34,6 +34,9 @@ export class ReaderService {
 
   private _gap = signal<number>(0.5);
 
+  // Other settings
+  private _debug = signal<boolean>(false);
+
   readonly isOpen = computed(() => this._isOpen());
   readonly pages = computed(() => this._pages());
   readonly mangaId = computed(() => this._mangaId());
@@ -44,6 +47,7 @@ export class ReaderService {
   readonly pagesUpdateKind = computed(() => this._pagesUpdateKind());
   readonly mode = computed(() => this._mode());
   readonly gap = computed(() => this._gap());
+  readonly debug = computed(() => this._debug());
 
   setSettings(settings: {
     mode?:      ReadingMode;
@@ -51,6 +55,12 @@ export class ReaderService {
   }): void {
     if (settings.mode !== undefined) this._mode.set(settings.mode);
     if (settings.gap !== undefined) this._gap.set(settings.gap);
+  }
+
+  setOtherSettings(settings: {
+    debug?: boolean;
+  }): void {
+    if (settings.debug !== undefined) this._debug.set(settings.debug);
   }
 
   /** Opens reader with fresh chapter data. */

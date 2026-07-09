@@ -7,7 +7,7 @@ import { LoadingService } from '../../../core/services/loading.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div *ngIf="loading()" class="overlay">
+    <div class="overlay" [class.visible]="loading()">
       <div class="spinner"></div>
     </div>
   `,

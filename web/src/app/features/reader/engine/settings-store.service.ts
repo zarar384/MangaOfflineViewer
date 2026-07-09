@@ -53,4 +53,14 @@ export class SettingsStoreService {
   private load<T>(key: string, defaultValue: T): T {
     return this.uiState.getValue<T>(key) ?? defaultValue;
   }
+
+  /** Debug mode for reader UI. */
+  readonly debug = signal<boolean>(
+    this.load<boolean>('readerDebug', false)
+  );
+
+  setDebug(val: boolean): void {
+    this.debug.set(val);
+    this.uiState.saveState({ readerDebug: val });
+  }
 }
