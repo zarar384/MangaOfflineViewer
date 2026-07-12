@@ -53,7 +53,7 @@
             <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId" placeholder="{{'select' | transloco}}">
             </molv-dropdown>
           </div>
-          <button class="molv-btn molv-btn-pink" [disabled]="!selectedPageId" (click)="goToPage()">{{'go' |
+          <button class="molv-btn molv-btn-pink" [disabled]="!canGoToPage" (click)="goToPage()">{{'go' |
             transloco}}</button>
         </div>
 

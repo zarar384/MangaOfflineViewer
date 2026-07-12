@@ -17,8 +17,7 @@ import { TabsService } from 'src/app/core/services/tabs.service';
 import { SettingsStoreService } from '../../reader/engine/settings-store.service';
 import { ReadingMode, FitMode } from '../../reader/engine/interfaces/reader-settings.interface';
 
-export interface ReaderPage
-{
+export interface ReaderPage {
   id: number;
   order?: number;
   title?: string;
@@ -67,10 +66,10 @@ export class ReaderSettingsWindowComponent {
     private langService: LanguageService) {
 
     // load states
-    this.mode        = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
+    this.mode = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
     this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
-    this.gapLevel    = this.uiState.getValue<number>('readerGap') || 0;
-    this.isDebug     = this.uiState.getValue<boolean>('readerDebug') || false;
+    this.gapLevel = this.uiState.getValue<number>('readerGap') || 0;
+    this.isDebug = this.uiState.getValue<boolean>('readerDebug') || false;
 
     effect(() => {
       const isOpen = this.reader.isOpen();
@@ -116,9 +115,8 @@ export class ReaderSettingsWindowComponent {
 
   // Debug mode
   get isDebug(): boolean { return this.settingsStore.debug(); }
-  set isDebug(value: boolean) 
-  { 
-    this.settingsStore.setDebug(value); 
+  set isDebug(value: boolean) {
+    this.settingsStore.setDebug(value);
     this.reader.setOtherSettings({ debug: value });
   }
 
@@ -168,10 +166,19 @@ export class ReaderSettingsWindowComponent {
   }
 
   get activeTab(): 'home' | 'bookmarks' {
-  return this.activeTabId === null ? 'home' : 'bookmarks';
-}
+    return this.activeTabId === null ? 'home' : 'bookmarks';
+  }
 
   // PAGE
+  protected get canGoToPage(): boolean {
+    if (!this.selectedPageId) {
+      return false;
+    }
+
+    // Already on the selected page
+    return Number(this.selectedPageId) !== this.reader.currentPageBookmark();
+  }
+
   async goToPage() {
     const pageId = Number(this.selectedPageId);
     if (!pageId) return;
@@ -190,7 +197,7 @@ export class ReaderSettingsWindowComponent {
     // Ensure navigation lands on the requested page after reader reopen.
     this.reader.goToPage(pageId);
   }
-  
+
   async loadPages() {
     const reader = this.reader.getSnapshot();
     if (!reader.mangaId) return;
@@ -216,17 +223,25 @@ export class ReaderSettingsWindowComponent {
     }));
   }
 
+  // TODO: currentPageBookmark = pageId... so selectedBookmarkId should be the pageId, not the bookmark id
+  // protected get canGoToBookmark(): boolean {
+  //   if (!this.selectedBookmarkId) {
+  //     return false;
+  //   }
+
+  //   console.log(`Selected bookmark ID: ${this.selectedBookmarkId}, Current page bookmark: ${this.reader.currentPageBookmark()}`);
+  //   // Already on the selected bookmark
+  //   return Number(this.selectedBookmarkId) !== this.reader.currentPageBookmark();
+  // }
+
   goToBookmark() {
-    var bookmark = this.bookmarks.find(b => b.id === this.selectedBookmarkId);
-    var page = this.pages.find(p => p.id === bookmark?.pageId);
-    this.selectedPageId = page ? page?.id! : null;
     this.goToBookmarkClicked.emit(this.selectedBookmarkId!)
   }
 
-  onHomeTab() { this.activeTabId = null;}
+  onHomeTab() { this.activeTabId = null; }
 
   onTabSelected(tab: UserTab) {
-    this.activeTabId = tab.tabId; 
+    this.activeTabId = tab.tabId;
   }
 
   // BOOKMARK EDIT / DELETE / CREATE / CANCEL
