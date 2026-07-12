@@ -108,8 +108,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       if (!pages?.length) return;
 
-      const mode = this.reader.mode();
-      const isOpen = this.reader.isOpen();
+      // Read without tracking. This effect should react only to page updates,
+      // not to mode/open state changes!
+      const mode = untracked(() => this.reader.mode());
+      const isOpen = untracked(() => this.reader.isOpen());
 
       this.dbg('pages-effect:fired', {
         pagesUpdateKind,
@@ -247,15 +249,28 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           // On the first open, the target page may not be rendered yet.
           // Retry once it becomes available.
           this.waitForTarget(currentPageId).then(() => {
-            if (!this.destroyed) this.scrollToPageImmediately(currentPageId);
+            if (this.destroyed) return;
+
+            this.scrollToPageImmediately(currentPageId);
+
+            // Preload adjacent chapters after the initial navigation so the user
+            // can immediately continue to the next/previous chapter.
+            if (isOpen) {
+              this.reader.resetIsOpen();
+              const currentIndex = this.pageIndexMap.get(currentPageId) ?? startIndex;
+
+              this.tryLoadAdjacentChapters(currentIndex, { allowPrev: false });
+            }
           });
         }
 
-        if (isOpen) {
-          this.reader.resetIsOpen();
-          // Only preload the next chapter on initial open to avoid shifting the viewport.
-          this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
-        }
+        // TODO: FIX
+        // Disabled: breaks initial page navigation.
+        // if (isOpen) {
+        //   this.reader.resetIsOpen();
+        //   // Only preload the next chapter on initial open to avoid shifting the viewport.
+        //   this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
+        // }
       });
     });
 
@@ -779,6 +794,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const allowNext = options.allowNext ?? true;
     const allowPrev = options.allowPrev ?? true;
 
+    this.dbg('tryLoadAdjacentChapters:ENTER', {
+    chapterId,
+    globalIndex,
+    total,
+    fetchingNext: this.fetchingNext,
+    fetchingPrev: this.fetchingPrev,
+    loadedChapterIds: [...this.loadedChapterIds],
+  });
+
     if (!this.loggedChapterContextOnce) {
       this.loggedChapterContextOnce = true;
       this.dbg('tryLoadAdjacentChapters:context(once)', { chapterId, total, CHAPTER_TRIGGER: this.CHAPTER_TRIGGER });
@@ -786,8 +810,18 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
     if (!chapterId) return;
 
+    this.dbg("BEFORE NEXT CHECK", {
+    globalIndex,
+    total,
+    fetchingNext: this.fetchingNext
+});
+
     if (allowNext && !this.fetchingNext && globalIndex >= total - this.CHAPTER_TRIGGER) {
       this.fetchingNext = true;
+
+      this.dbg("SET fetchingNext=true", {
+    globalIndex
+});
 
       this.chaptersRepo.getNextChapter(chapterId)
         .then(next => {
