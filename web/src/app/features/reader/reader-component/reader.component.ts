@@ -160,7 +160,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           this.preserveScroll(anchorId, () => {
             this.updateVisiblePages(anchorIndex);
           });
-        } else if (!this.isNavigating) {
+        } else {
+          // even if navigation is in progress, the virtualization window must be updated!! 
+          // otherwise the merged pages will never get a DOM element
           this.updateVisiblePages(anchorIndex);
         }
 
@@ -215,6 +217,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.fetchingNext = false;
       this.fetchingPrev = false;
 
+      this.loadedChapterIds.clear(); 
+
       this.isPrepending = false;
       this.isRestoringScroll = false;
       this.isNavigating = false;
@@ -250,7 +254,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           // Retry once it becomes available.
           this.waitForTarget(currentPageId).then(() => {
             if (this.destroyed) return;
-
+            
             this.scrollToPageImmediately(currentPageId);
 
             // Preload adjacent chapters after the initial navigation so the user
@@ -259,7 +263,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
               this.reader.resetIsOpen();
               const currentIndex = this.pageIndexMap.get(currentPageId) ?? startIndex;
 
-              this.tryLoadAdjacentChapters(currentIndex, { allowPrev: false });
+              this.tryLoadAdjacentChapters(currentIndex, { allowPrev: true, allowNext: true });
             }
           });
         }

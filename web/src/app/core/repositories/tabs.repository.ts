@@ -6,7 +6,6 @@ import { Page } from '../models/page.model';
 import { PREVIEW_MAX_SIZE } from '../db.config';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
-import Dexie, { IndexableType, Table } from "dexie";
 import { isIOS } from 'src/app/shared/utils/constants';
 
 export const TABS_SEED: Tab[] = [

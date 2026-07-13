@@ -151,13 +151,21 @@ export class ChaptersRepository {
 
   async reorder(tabId: number, reordered: Chapter[]): Promise<void> {
 
-    await db.transaction('rw', db.chapters, async () => {
+    await db.transaction('rw', db.chapters, db.pages, async () => {
 
       // assign new sequential chapter orders
       for (let i = 0; i < reordered.length; i++) {
+        const chapter = reordered[i];
+        const newOrder = i + 1;
 
-        reordered[i].order = i + 1;
-        reordered[i].updatedAt = Date.now();
+        chapter.order = newOrder;
+        chapter.updatedAt = Date.now();
+
+        // update chapter order in pages table
+        await db.pages
+          .where('[tabId+chapterId]')
+          .equals([tabId, chapter.id!])
+          .modify({ chapterOrder: newOrder });
       }
 
       await db.chapters.bulkPut(reordered);
