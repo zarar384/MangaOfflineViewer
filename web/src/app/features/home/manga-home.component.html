@@ -1,23 +1,34 @@
-<molv-search
-  [value]="tabsService.searchQueryState()"
-  (searchChange)="onSearch($event)">
-</molv-search>
+<div class="manga-home">
 
-<div class="manga-home-root">
-  <tabs
-    (mangaSelected)="onTabSelected($event)"
-    (mangaToEditSelected)="onMangaToEditSelected($event)">
-  </tabs>
+  <div class="home-search">
+    <molv-search
+      [value]="tabsService.searchQueryState()"
+      (searchChange)="onSearch($event)">
+    </molv-search>
+  </div>
+
+  <div class="home-content">
+    <tabs
+      (mangaSelected)="onTabSelected($event)"
+      (mangaToEditSelected)="onMangaToEditSelected($event)">
+    </tabs>
+  </div>
+
+  <div class="home-pagination">
+    <molv-pagination
+      [totalTabs]="tabsService.totalTabsState()"
+      [currentPage]="page()"
+      [perPage]="perPage()"
+      (pageChange)="onPageChange($event)">
+    </molv-pagination>
+  </div>
+
 </div>
 
-<molv-pagination
-  [totalTabs]="tabsService.totalTabsState()"
-  [currentPage]="page()"
-  
-  [perPage]="perPage()"
-  (pageChange)="onPageChange($event)">
-</molv-pagination>
-
-
-<!-- windows -->
-<edit-tab-window [isVisible]="showEditWindow" [tabId]="tab?.id" [fileName]="tab?.name" [viewMode]="tab?.mode" (closeWindow)="onEditWindowClose()"></edit-tab-window >
+<edit-tab-window
+  [isVisible]="showEditWindow"
+  [tabId]="tab?.id"
+  [fileName]="tab?.name"
+  [viewMode]="tab?.mode"
+  (closeWindow)="onEditWindowClose()">
+</edit-tab-window>

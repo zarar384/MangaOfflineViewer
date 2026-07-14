@@ -36,6 +36,10 @@ export class UiStateService {
   // Upload window
   private uploadWindowSignal = signal(false);
 
+  // Sidebar visibility
+  private sidebarVisibleSignal = signal(true);
+  sidebarVisible = this.sidebarVisibleSignal.asReadonly();
+
   // Settings window
   private settingsWindowSignal = signal(false);
 
@@ -65,6 +69,8 @@ export class UiStateService {
     if (saved.selectedMangaId) {
       this.selectedMangaIdSignal.set(saved.selectedMangaId);
     }
+
+    this.sidebarVisibleSignal.set(saved.sidebarVisible ?? false);
   }
 
   getState(): any {
@@ -142,6 +148,12 @@ export class UiStateService {
 
   uploadWindow() {
     return this.uploadWindowSignal();
+  }
+
+  // SIDEBAR VISIBILITY
+  setSidebarVisible(value: boolean): void {
+    this.sidebarVisibleSignal.set(value);
+    this.saveState({ sidebarVisible: value });
   }
 
   // SETTINGS WINDOW

@@ -1,1 +1,11 @@
-.manga-home-root { margin-bottom: 80px; }
+.manga-home { display:flex; flex-direction:column; height:100%; padding:24px; box-sizing:border-box; }
+
+.home-search { flex:0 0 auto; margin-bottom:24px; }
+
+.home-content { flex:1 1 auto; min-height:0; }
+
+.home-pagination { flex:0 0 auto; margin-top:28px; display:flex; justify-content:center; }
+
+@media (max-width:900px) { .manga-home { padding:18px; } .home-search { margin-bottom:18px; } .home-pagination { margin-top:22px; } }
+
+@media (max-width:600px) { .manga-home { padding:12px; } .home-search { margin-bottom:14px; } .home-pagination { margin-top:18px; } }

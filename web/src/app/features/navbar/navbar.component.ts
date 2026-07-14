@@ -73,6 +73,11 @@ export class NavbarComponent {
     this.openSettingsWindowClicked.emit();
   }
 
+  changeSidebarVisible() {
+    const currentValue = this.uiState.sidebarVisible();
+    this.uiState.setSidebarVisible(!currentValue);
+  }
+
   // Getters for template
   get viewMode() {
     return this.uiState.currentView();

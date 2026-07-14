@@ -1,4 +1,4 @@
-import { Component, effect, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, computed, effect, OnInit, signal, ViewChild } from '@angular/core';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { MangaHomeComponent } from '../home/manga-home.component';
 import { CommonModule } from '@angular/common';
@@ -35,12 +35,15 @@ export class LayoutComponent implements OnInit {
   // just for easier template access
   readonly ViewMod = ViewMod;
 
+  // Sidebar visibility
+  protected readonly sidebarVisible = computed(() => this.uiState.sidebarVisible()); 
+
   // Upload window 
   showUploadWindow = signal(false);
 
   // Settings window
   showSettingsWindow = signal(false);
-
+  
   constructor(
     private uiState: UiStateService,
     private tabsService: TabsService,

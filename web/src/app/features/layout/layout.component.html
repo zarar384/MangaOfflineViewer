@@ -1,32 +1,61 @@
 <div class="app-shell">
 
-  <app-manga-navbar [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)"
-    (openUploadWindowClicked)="onOpenUploadWindowClicked()" (openSettingsWindowClicked)="onOpenSettingsWindowClicked()">
+  <app-manga-navbar
+    [activeManga]="selectedMangaId"
+    (mangaSelected)="onMangaSelected($event)"
+    (openUploadWindowClicked)="onOpenUploadWindowClicked()"
+    (openSettingsWindowClicked)="onOpenSettingsWindowClicked()">
   </app-manga-navbar>
 
+  <div class="body">
 
-<div class="content" [class.reader-active]="viewMode === ViewMod.Single">
-    @if(viewMode === ViewMod.Home)
-    {
-    <app-manga-home [activeManga]="selectedMangaId" (mangaSelected)="onMangaSelected($event)">
-    </app-manga-home>
-    }
+    <div class="workspace">
 
-    @if(viewMode === ViewMod.Chapters)
-    {
-    <manga-page [activeManga]="selectedMangaId">
-    </manga-page>
-    }
+      @if(sidebarVisible())
+      {
+        <aside class="sidebar">
 
-  @if(viewMode === ViewMod.Single)
-  {
-  <app-manga-reader [activeManga]="selectedMangaId">
-  </app-manga-reader>
-  }
+        </aside>
+      }
+
+      <main class="content" [class.reader-active]="viewMode === ViewMod.Single">
+
+        @if(viewMode === ViewMod.Home)
+        {
+          <app-manga-home
+            [activeManga]="selectedMangaId"
+            (mangaSelected)="onMangaSelected($event)">
+          </app-manga-home>
+        }
+
+        @if(viewMode === ViewMod.Chapters)
+        {
+          <manga-page [activeManga]="selectedMangaId">
+          </manga-page>
+        }
+
+        @if(viewMode === ViewMod.Single)
+        {
+          <app-manga-reader [activeManga]="selectedMangaId">
+          </app-manga-reader>
+        }
+
+      </main>
+
+    </div>
+
   </div>
 
-  <upload-file-window [isVisible]="showUploadWindow()" [tabId]="selectedMangaId" [viewMode]="viewMode"
-    (closeWindow)="onUploadWindowClose()"></upload-file-window>
+  <upload-file-window
+    [isVisible]="showUploadWindow()"
+    [tabId]="selectedMangaId"
+    [viewMode]="viewMode"
+    (closeWindow)="onUploadWindowClose()">
+  </upload-file-window>
 
-  <settings-window [isVisible]="showSettingsWindow()" (closeWindow)="onSettingsWindowClose()"></settings-window>
+  <settings-window
+    [isVisible]="showSettingsWindow()"
+    (closeWindow)="onSettingsWindowClose()">
+  </settings-window>
+
 </div>

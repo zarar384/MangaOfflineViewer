@@ -1,32 +1,48 @@
 <div class="tabs-row">
+
+  <div class="navbar-left">
+    <button class="logo-btn" (click)="changeSidebarVisible()">
+      <img src="assets/favicon.ico" alt="MOLV">
+    </button>
+  </div>
+
   <div class="tabs-left">
     <molv-tabs
       [userTabs]="visibleTabs()"
       [activeTabId]="selectedMangaId()"
       (homeClicked)="goHome()"
       (tabSelected)="onTabSelected($event)"
-      (tabClosed)="onTabClosed($event)"
-    />
+      (tabClosed)="onTabClosed($event)">
+    </molv-tabs>
   </div>
 
-  <div class="tabs-right">
-    @if (viewMode === ViewMod.Home)
-    {
-    <button class="molv-btn molv-btn-pink" (click)="openUploadWindow()">
-      <img src="assets/icons/molv-upload.svg" class="molv-upload-icon"> 
-      <span class="desktop-text">
-         {{ 'uploadFiles' | transloco }}
-      </span>
-    </button>
-    }
-    
-    @if ([ViewMod.Home, ViewMod.Chapters, ViewMod.Single].includes(viewMode)){
-    <button class="molv-btn molv-btn-pink" (click)="openSettingsWindow()">
-      <img src="assets/icons/molv-settings.svg" class="molv-settings-icon"> 
-      <span class="desktop-text">
-        {{ 'settings' | transloco }}
-      </span>
-    </button>
-    }
-  </div>
+<div class="tabs-right">
+
+  <button
+    class="molv-btn molv-btn-pink upload-btn"
+    [class.hidden]="viewMode !== ViewMod.Home"
+    (click)="openUploadWindow()">
+
+    <img src="assets/icons/molv-upload.svg" class="molv-upload-icon">
+
+    <span class="desktop-text">
+      {{ 'uploadFiles' | transloco }}
+    </span>
+
+  </button>
+
+  <button
+    class="molv-btn molv-btn-pink"
+    (click)="openSettingsWindow()">
+
+    <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
+
+    <span class="desktop-text">
+      {{ 'settings' | transloco }}
+    </span>
+
+  </button>
+
+</div>
+
 </div>

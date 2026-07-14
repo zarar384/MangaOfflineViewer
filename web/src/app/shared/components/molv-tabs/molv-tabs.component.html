@@ -1,25 +1,33 @@
 <div class="tabs-scroll">
   <!-- Home -->
-  <div class="explorer-tab home-tab" [class.active]="activeTabId === null">
-    <button class="tab-btn" (click)="homeClicked.emit()">
-      {{ 'home' | transloco }}
+<div class="explorer-tab home-tab"
+     [class.active]="activeTabId === null"
+     (click)="homeClicked.emit()">
+
+    <button class="tab-btn home-btn" type="button">
+        {{ 'home' | transloco }}
     </button>
-  </div>
+
+    <button class="tab-close tab-close-placeholder"
+            type="button"
+            tabindex="-1"
+            aria-hidden="true">
+    </button>
+</div>
 
   <!-- Tabs -->
   @for (t of userTabs; track t.tabId) {
-    <div 
-      class="explorer-tab" 
-      [class.active]="activeTabId === t.tabId" 
-      [attr.title]="t.name"
-    >
-    <button class="tab-btn" (click)="tabSelected.emit(t)">
+  <div class="explorer-tab" [class.active]="activeTabId === t.tabId" [attr.title]="t.name"
+    (click)="tabSelected.emit(t)">
+
+    <button class="tab-btn" type="button">
       {{ t.name }}
     </button>
 
-    <button class="tab-close" (click)="tabClosed.emit(t); $event.stopPropagation()">
+    <button class="tab-close" type="button" (click)="tabClosed.emit(t); $event.stopPropagation()">
       <img src="assets/icons/molv-close.svg" class="molv-close-icon">
     </button>
+
   </div>
   }
 </div>
