@@ -1,10 +1,12 @@
 {
+    "open": "Открыть",
     "diagnosticLogging": "Диагностические логи",
     "home": "Главная",
     "description": "Описание",
     "title": "Название",
     "change": "Изменить",
     "uploadFiles": "Загрузить файлы",
+    "upload": "Загрузить",
     "settingsMangas": "Настройки манги",
     "readSettings": "Настройки чтения",
     "readingMode": "Режим чтения",

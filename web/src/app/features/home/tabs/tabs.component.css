@@ -1,10 +1,52 @@
-.card { position: relative; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; box-shadow: 0 6px 20px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03); }
-.card:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 30px rgba(2,6,23,0.8); }
-.card .header {  position: absolute;   top: 0;  right: 0;  display: flex;  justify-content: flex-end;   align-items: center;  padding: 4px;  color: #fff;  font-size: 12px;  box-sizing: border-box;  z-index: 2;  gap: 4px; }
-.cover { height: 240px; background-size: cover; background-position: center; position: relative; }
-.cover-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100%); display:flex; align-items:flex-end; padding: 12px; }
-.title { font-weight: 700; font-size: 16px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+.card { position:relative; background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01)); border-radius:12px; overflow:visible; cursor:pointer; transition:transform .18s ease,box-shadow .18s ease; box-shadow:0 6px 20px rgba(2,6,23,.6); border:1px solid rgba(255,255,255,.03); }
+
+.card:hover { transform:translateY(-6px) scale(1.02); box-shadow:0 12px 30px rgba(2,6,23,.8); }
+
+.card .header { position:absolute; top:0; right:0; display:flex; justify-content:flex-end; align-items:center; padding:4px; color:#fff; font-size:12px; box-sizing:border-box; z-index:20; gap:4px; }
+
+.cover { height:240px; background-size:cover; background-position:center; position:relative; border-radius:12px 12px 0 0; overflow:hidden; }
+
+.cover-overlay { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.6) 100%); display:flex; align-items:flex-end; padding:12px; }
+
+.title { font-weight:700; font-size:16px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); }
+
 .meta { display:flex; justify-content:space-between; align-items:center; padding:10px; }
-.meta-title { color: rgba(255,255,255,0.9); font-weight:600; }
-.meta-actions { color: #ffd6e8; font-weight:700; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+
+.meta-title { color:rgba(255,255,255,.9); font-weight:600; }
+
+.meta-actions { color:#ffd6e8; font-weight:700; }
+
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px; }
+
+.molv-card-action { display:flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; border:1px solid rgba(52,60,86,.7); border-radius:8px; background:rgba(36,43,64,.72); backdrop-filter:blur(8px); color:#d6dcef; cursor:pointer; opacity:.78; transition:opacity .18s,background .18s,border-color .18s,color .18s,box-shadow .18s,transform .16s; }
+
+.molv-card-action:hover { opacity:1; background:rgba(45,53,80,.94); border-color:#ff73b8; color:#fff; box-shadow:0 0 0 1px rgba(255,115,184,.18); }
+
+.molv-card-action:active { transform:translateY(1px); }
+
+.molv-card-action:focus-visible { outline:none; box-shadow:0 0 0 2px rgba(255,115,184,.18); }
+
+.card-controls { position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transform:translateY(-6px); transition:opacity .18s,transform .18s; z-index:25; }
+
+.card:hover .card-controls { opacity:1; transform:translateY(0); }
+
+.card-menu-wrapper { position:relative; }
+
+.card-menu { position:absolute; top:36px; right:0; max-width:150px; padding:6px; display:flex; flex-direction:column; gap:4px; background:rgba(27,33,50,.96); backdrop-filter:blur(12px); border:1px solid #343c56; border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.45); animation:cardMenu .15s ease; z-index:100; }
+
+.card-menu-item { display:flex; align-items:center; gap:10px; width:100%; height:36px; padding:0 10px; border:none; border-radius:8px; background:transparent; color:#d6dcef; font-size:13px; font-weight:500; cursor:pointer; transition:background .18s,color .18s; }
+
+.card-menu-item:hover { background:#2d3550; color:#fff; }
+
+.card-menu-item.danger:hover { background:rgba(255,91,112,.14); color:#ff8fa2; }
+
+.card-menu-item img { width:16px; height:16px; opacity:.9; }
+
+@keyframes cardMenu {
+from { opacity:0; transform:translateY(-6px) scale(.96); }
+to { opacity:1; transform:translateY(0) scale(1); }
+}
+
+@media (hover:none) {
+.card-controls { opacity:1; transform:none; }
+}

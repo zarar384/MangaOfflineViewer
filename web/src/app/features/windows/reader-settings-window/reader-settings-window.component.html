@@ -2,119 +2,169 @@
   position="center" [showClose]="true" [showHide]="false" [blockBackground]="false" [showTransparency]="true"
   (close)="onWindowClose()">
 
-  <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId" (homeClicked)="onHomeTab()"
-    (tabSelected)="onTabSelected($event)"></molv-tabs>
+  <div class="settings-body">
 
-  <div class="tab-content">
-    @if(activeTab === 'home')
-    {
-    <div class="controls">
+    <molv-tabs [userTabs]="settingsTabs" [activeTabId]="activeTabId" (homeClicked)="onHomeTab()"
+      (tabSelected)="onTabSelected($event)">
+    </molv-tabs>
 
-      <!-- Reading mode selector  -->
-      <div class="reading-mode-section">
-        <span class="setting-label">{{'readingMode' | transloco}}:</span>
-        <div class="reading-mode-grid">
-          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'scroll'"
-            title="{{ 'scrollMode' | transloco }}" (click)="setMode('scroll')">
-            <img src="assets/icons/scroll-mode.svg" class="scroll-mode-icon">
-            <span class="reading-mode-text">{{ 'scrollMode' | transloco }}</span>
-          </button>
+    <div class="settings-workspace">
 
-          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'dual'"
-            title="{{ 'dualPageMode' | transloco }}" (click)="setMode('dual')">
-            <img src="assets/icons/dual-page-mode.svg" class="dual-page-mode-icon">
-            <span class="reading-mode-text">{{ 'dualPageMode' | transloco }}</span>
-          </button>
+      <div class="tab-content">
 
-          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'page'"
-            title="{{ 'pageMode' | transloco }}" (click)="setMode('page')">
-            <img src="assets/icons/page-mode.svg" class="page-mode-icon">
-            <span class="reading-mode-text">{{ 'pageMode' | transloco }}</span>
-          </button>
+        @if(activeTab === 'home')
+        {
+        <div class="controls">
 
-          <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'horizontal'"
-            title="{{ 'horizontalMode' | transloco }}" (click)="setMode('horizontal')">
-            <img src="assets/icons/horizontal-mode.svg" class="horizontal-mode-icon">
-            <span class="reading-mode-text">{{ 'horizontalMode' | transloco }}</span>
-          </button>
-        </div>
-      </div>
+          <!-- Reading mode selector -->
+          <div class="reading-mode-section">
 
-      <!-- other settings -->
-      <div class="setting-right">
-        <span class="setting-label">{{'gap' | transloco}}:</span>
-        <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
-      </div>
+            <span class="setting-label">{{'readingMode' | transloco}}:</span>
 
-      <div class="setting-left-group">
-        <!-- go to page -->
-        <div class="setting-left">
-          <div class="setting-label">
-            <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId" placeholder="{{'select' | transloco}}">
-            </molv-dropdown>
+            <div class="reading-mode-grid">
+
+              <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'scroll'"
+                title="{{ 'scrollMode' | transloco }}" (click)="setMode('scroll')">
+
+                <img src="assets/icons/scroll-mode.svg" class="scroll-mode-icon">
+                <span class="reading-mode-text">{{ 'scrollMode' | transloco }}</span>
+
+              </button>
+
+              <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'dual'"
+                title="{{ 'dualPageMode' | transloco }}" (click)="setMode('dual')">
+
+                <img src="assets/icons/dual-page-mode.svg" class="dual-page-mode-icon">
+                <span class="reading-mode-text">{{ 'dualPageMode' | transloco }}</span>
+
+              </button>
+
+              <button type="button" class="molv-btn molv-btn-pink reading-mode-btn" [class.active]="mode === 'page'"
+                title="{{ 'pageMode' | transloco }}" (click)="setMode('page')">
+
+                <img src="assets/icons/page-mode.svg" class="page-mode-icon">
+                <span class="reading-mode-text">{{ 'pageMode' | transloco }}</span>
+
+              </button>
+
+              <button type="button" class="molv-btn molv-btn-pink reading-mode-btn"
+                [class.active]="mode === 'horizontal'" title="{{ 'horizontalMode' | transloco }}"
+                (click)="setMode('horizontal')">
+
+                <img src="assets/icons/horizontal-mode.svg" class="horizontal-mode-icon">
+                <span class="reading-mode-text">{{ 'horizontalMode' | transloco }}</span>
+
+              </button>
+
+            </div>
+
           </div>
-          <button class="molv-btn molv-btn-pink" [disabled]="!canGoToPage" (click)="goToPage()">{{'go' |
-            transloco}}</button>
-        </div>
 
-        <!-- bookmarks -->
-        <div class="setting-left">
-          <div class="setting-label">
-            <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId"
-              placeholder="{{'select' | transloco}}">
-            </molv-dropdown>
+          <div class="setting-left-group">
+
+            <!-- go to page -->
+            <div class="setting-row-two">
+              <molv-dropdown [options]="pageOptions" [(value)]="selectedPageId" placeholder="{{'select' | transloco}}">
+              </molv-dropdown>
+
+              <button class="molv-btn molv-btn-pink" [disabled]="!canGoToPage" (click)="goToPage()">
+                {{'go' | transloco}}
+              </button>
+              
+            </div>
+
+            <!-- bookmarks -->
+            <div class="setting-row-three">
+              <molv-dropdown [options]="bookmarkOptions" [(value)]="selectedBookmarkId"
+                placeholder="{{'select' | transloco}}">
+              </molv-dropdown>
+
+              <button class="molv-btn molv-btn-pink" (click)="saveBookmark()">
+                {{'save' | transloco}}
+              </button>
+
+              <button class="molv-btn molv-btn-pink" [disabled]="!selectedBookmarkId" (click)="goToBookmark()">
+                {{'go' | transloco}}
+              </button>
+            </div>
+
+            <!-- button to download tab-->
+            <div class="setting-row-two">
+
+              <molv-dropdown [(value)]="dwnldMod" [options]="[
+                  { value: 'mhtml', label: 'MHTML' },
+                  { value: 'zip', label: 'ZIP' }
+                ]">
+              </molv-dropdown>
+
+              <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">
+                {{'download' | transloco}}
+              </button>
+
+            </div>
+
           </div>
-          <button class="molv-btn molv-btn-pink" (click)="saveBookmark()">{{'save' | transloco}}</button>
-          <button class="molv-btn molv-btn-pink" [disabled]="!selectedBookmarkId" (click)="goToBookmark()">{{'go' |
-            transloco}}</button>
-        </div>
 
-        <!-- button to download tab-->
-        <div class="setting-left">
-          <div class="setting-label">
-            <molv-dropdown [(value)]="dwnldMod" [options]="[
-            { value: 'mhtml', label: 'MHTML' },
-            { value: 'zip', label: 'ZIP' }
-            ]">
-            </molv-dropdown>
+          <div class="settings-section">
+
+            <!-- other settings -->
+            <div class="setting-right">
+              <span class="setting-label">{{'gap' | transloco}}:</span>
+              <molv-slider [min]="0" [max]="100" [step]="1" [(value)]="gap"></molv-slider>
+            </div>
+
+            <div class="setting-right">
+              <span class="setting-label">{{ 'diagnosticLogging' | transloco }}:</span>
+              <molv-switch [(checked)]="isDebug"></molv-switch>
+            </div>
+
           </div>
-          <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">{{'download' | transloco}}</button>
-        </div>
-      </div>
 
-      <div class="setting-left-group">
-        <div class="setting-left">
-        <span class="setting-label">{{ 'diagnosticLogging' | transloco }}:</span>
-        <molv-switch [(checked)]="isDebug"></molv-switch>
-      </div>
-      </div>
-    </div>
-    }
-    @else {
-    <div class="controls bookmarks-list">
-      @for (bm of bookmarks; track $index) {
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <molv-textbox [(value)]="bm.title!" placeholder="{{'bookmarkTitle' | transloco}}"
-          [isEditMode]="isEditing(bm)"></molv-textbox>
-        @if(isEditing(bm)) {
-        <button class="molv-btn molv-btn-green" (click)="saveBookmarkEdit(bm)">
-          {{'save' | transloco}}
-        </button>
-        <button class="molv-btn molv-btn-pink" (click)="cancelBookmarkEdit(bm)">
-          {{'cancel' | transloco}}
-        </button>
+        </div>
         }
-        @else {
-        <button class="molv-btn molv-btn-orange" (click)="startEditBookmark(bm)">
-          {{'edit' | transloco}}
-        </button>
-        <button class="molv-btn-small-remove" (click)="deleteBookmark(bm)">
-          <img src="assets/icons/molv-close.svg" class="molv-close-icon">
-        </button>
+        @else
+        {
+        <div class="controls bookmarks-list">
+
+          @for (bm of bookmarks; track $index)
+          {
+          <div class="bookmark-row">
+
+            <molv-textbox [(value)]="bm.title!" placeholder="{{'bookmarkTitle' | transloco}}"
+              [isEditMode]="isEditing(bm)">
+            </molv-textbox>
+
+            @if(isEditing(bm))
+            {
+            <button class="molv-btn molv-btn-green" (click)="saveBookmarkEdit(bm)">
+              {{'save' | transloco}}
+            </button>
+
+            <button class="molv-btn molv-btn-pink" (click)="cancelBookmarkEdit(bm)">
+              {{'cancel' | transloco}}
+            </button>
+            }
+            @else
+            {
+            <button class="molv-btn molv-btn-orange" (click)="startEditBookmark(bm)">
+              {{'edit' | transloco}}
+            </button>
+
+            <button class="molv-btn-small-remove" (click)="deleteBookmark(bm)">
+              <img src="assets/icons/molv-close.svg" class="molv-close-icon">
+            </button>
+            }
+
+          </div>
+          }
+
+        </div>
         }
+
       </div>
-      }
+
     </div>
-    }
+
   </div>
+
 </app-window>

@@ -1,11 +1,47 @@
-.window-backdrop {   transition: height 0.3s ease, transform 0.3s ease; position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.window { position: absolute;   background: linear-gradient( 160deg, rgba(25, 26, 60, 0.95), rgba(15, 16, 40, 0.95) ); border: 1px solid rgba(255, 140, 220, 0.35); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; }
-.window.collapsed {height: 40px !important; }
-.window-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #222; font-weight: bold; }
-.window-controls button { background: transparent; border: none; color: #fff; font-size: 16px; cursor: pointer; margin-left: 4px; }
-.window-content { transition: opacity 0.3s ease; flex: 1; padding: 12px; overflow: auto; }
-.window.collapsed .window-content { opacity: 0;  pointer-events: none;}
-.window.transparent {  opacity: 0.25;  backdrop-filter: blur(2px);}
+.window-backdrop { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(10,13,22,.55); backdrop-filter:blur(6px); z-index:1000; transition:background .18s,backdrop-filter .18s; }
 
-.backdrop-disabled {    background: transparent !important;  pointer-events: none;     }
-.backdrop-disabled .window {  pointer-events: auto;}
+.window { position:absolute; display:flex; flex-direction:column; overflow:hidden; background:#171b2d; border:1px solid #2d3550; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.03); }
+
+.window::before { content:""; position:absolute; left:0; right:0; top:0; height:2px; background:linear-gradient(90deg,#ff73b8,#ff9dcf); pointer-events:none; }
+
+.window.collapsed { height:44px !important; }
+
+.window-header { display:flex; align-items:center; justify-content:space-between; height:44px; padding:0 14px; background:#20263a; border-bottom:1px solid #2d3550; flex-shrink:0; }
+
+.window-title { color:#eef2ff; font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.window-controls { display:flex; align-items:center; gap:4px; }
+
+.window-controls button { display:flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:none; border-radius:8px; background:transparent; color:#c5cada; cursor:pointer; transition:background .15s,color .15s,opacity .15s; }
+
+.window-controls button:hover:not(:disabled) { background:#2d3550; color:#fff; }
+
+.window-controls button:disabled { opacity:.5; cursor:not-allowed; }
+
+.window-controls button img { width:11px; height:11px; }
+
+.window-content { flex:1; padding:16px; overflow:auto; background:#171b2d; }
+
+.window.collapsed .window-content { display:none; }
+
+.window.transparent { opacity:.45; }
+
+.backdrop-disabled { background:transparent !important; backdrop-filter:none !important; pointer-events:none; }
+
+.backdrop-disabled .window { pointer-events:auto; }
+
+@media (max-width:900px) {
+.window { border-radius:10px; }
+.window-header { height:42px; padding:0 12px; }
+.window-title { font-size:14px; }
+.window-content { padding:14px; }
+}
+
+@media (max-width:600px) {
+.window { width:calc(100vw - 24px) !important; max-width:none !important; max-height:calc(100dvh - 24px) !important; border-radius:10px; }
+.window-header { height:40px; padding:0 10px; }
+.window-title { font-size:14px; }
+.window-controls button { width:26px; height:26px; border-radius:7px; }
+.window-controls button img { width:10px; height:10px; }
+.window-content { padding:12px; }
+}

@@ -1,23 +1,58 @@
-.controls {  display: flex;  flex-direction: column;  gap: 20px;  padding: 15px;}
+.settings-body { display:flex; flex-direction:column; flex:1; min-height:0; }
 
-.setting-left {  display: flex;  align-items: center;  gap: 30%;}
-.setting-right {  display: flex;  justify-content: space-between;  align-items: center;  gap: 15px;}
-.setting-label {  font-weight: 500;  min-width: 100px;}
+.settings-workspace { flex:1; min-height:0; background:#171b2d; border:1px solid #2a3148; border-radius:0 12px 12px 12px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.22); }
 
-.setting-left-group {  border-top: 1px solid #ccc;   display: flex;  flex-direction: column;  gap: 8px;  padding-top: 10px;}
-.setting-left-group .setting-left {  display: flex;  align-items: center;  gap: 4px; }
+.tab-content { height:100%; overflow:auto; padding:14px; box-sizing:border-box; }
 
-.tab-content {  height: calc(100% - 48px);   overflow-y: auto;  padding: 10px;  box-sizing: border-box;}
-.bookmarks-list {  display: flex;  flex-direction: column;  gap: 10px;}
+.controls { display:flex; flex-direction:column; gap:18px; }
 
-molv-slider {  flex: 1;  max-width: 200px;}
+.settings-section { display:flex; flex-direction:column; gap:14px; padding:16px; background:#20263a; border:1px solid #343c56; border-radius:10px; }
 
-/* Reading mode selector: 2x2 grid of mutually exclusive mode buttons */
-.setting-label + .reading-mode-grid { margin-top: 6px; }
-.reading-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.reading-mode-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; box-sizing: border-box; font-size: 14px; opacity: 0.75; box-shadow: none; transform: scale(1); }
-.reading-mode-btn:hover { opacity: 0.92; }
-.reading-mode-btn.active { opacity: 1; box-shadow: 0 0 10px rgba(255, 90, 130, 0.6); transform: scale(1.03); }
-.reading-mode-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reading-mode-section { display:flex; flex-direction:column; gap:14px; padding:16px; background:#20263a; border:1px solid #343c56; border-radius:10px; }
 
-@media (max-width: 480px) { .reading-mode-text { display: none; } }
+.setting-left-group { display:flex; flex-direction:column; gap:12px; padding:16px; background:#20263a; border:1px solid #343c56; border-radius:10px; }
+
+.setting-label { color:#c5cada; font-size:14px; font-weight:500; }
+
+.setting-right { display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:center; }
+
+.setting-right > molv-slider,
+.setting-right > molv-switch { justify-self:start; }
+
+.setting-row-two { display:grid; grid-template-columns:120px 1fr; gap:10px; align-items:center; }
+
+.setting-row-three { display:grid; grid-template-columns:120px 1fr auto; gap:10px; align-items:center; }
+
+.reading-mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+
+.reading-mode-btn { width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+.reading-mode-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.bookmarks-list { display:flex; flex-direction:column; gap:10px; }
+
+.bookmark-row { display:flex; align-items:center; gap:8px; }
+
+.bookmark-row molv-textbox { flex:1; }
+
+molv-slider { width:220px; }
+
+@media (max-width:700px) {
+.setting-right { grid-template-columns:1fr; }
+.setting-right > molv-slider,
+.setting-right > molv-switch { justify-self:stretch; }
+molv-slider { width:100%; }
+.setting-row-two { grid-template-columns:1fr; }
+.setting-row-three { grid-template-columns:1fr; }
+.reading-mode-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width:480px) {
+.settings-workspace { border-radius:0; border-left:none; border-right:none; border-bottom:none; }
+.tab-content { padding:10px; }
+.controls { gap:14px; }
+.settings-section { padding:12px; }
+.reading-mode-section { padding:12px; }
+.setting-left-group { padding:12px; }
+.reading-mode-text { display:none; }
+}

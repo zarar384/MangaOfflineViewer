@@ -3,6 +3,7 @@
 .molv-settings-icon { width:clamp(16px,1.8vw,20px); height:clamp(16px,1.8vw,20px); object-fit:contain; flex:0 0 auto; }
 .molv-close-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 .molv-bookmark-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
+.molv-more-icon { width:clamp(12px,1.4vw,16px); height:clamp(12px,1.4vw,16px); object-fit:contain; flex:0 0 auto; }
 
 /* reader settings icons */
 .scroll-mode-icon { width:clamp(26px,3vw,32px); height:clamp(26px,3vw,32px); object-fit:contain; flex:0 0 auto; }
@@ -16,6 +17,7 @@
     .molv-settings-icon { width:18px; height:18px; }
     .molv-close-icon { width:14px; height:14px; }
     .molv-bookmark-icon { width:14px; height:14px; }
+    .molv-more-icon { width:14px; height:14px; }
 
     /* reader settings icons */
     .scroll-mode-icon { width:24px; height:24px; }

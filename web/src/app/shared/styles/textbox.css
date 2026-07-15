@@ -1,55 +1,27 @@
-.molv-txtbx {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 2px solid #ffb3c9;
-  background: #fff0f6;
+.molv-txtbx { width:220px; height:44px; padding:0 14px; border:2px solid #2d3550; border-radius:7px; background:#1c2233; color:#eef2ff; font-size:15px; font-weight:500; line-height:40px; outline:none; box-sizing:border-box; caret-color:#ff73b8; transition:background .15s,border-color .15s,color .15s; }
 
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 1px;
+.molv-txtbx::placeholder { color:#7f89a8; opacity:1; }
 
-  color: #2a0f1c;
+.molv-txtbx:hover { background:#20283c; border-color:#46506f; }
 
-  outline: none;
-  transition: all 0.25s ease;
-  box-sizing: border-box;
+.molv-txtbx:focus { background:#232b40; border-color:#ff73b8; }
 
-  box-shadow: inset 0 0 6px rgba(255,170,190,0.35),
-              0 2px 6px rgba(0,0,0,0.08);
+.molv-txtbx:disabled { background:#171c2b; border-color:#2a3148; color:#6c7694; cursor:not-allowed; }
 
-  width: 220px;
+.molv-txtbx:disabled::placeholder { color:#58617b; }
+
+.molv-txtbx-large { width:100%; }
+
+.ghost-text { position:absolute; top:50%; left:0; transform:translateY(-50%); pointer-events:none; display:flex; align-items:center; font:inherit; line-height:inherit; letter-spacing:inherit; white-space:nowrap; }
+
+.ghost-text .typed { visibility:hidden; }
+
+.ghost-text .hint { color:rgba(127,137,168,.45); }
+
+/* @media (max-width:900px) {
+.molv-txtbx { width:200px; height:42px; font-size:14px; }
+} */
+
+@media (max-width:600px) {
+.molv-txtbx { width:100%; height:40px; padding:0 12px; font-size:14px; border-radius:6px; }
 }
-
-.molv-txtbx::placeholder {
-  color: #7a3a52;
-  opacity: 0.8;
-}
-
-.molv-txtbx:hover {
-  background: #ffe4ee;
-  border-color: #ff8fb3;
-}
-
-.molv-txtbx:focus {
-  background: #ffe1eb;
-  border-color: #ff6f9e;
-  box-shadow:
-    0 0 8px rgba(255, 120, 170, 0.7),
-    inset 0 0 6px rgba(255, 150, 180, 0.4);
-  transform: scale(1.02);
-}
-
-.molv-txtbx-large {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-
-/* ghost text suggestion */
-.ghost-text { position: absolute; top: 50%; left: 0; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center; font: inherit; padding-left: 0; white-space: nowrap; }
-
-/* typed text (invisible but occupies space) */
-.ghost-text .typed { visibility: hidden; }
-
-/* hint */
-.ghost-text .hint { color: rgba(255, 214, 232, 0.4); }

@@ -1,10 +1,12 @@
 {
+    "open": "Open",
     "diagnosticLogging": "Diagnostic Logging",
     "home": "Home",
     "description": "Description",
     "title": "Title",
     "change": "Change",
     "uploadFiles": "Upload Files",
+    "upload": "Upload",
     "settingsMangas": "Settings Mangas",
     "settings": "Settings",
     "readSettings": "Reader Settings",

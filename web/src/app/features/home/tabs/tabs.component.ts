@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter,  Output,  inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Output, QueryList, ViewChildren, inject, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Tab } from '../../../core/models/tab.model';
 import { LoadingService } from '../../../core/services/loading.service';
@@ -21,10 +21,31 @@ export class TabsComponent {
   @Output() mangaSelected = new EventEmitter<number>();
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
 
+  @ViewChildren('menu')
+  menus!: QueryList<ElementRef<HTMLElement>>;
+
   tabs = this.tabsService.tabsState;
 
   // expose enum to template
   isSingle = ViewMod.Single;
+
+  // track opened menu for each card
+  openedMenuId = signal<number | null>(null);
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+
+    const target = event.target as Node;
+
+    const clickedInsideMenu =
+      this.menus?.some(menu =>
+        menu.nativeElement.contains(target)
+      );
+
+    if (!clickedInsideMenu) {
+      this.openedMenuId.set(null);
+    }
+  }
 
   async remove(id: number) {
     try {
@@ -44,5 +65,10 @@ export class TabsComponent {
 
   openEditWindow(tab: Tab) {
     this.mangaToEditSelected.emit(tab);
+  }
+
+  // toggle menu for each card
+  toggleMenu(id: number) {
+    this.openedMenuId.update(current => current === id ? null : id);
   }
 }

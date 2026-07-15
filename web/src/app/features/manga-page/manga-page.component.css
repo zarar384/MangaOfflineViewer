@@ -14,4 +14,4 @@
 
 /* ADAPT */
 @media (max-width: 1024px) { .info { width: 50%; } }
-@media (max-width: 640px) { .manga-header { flex-direction: column; align-items: center; } .cover img { width: 180px; } .info { width: 100%; } }
+@media (max-width: 600px) { .manga-header { flex-direction: column; align-items: center; } .cover img { width: 180px; } .info { width: 100%; } }

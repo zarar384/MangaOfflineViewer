@@ -1,124 +1,40 @@
-.meta-root {
-  margin-top: 16px;
+.meta-root { margin-top:18px; }
+
+.meta-label { margin-bottom:10px; color:#c5cada; font-size:14px; font-weight:500; }
+
+.meta-hint { margin-top:8px; color:#8d97b8; font-size:12px; }
+
+.meta-items { display:flex; flex-wrap:wrap; gap:8px; }
+
+.meta-chip { display:flex; align-items:center; min-height:28px; padding:0 12px; background:#20263a; border:1px solid #343c56; border-radius:999px; color:#d7deef; font-size:13px; font-weight:500; cursor:default; user-select:none; }
+
+.meta-chip::before { content:"#"; margin-right:5px; color:#ff73b8; font-weight:700; }
+
+.meta-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+
+.meta-suggestion { display:inline-flex; align-items:center; justify-content:center; min-height:32px; padding:0 12px; background:#20263a; border:1px solid #343c56; border-radius:8px; color:#c8d0e7; font-size:13px; font-weight:500; cursor:pointer; transition:background .18s,border-color .18s,color .18s,box-shadow .18s; }
+
+.meta-suggestion:hover { background:#2d3550; border-color:#ff73b8; color:#fff; box-shadow:0 0 0 1px rgba(255,115,184,.18); }
+
+.meta-input-wrapper { position:relative; }
+
+.meta-input-wrapper input,.meta-input-wrapper textarea { position:relative; z-index:1; }
+
+/* keep the textarea single-line so it can never wrap out of sync with the ghost overlay above it */
+.meta-input-wrapper textarea.meta-textarea { white-space:pre; overflow-x:auto; overflow-y:hidden; resize:none; }
+
+.meta-input-wrapper .ghost-text { position:absolute; top:2px; left:14px; right:14px; height:40px; display:flex; align-items:center; pointer-events:none; white-space:nowrap; overflow:hidden; z-index:2; font-size:15px; font-weight:500; line-height:40px; letter-spacing:normal; font-family:inherit; box-sizing:border-box; }
+
+.meta-input-wrapper .ghost-text .typed { visibility:hidden; }
+
+.meta-input-wrapper .ghost-text .invisible { visibility:hidden; }
+
+.meta-input-wrapper .ghost-text .hint { color:rgba(141,151,184,.45); }
+
+@media (max-width:900px) {
+.meta-input-wrapper .ghost-text { height:38px; font-size:14px; line-height:38px; }
 }
 
-.meta-label {
-  margin-bottom: 8px;
-
-  font-size: 18px;
-  font-weight: 700;
-
-  color: #ffd6e8;
-}
-
-.meta-hint {
-  margin-top: 6px;
-
-  font-size: 14px;
-
-  color: rgba(255,255,255,0.6);
-}
-
-.meta-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.meta-chip {
-  padding: 6px 10px;
-
-  border-radius: 8px;
-
-  background: rgba(255,255,255,0.08);
-
-  border: 1px solid rgba(255,255,255,0.12);
-
-  color: #fff;
-
-  font-size: 16px;
-  font-weight: 700;
-
-  backdrop-filter: blur(4px);
-}
-
-.meta-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  margin-top: 10px;
-}
-
-.meta-suggestion {
-  padding: 6px 10px;
-
-  border: none;
-  border-radius: 8px;
-
-  cursor: pointer;
-
-  background: linear-gradient(90deg, #ff7eb3, #ff758c);
-
-  color: #fff;
-
-  font-size: 14px;
-  font-weight: 700;
-
-  transition: all 0.2s ease;
-}
-
-.meta-suggestion:hover {
-  opacity: 0.92;
-}
-
-.meta-input-wrapper {
-  position: relative;
-
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.meta-input-wrapper input {
-  position: relative;
-  z-index: 1;
-}
-
-.meta-input-wrapper .ghost-text {
-  position: absolute;
-
-  top: 50%;
-  left: 16px;
-  right: 16px;
-
-  transform: translateY(-50%);
-
-  display: flex;
-  align-items: center;
-
-  pointer-events: none;
-
-  white-space: nowrap;
-
-  z-index: 2;
-
-  font: inherit;
-  letter-spacing: inherit;
-  line-height: inherit;
-
-  overflow: hidden;
-}
-
-.meta-input-wrapper .ghost-text .typed {
-  visibility: hidden;
-}
-
-.meta-input-wrapper .ghost-text .invisible {
-  visibility: hidden;
-}
-
-/* ghost suggestion */
-.meta-input-wrapper .ghost-text .hint {
-  color: rgba(255, 111, 158, 0.55);
+@media (max-width:600px) {
+.meta-input-wrapper .ghost-text { left:12px; right:12px; height:36px; font-size:14px; line-height:36px; }
 }

@@ -35,6 +35,9 @@ export class MolvMetaInputComponent implements OnChanges {
   // hide suggestions after ;
   isSeparatorMode = signal(false);
 
+  // keeps the ghost overlay aligned with the textarea when text scrolls horizontally
+  ghostScrollOffset = signal(0);
+
   ngOnChanges(changes: SimpleChanges) {
 
   this.suggestion.set(
@@ -49,6 +52,7 @@ export class MolvMetaInputComponent implements OnChanges {
 
     setTimeout(() => {
       this.resizeTextarea();
+      this.onScroll();
     });
   }
 }
@@ -72,7 +76,22 @@ export class MolvMetaInputComponent implements OnChanges {
       this.suggestion.set(
         this.getSuggestion(this.value)
       );
+
+      // wait for the browser to actually scroll the textarea before reading scrollLeft
+      this.onScroll();
     });
+  }
+
+  // keeps ghost overlay in sync when the textarea scrolls horizontally (nowrap + overflow-x)
+  onScroll() {
+
+    if (!this.textareaRef) {
+      return;
+    }
+
+    this.ghostScrollOffset.set(
+      this.textareaRef.nativeElement.scrollLeft
+    );
   }
 
   // desktop TAB support
@@ -117,6 +136,8 @@ export class MolvMetaInputComponent implements OnChanges {
     this.valueChange.emit(newValue);
 
     this.suggestionSelected.emit(value);
+
+    setTimeout(() => this.onScroll());
   }
 
   shouldShowSuggestions(): boolean {
@@ -175,6 +196,8 @@ export class MolvMetaInputComponent implements OnChanges {
     this.isSeparatorMode.set(true);
 
     this.valueChange.emit(newValue);
+
+    setTimeout(() => this.onScroll());
   }
 
   private resizeTextarea() {

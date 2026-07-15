@@ -1,29 +1,69 @@
 <div class="grid">
     @for (tabData of tabs(); track tabData.tab.id) {
     <div class="card" (click)="openChapterInTab(tabData)">
+
         <div class="header">
             <!-- Edit (only single view mode) -->
-            @if (tabData.tab.mode == isSingle) {
-            <button class="molv-btn-small-remove"
-                (click)="openEditWindow(tabData.tab); $event.stopPropagation()">
-                <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
+            @if (tabData.tab.mode != isSingle) {
+
+            <button class="molv-card-action" (click)="remove(tabData.tab.id!); $event.stopPropagation()">
+
+                <img src="assets/icons/molv-close.svg" class="molv-close-icon">
+
             </button>
+
+            }
+            <!-- Edit and Delete -->
+            @else {
+
+            <div class="card-menu-wrapper">
+
+                <button class="molv-card-action" (click)="toggleMenu(tabData.tab.id!); $event.stopPropagation()">
+
+                    <img src="assets/icons/molv-more.svg" class="molv-more-icon">
+
+                </button>
+
+                @if (openedMenuId() === tabData.tab.id) {
+
+                <div #menu class="card-menu" (click)="$event.stopPropagation()">
+
+                    <button class="card-menu-item"
+                        (click)="openEditWindow(tabData.tab); openedMenuId.set(null); $event.stopPropagation()">
+
+                        <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
+                        {{ 'edit' | transloco }}
+
+                    </button>
+
+                    <button class="card-menu-item danger"
+                        (click)="remove(tabData.tab.id!); openedMenuId.set(null); $event.stopPropagation()">
+
+                        <img src="assets/icons/molv-close.svg" class="molv-close-icon">
+                        {{ 'delete' | transloco }}
+
+                    </button>
+
+                </div>
+
+                }
+
+            </div>
+
             }
 
-            <!-- Delete -->
-            <button class="molv-btn-small-remove"
-                (click)="remove(tabData.tab.id!); $event.stopPropagation()">
-                <img src="assets/icons/molv-close.svg" class="molv-close-icon">
-            </button>
         </div>
+
         <div class="cover" [style.backgroundImage]="'url(' + tabData.previewUrl + ')'">
             <div class="cover-overlay">
                 <div class="title">{{ tabData.tab.name }}</div>
             </div>
         </div>
+
         <div class="meta">
-            <div class="meta-actions">{{ 'read' | transloco }} →</div>
+            <div class="meta-actions">{{ tabData.tab.mode == isSingle ? 'read' : 'open' | transloco }} →</div>
         </div>
+
     </div>
     }
 </div>

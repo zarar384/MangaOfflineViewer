@@ -24,15 +24,9 @@
     <!-- ghost suggestion -->
     @if (suggestion()) {
 
-    <div class="ghost-text">
+    <div class="ghost-text" [style.transform]="'translateX(-' + ghostScrollOffset() + 'px)'">
 
-      <span class="typed">
-        {{ value }}
-      </span>
-
-      <span class="hint">
-        {{ suggestion() }}
-      </span>
+      <span class="typed">{{ value }}</span><span class="hint">{{ suggestion() }}</span>
 
     </div>
 
@@ -42,11 +36,13 @@
     <textarea
       #textareaRef
       rows="1"
+      wrap="off"
       class="molv-txtbx molv-txtbx-large meta-textarea"
       [ngModel]="value"
       (ngModelChange)="onInput($event)"
       (keydown)="onKeyDown($event)"
       (click)="onClick()"
+      (scroll)="onScroll()"
       [placeholder]="placeholder">
     </textarea>
 
