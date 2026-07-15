@@ -1,10 +1,12 @@
 {
+    "open": "Abrir",
     "diagnosticLogging": "Logs de diagnóstico",
     "home": "Inicio",
     "description": "Descripción",
     "title": "Título",
     "change": "Cambiar",
     "uploadFiles": "Subir archivos",
+    "upload": "Subir",
     "settingsMangas": "Configuración de mangas",
     "readSettings": "Configuración del lector",
     "readingMode": "Modo de lectura",

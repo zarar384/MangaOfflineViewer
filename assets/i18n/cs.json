@@ -1,10 +1,12 @@
 {
+    "open": "Otevřít",
     "diagnosticLogging": "Logování do konzole",
     "home": "Domů",
     "description": "Popis",
     "title": "Název",
     "change": "Změnit",
     "uploadFiles": "Nahrát soubory",
+    "upload": "Nahrát",
     "settingsMangas": "Nastavení mang",
     "readSettings": "Nastavení čtení",
     "readingMode": "Režim čtení",
