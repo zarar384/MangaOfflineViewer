@@ -156,6 +156,13 @@ export class UiStateService {
     this.saveState({ sidebarVisible: value });
   }
 
+  toggleSidebar() {
+    const value = !this.sidebarVisibleSignal();
+
+    this.sidebarVisibleSignal.set(value);
+    this.saveState({ sidebarVisible: value });
+  }
+
   // SETTINGS WINDOW
   setSettingsWindow(value: boolean) {
     this.settingsWindowSignal.set(value);

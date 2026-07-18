@@ -5,6 +5,7 @@ import { Tab } from '../../../core/models/tab.model';
 import { LoadingService } from '../../../core/services/loading.service';
 import { TabsService } from '../../../core/services/tabs.service';
 import { ViewMod } from 'src/app/shared/enums/viewmod.enum';
+import { StorageInfoService } from 'src/app/core/services/storage-info.service';
 
 @Component({
   selector: 'tabs',
@@ -17,6 +18,7 @@ export class TabsComponent {
 
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
+  private storageInfo = inject(StorageInfoService);
 
   @Output() mangaSelected = new EventEmitter<number>();
   @Output() mangaToEditSelected = new EventEmitter<Tab>();
@@ -51,6 +53,7 @@ export class TabsComponent {
     try {
       this.loading.show();
       await this.tabsService.removeTab(id);
+      await this.storageInfo.refresh();
     } finally {
       this.loading.hide();
     }

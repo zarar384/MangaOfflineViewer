@@ -311,7 +311,7 @@ export class TabsService {
   async removeTab(id: number) {
     await this.repo.delete(id);
     await this.userTabsRepo.delete(id);
-    this.load(this.page(), this.perPage());
+    await this.refresh();
   }
 
   async refresh() {

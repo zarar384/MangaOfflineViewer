@@ -14,6 +14,7 @@ import { LoadingService } from "../../../core/services/loading.service";
 import { Chapter } from "../../../core/models/chapter.model";
 import { TranslocoPipe } from "@jsverse/transloco";
 import { LanguageService } from "src/app/core/services/language.service";
+import { StorageInfoService } from "src/app/core/services/storage-info.service";
 
 @Component({
   selector: 'edit-tab-window',
@@ -40,7 +41,7 @@ export class EditTabWindowComponent implements OnChanges {
     private pagesRepo: PagesRepository,
     private tabService: TabsService,
     private loading: LoadingService,
-    private langService: LanguageService
+    private langService: LanguageService,
   ) { }
 
   async ngOnChanges(changes: SimpleChanges) {

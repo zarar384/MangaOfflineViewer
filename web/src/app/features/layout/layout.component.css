@@ -4,7 +4,7 @@
 
 .workspace { display:flex; width:100%; height:100%; min-width:0; min-height:0; background:#171b2d; border:1px solid #2a3148; border-radius:0 12px 12px 12px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.28); }
 
-.sidebar { position:relative; flex:0 0 250px; width:250px; min-width:250px; max-width:250px; }
+.sidebar { position:relative; flex:0 0 250px; width:250px; min-width:250px; max-width:250px; background:#171b2d; }
 
 .sidebar::after { content:""; position:absolute; top:10px; bottom:10px; right:0; width:1px; background:linear-gradient(to bottom,rgba(42,49,72,0),rgba(42,49,72,.7) 15%,rgba(42,49,72,1) 50%,rgba(42,49,72,.7) 85%,rgba(42,49,72,0)); }
 
@@ -12,6 +12,8 @@
 
 .content.reader-active { overflow:hidden; padding:0; }
 
+.sidebar-backdrop { display:none; }
+
 @media (max-width:900px) { .body { padding:0 8px 8px; } .sidebar { flex:0 0 220px; width:220px; min-width:220px; max-width:220px; } }
 
-@media (max-width:700px) { .body { padding:0; } .workspace { border-radius:0; border-left:none; border-right:none; border-bottom:none; } .sidebar { position:fixed; top:52px; left:0; bottom:0; width:260px; min-width:260px; max-width:260px; z-index:1000; transform:translateX(-100%); transition:transform .2s ease; background:#171b2d; } .sidebar.open { transform:translateX(0); } }
+@media (max-width:700px) { .body { padding:0; } .workspace { border-radius:0; border-left:none; border-right:none; border-bottom:none; } .sidebar { position:fixed; top:52px; left:0; bottom:0; width:min(280px,85vw); min-width:unset; max-width:none; z-index:1001; transform:translateX(-100%); transition:transform .22s ease; box-shadow:8px 0 28px rgba(0,0,0,.45); } .sidebar.open { transform:translateX(0); } .sidebar::after { display:none; } .sidebar-backdrop { position:fixed; inset:52px 0 0; display:block; background:rgba(0,0,0,.45); backdrop-filter:blur(2px); opacity:0; pointer-events:none; transition:opacity .22s ease; z-index:1000; } .sidebar.open + .sidebar-backdrop, .sidebar-backdrop.open { opacity:1; pointer-events:auto; } }

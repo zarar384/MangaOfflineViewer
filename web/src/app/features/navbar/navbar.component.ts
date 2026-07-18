@@ -74,8 +74,7 @@ export class NavbarComponent {
   }
 
   changeSidebarVisible() {
-    const currentValue = this.uiState.sidebarVisible();
-    this.uiState.setSidebarVisible(!currentValue);
+    this.uiState.toggleSidebar();
   }
 
   // Getters for template

@@ -1,0 +1,15 @@
+.storage-widget { margin:12px; margin-top:auto; padding:14px; background:#20263a; border:1px solid #343c56; border-radius:10px; display:flex; flex-direction:column; gap:10px; }
+
+.storage-title { color:#d8dff3; font-size:14px; font-weight:600; }
+
+.storage-bar { height:8px; background:#171b2d; border:1px solid #343c56; border-radius:999px; overflow:hidden; }
+
+.storage-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#ff73b8,#ff9ccf); transition:width .25s ease; }
+
+.storage-info { display:flex; justify-content:space-between; color:#9aa5c7; font-size:12px; }
+
+@media (min-width:700px) and (max-width:1200px) {
+    .storage-widget {
+        margin-bottom:110px;
+    }
+}

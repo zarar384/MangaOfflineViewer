@@ -1,0 +1,9 @@
+.sidebar { display:flex; flex-direction:column; height:100%; padding:12px; gap:12px; box-sizing:border-box; }
+
+.sidebar-menu { flex:1; min-height:0; overflow:auto; }
+
+.sidebar-divider { flex:0 0 1px; background:linear-gradient(to right, rgba(42,49,72,0), rgba(42,49,72,.9) 15%, rgba(42,49,72,1) 50%, rgba(42,49,72,.9) 85%, rgba(42,49,72,0)); }
+
+app-storage-widget { display:block; margin-top:auto; }
+
+@media (max-width:700px) { app-storage-widget { margin-bottom:88px; } }

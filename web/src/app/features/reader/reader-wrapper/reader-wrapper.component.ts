@@ -14,10 +14,10 @@ import { ReadingMode } from '../engine/interfaces/reader-settings.interface';
   selector: 'app-manga-reader',
   standalone: true,
   imports: [ReaderComponent, ReaderSettingsWindowComponent, CommonModule],
-  templateUrl: './reader-wrapper.comoponent.html',
-  styleUrl: './reader-wrapper.comoponent.css'
+  templateUrl: './reader-wrapper.component.html',
+  styleUrl: './reader-wrapper.component.css'
 })
-export class ReaderWrapperComoponent implements OnInit {
+export class ReaderWrapperComponent implements OnInit {
 
   @Input() activeManga: number | null = null;
 

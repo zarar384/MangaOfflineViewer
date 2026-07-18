@@ -14,6 +14,7 @@ import { TabsService } from '../../../core/services/tabs.service';
 import { isIOS } from '../../utils/constants';
 import { Chapter } from '../../../core/models/chapter.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
+import { StorageInfoService } from 'src/app/core/services/storage-info.service';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -39,7 +40,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   private mhtmlService = inject(MhtmlExtractorService);
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
-
+  private storageInfo = inject(StorageInfoService);
+  
   // subs
   private saveSub?: Subscription;
   private clearSub?: Subscription;
@@ -101,6 +103,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       tap(() => {
         this.tabsService.refresh();
       }),
+      switchMap(() => from(this.storageInfo.refresh())), // promise to observable and wait for it to complete before finalizing
       finalize(() => {
         this.loading.hide();
         this.clearAll();
@@ -187,10 +190,46 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
     let index = 0;
     for (const src of imgs) {
-      const blob = await fetch(src).then(r => r.blob());
-      await this.addBlobImage(blob, this.generateName(file.name, `${index}`));
-      this.progress.set(calculateProgress(85, 100, index++, imgs.length));
-      await sleepIfNeeded();
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // token to abort fetch after 5 seconds
+
+      try {
+        const response = await fetch(src, {
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        await this.addBlobImage(
+          blob,
+          this.generateName(file.name, `${index}`)
+        );
+      }
+      catch (error) {
+        console.warn(
+          `Failed to import image ${index + 1}/${imgs.length}`,
+          {
+            src,
+            error
+          }
+        );
+      }
+      finally {
+        clearTimeout(timeout);
+
+        this.progress.set(
+          calculateProgress(85, 100, index + 1, imgs.length)
+        );
+
+        index++;
+
+        await sleepIfNeeded();
+      }
     }
   }
 

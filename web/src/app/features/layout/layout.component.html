@@ -10,12 +10,15 @@
   <div class="body">
 
     <div class="workspace">
-
-      @if(sidebarVisible())
+    
+      @if(sidebarVisible() && viewMode === ViewMod.Home)
       {
-        <aside class="sidebar">
-
-        </aside>
+      <aside class="sidebar" [class.open]="sidebarVisible()">
+        <app-sidebar></app-sidebar>
+      </aside>
+    
+      <div class="sidebar-backdrop" [class.open]="sidebarVisible()" (click)="changeSidebarVisible()">
+      </div>
       }
 
       <main class="content" [class.reader-active]="viewMode === ViewMod.Single">

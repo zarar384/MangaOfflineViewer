@@ -42,9 +42,6 @@ molv-slider { width:220px; }
 .setting-right > molv-slider,
 .setting-right > molv-switch { justify-self:stretch; }
 molv-slider { width:100%; }
-.setting-row-two { grid-template-columns:1fr; }
-.setting-row-three { grid-template-columns:1fr; }
-.reading-mode-grid { grid-template-columns:1fr; }
 }
 
 @media (max-width:480px) {

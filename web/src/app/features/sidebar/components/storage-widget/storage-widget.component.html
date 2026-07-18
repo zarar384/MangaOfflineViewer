@@ -1,0 +1,18 @@
+<div class="storage-widget">
+
+    <div class="storage-title">
+        {{ 'storage' | transloco }}
+    </div>
+
+    <div class="storage-bar">
+        <div
+            class="storage-fill"
+            [style.width.%]="storage.usedPercent()">
+        </div>
+    </div>
+
+    <div class="storage-info">
+        <span>{{ storage.usedText() }}</span>
+        <span>{{ storage.totalText() }}</span>
+    </div>
+</div>
