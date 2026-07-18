@@ -1,4 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
+import { FileFormat } from 'src/app/shared/enums/file-format';
 import { ReaderSettingsWindowComponent } from '../../windows/reader-settings-window/reader-settings-window.component';
 import { CommonModule } from '@angular/common';
 import { ReaderComponent } from '../reader-component/reader.component';
@@ -23,7 +24,7 @@ export class ReaderWrapperComponent implements OnInit {
 
   gap = 0.5;
   mode: ReadingMode = 'scroll';
-  downloadMod: 'mhtml' | 'zip' = 'mhtml';
+  downloadMod: FileFormat = FileFormat.MHTML;
 
   get showSettingsWindow() {
     return this.uiState.readerSettingsWindow();
@@ -43,7 +44,7 @@ export class ReaderWrapperComponent implements OnInit {
     // Restore reader UI settings from last session.
     this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
     this.mode = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
-    this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
+    this.downloadMod = this.uiState.getValue<FileFormat>('downloadMod') || FileFormat.MHTML;
 
     // Apply restored settings right away so reader opens in the same state.
     this.reader.setSettings({ gap: this.gap, mode: this.mode });
@@ -62,7 +63,7 @@ export class ReaderWrapperComponent implements OnInit {
     this.uiState.setReaderSettingsWindow(false);
   }
 
-  async onExportButtonClicked(format: 'mhtml' | 'zip') {
+  async onExportButtonClicked(format: FileFormat) {
     if (this.activeManga === null) return;
 
     try {

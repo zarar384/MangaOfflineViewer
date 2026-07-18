@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, signal, inject, OnChanges, SimpleChanges, OnInit, OnDestroy } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import * as JSZip from 'jszip';
 import { calculateProgress, generateId, getImageSize, numericNameSort, sleepIfNeeded } from '../../utils/file-parsing';
 import { Tab } from '../../../core/models/tab.model';
 import { TabsRepository } from '../../../core/repositories/tabs.repository';
@@ -15,6 +14,7 @@ import { isIOS } from '../../utils/constants';
 import { Chapter } from '../../../core/models/chapter.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { StorageInfoService } from 'src/app/core/services/storage-info.service';
+import { unzipSync } from 'fflate';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -41,7 +41,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   private tabsService = inject(TabsService);
   private loading = inject(LoadingService);
   private storageInfo = inject(StorageInfoService);
-  
+
   // subs
   private saveSub?: Subscription;
   private clearSub?: Subscription;
@@ -153,7 +153,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     const name = file.name.toLowerCase();
 
     if (name.endsWith('.zip') || name.endsWith('.cbz')) {
-      await this.extractZip(file);
+      await this.extractArchive(file);
     } else if (name.endsWith('.mhtml') || name.endsWith('.mht')) {
       await this.extractMhtml(file);
     } else if (this.isImageFile(file)) {
@@ -169,15 +169,17 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     return `${name.slice(0, 5)}${generateId()}/${addition}`;
   }
 
-  // ZIP
-  private async extractZip(file: File) {
-    const zip = await JSZip.loadAsync(file);
-    const entries = Object.keys(zip.files)
-      .filter(k => !zip.files[k].dir && /\.(jpe?g|png|gif|webp|bmp)$/i.test(k))
+  // ZIP / CBZ
+  private async extractArchive(file: File) {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    const archive = unzipSync(buffer);
+
+    const entries = Object.keys(archive)
+      .filter(k => /\.(jpe?g|png|gif|webp|bmp)$/i.test(k))
       .sort(numericNameSort);
 
     for (const entryName of entries) {
-      const blob = await zip.files[entryName].async('blob');
+      const blob = new Blob([archive[entryName]]);
       await this.addBlobImage(blob, this.generateName(file.name, entryName));
       this.progress.update(p => Math.min(90, p + 1));
       await sleepIfNeeded();
@@ -240,7 +242,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   private async addBlobImage(blob: Blob, name?: string) {
     let pageSrc: Blob | string;
     let previewSrc: string;
- 
+
     const size = await getImageSize(blob);
 
     if (isIOS) {

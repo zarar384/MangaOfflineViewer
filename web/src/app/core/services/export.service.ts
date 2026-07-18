@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import * as JSZip from 'jszip';
+import { zipSync, unzipSync } from 'fflate';
 import { Tab } from '../models/tab.model';
 import { Page } from '../models/page.model';
 import { blobToDataURL, downloadBlob, encodeQuotedPrintable, getImageExtension } from '../../shared/utils/file-parsing';
 import { isIOS } from '../../shared/utils/constants';
+import { FileFormat } from 'src/app/shared/enums/file-format';
 
 @Injectable({
     providedIn: 'root'
@@ -11,7 +12,7 @@ import { isIOS } from '../../shared/utils/constants';
 export class ExportService {
 
     // export manga as MHTML or ZIP
-    async exportManga(tab: Tab | null, pages: Page[], format: 'mhtml' | 'zip'): Promise<void> {
+    async exportManga(tab: Tab | null, pages: Page[], format: FileFormat): Promise<void> {
         if (!tab) {
             console.error('No tab provided for export.');
             return;
@@ -22,10 +23,10 @@ export class ExportService {
             return;
         }
 
-        if (format === 'mhtml') {
+        if (format === FileFormat.MHTML) {
             await this.exportMHTML(tab, pages);
-        } else if (format === 'zip') {
-            await this.exportZip(tab, pages);
+        } else if (format === FileFormat.ZIP || format === FileFormat.CBZ) {
+            await this.exportArchive(tab, pages, format);
         }
     }
 
@@ -44,7 +45,7 @@ export class ExportService {
                 else if (isIOS && typeof page.src === 'string') {
                     dataUrl = page.src;
                 }
-                else{
+                else {
                     console.warn(`Unsupported page source for page ${i + 1}`);
                     continue;
                 }
@@ -81,10 +82,10 @@ export class ExportService {
         return mhtml;
     }
 
-    // ZIP
-    private async exportZip(tab: Tab, pages: Page[]): Promise<void> {
+    // ZIP / CBZ
+    private async exportArchive(tab: Tab, pages: Page[], extension: FileFormat = FileFormat.ZIP): Promise<void> {
         try {
-            const zip = new JSZip();
+            const files: Record<string, Uint8Array> = {};
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -94,7 +95,7 @@ export class ExportService {
                 if (page.src instanceof Blob) {
                     arrayBuffer = await page.src.arrayBuffer();
                     ext = getImageExtension(page.src.type);
-                } 
+                }
                 else if (isIOS && typeof page.src === 'string') {
                     const response = await fetch(page.src);
                     arrayBuffer = await response.arrayBuffer();
@@ -106,14 +107,16 @@ export class ExportService {
                     continue;
                 }
 
-                zip.file(`${i + 1}.${ext}`, arrayBuffer);
+                files[`${i + 1}.${ext}`] = new Uint8Array(arrayBuffer);
             }
 
-            const content = await zip.generateAsync({ type: 'blob' });
-            downloadBlob(content, `${tab.name.replace(/[^a-zA-Z0-9А-Яа-яЁё]/gi, '_')}.zip`);
+            const zipped = zipSync(files);
+            const content = new Blob([zipped], { type: 'application/zip' });
+
+            downloadBlob(content, `${tab.name.replace(/[^a-zA-Z0-9А-Яа-яЁё]/gi, '_')}.${extension.toLowerCase()}`);
 
         } catch (error) {
-            console.error('Error exporting ZIP:', error);
+            console.error('Error exporting archive:', error);
         }
     }
 }

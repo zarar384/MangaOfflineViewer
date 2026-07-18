@@ -91,10 +91,7 @@
             <!-- button to download tab-->
             <div class="setting-row-two">
 
-              <molv-dropdown [(value)]="dwnldMod" [options]="[
-                  { value: 'mhtml', label: 'MHTML' },
-                  { value: 'zip', label: 'ZIP' }
-                ]">
+              <molv-dropdown [(value)]="dwnldMod" [options]="getFileFormatOptions()" placeholder="{{'select' | transloco}}">
               </molv-dropdown>
 
               <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, EventEmitter, inject, Input, Output } from '@angular/core';
+import { FileFormat } from 'src/app/shared/enums/file-format';
 import { Bookmark } from '../../../core/models/bookmark';
 import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
 import { UiStateService } from '../../../core/services/ui-state.service';
@@ -34,7 +35,7 @@ export interface ReaderPage {
 export class ReaderSettingsWindowComponent {
   @Input() isVisible = false;
   @Input() mode: ReadingMode = 'scroll';
-  @Input() downloadMod: 'mhtml' | 'zip' = 'mhtml';
+  @Input() downloadMod: FileFormat = FileFormat.MHTML;
   @Input() gapLevel = 0;
   @Input() selectedPageId: number | null = null;
 
@@ -43,9 +44,9 @@ export class ReaderSettingsWindowComponent {
   @Output() modeChange = new EventEmitter<ReadingMode>();
   @Output() gapLevelChange = new EventEmitter<number>();
   @Output() selectedBookmarkIdChange = new EventEmitter<number | null>();
-  @Output() downloadModChange = new EventEmitter<'mhtml' | 'zip'>();
+  @Output() downloadModChange = new EventEmitter<FileFormat>();
 
-  @Output() exportButtonClicked = new EventEmitter<'mhtml' | 'zip'>();
+  @Output() exportButtonClicked = new EventEmitter<FileFormat>();
   @Output() goToBookmarkClicked = new EventEmitter<number>();
 
   activeTabId: number | null = null;
@@ -67,7 +68,7 @@ export class ReaderSettingsWindowComponent {
 
     // load states
     this.mode = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
-    this.downloadMod = this.uiState.getValue<'mhtml' | 'zip'>('downloadMod') || 'mhtml';
+    this.downloadMod = this.uiState.getValue<FileFormat>('downloadMod') || FileFormat.MHTML;
     this.gapLevel = this.uiState.getValue<number>('readerGap') || 0;
     this.isDebug = this.uiState.getValue<boolean>('readerDebug') || false;
 
@@ -136,18 +137,18 @@ export class ReaderSettingsWindowComponent {
   }
 
   // DOWNLOAD MOD
-  get dwnldMod(): 'mhtml' | 'zip' {
+  get dwnldMod(): FileFormat {
     return this.downloadMod;
   }
 
-  set dwnldMod(value: 'mhtml' | 'zip') {
+  set dwnldMod(value: FileFormat) {
     this.downloadMod = value;
     this.uiState.saveState({ downloadMod: this.downloadMod });
     this.downloadModChange.emit(value);
   }
 
   // EXPORT
-  export(format: 'mhtml' | 'zip') {
+  export(format: FileFormat) {
     this.exportButtonClicked.emit(format);
   }
 
@@ -358,5 +359,12 @@ export class ReaderSettingsWindowComponent {
     } catch (err) {
       console.log(`Error loading bookmarks for manga ${reader.mangaId}`, err);
     }
+  }
+  
+  getFileFormatOptions(): { value: FileFormat; label: string }[] {
+    return Object.values(FileFormat).map(format => ({
+      value: format,
+      label: format.toUpperCase()
+    }));
   }
 }

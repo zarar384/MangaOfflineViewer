@@ -24,7 +24,7 @@
     "@jsverse/transloco": "^8.2.0",
     "@jsverse/transloco-utils": "^8.2.0",
     "dexie": "^3.2.7",
-    "jszip": "^3.10.1",
+    "fflate": "^0.8.3",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
