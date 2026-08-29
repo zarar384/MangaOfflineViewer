@@ -1,6 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { isIOS } from '../../shared/utils/constants';
 import { decodeQuotedPrintable, parseHTMLForImages } from '../../shared/utils/file-parsing';
+import { MangaStructureMetadata } from '../../shared/models/manga-structure-metadata';
+import { parseMangaStructureMetadata } from 'src/app/shared/utils/manga-structure-metadata';
+
+export type MhtmlImportData = {
+  images: string[];
+  metadata?: MangaStructureMetadata;
+  assets?: Map<string, string>;
+};
 
 @Injectable({ providedIn: 'root' })
 export class MhtmlExtractorService {
@@ -36,6 +44,31 @@ export class MhtmlExtractorService {
     }
 
     return await this.extractWithoutWorker(arrayBuffer);
+  }
+
+  public async extractImportData(file: File): Promise<MhtmlImportData> {
+    const arrayBuffer = await file.arrayBuffer();
+    const decoded = decodeQuotedPrintable(new TextDecoder().decode(arrayBuffer));
+    const document = new DOMParser().parseFromString(decoded, 'text/html');
+    const metadataElement = document.querySelector('#molv-manga-structure[type="application/json"]');
+
+    if (metadataElement?.textContent) {
+      try {
+        const assets = new Map<string, string>();
+        for (const container of Array.from(document.querySelectorAll<HTMLElement>('div[id^="page-"]'))) {
+          const src = container.querySelector<HTMLImageElement>('img')?.getAttribute('src');
+          if (src) assets.set(container.id, src);
+        }
+
+        const result = parseMangaStructureMetadata(JSON.parse(metadataElement.textContent), new Set(assets.keys()));
+        if (result.metadata) return { images: [], metadata: result.metadata, assets };
+        console.warn('Ignoring invalid MHTML manga structure metadata:', result.error);
+      } catch (error) {
+        console.warn('Ignoring unreadable MHTML manga structure metadata:', error);
+      }
+    }
+
+    return { images: await this.extractImagesFromMhtml(file) };
   }
 
   // worker-based extraction

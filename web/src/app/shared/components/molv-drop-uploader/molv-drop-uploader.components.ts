@@ -15,6 +15,8 @@ import { Chapter } from '../../../core/models/chapter.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { StorageInfoService } from 'src/app/core/services/storage-info.service';
 import { unzipSync } from 'fflate';
+import { MangaStructureMetadata, MangaStructurePageMetadata } from '../../models/manga-structure-metadata';
+import { parseMangaStructureMetadata } from '../../utils/manga-structure-metadata';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -27,8 +29,10 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   @Input() chapterId?: number;
   @Input() tabId?: number;
   @Input() visible = true;
+  @Input() disabled = false;
   @Input() saveAll$!: Subject<[Tab, Chapter | undefined]>;
   @Input() clearAll$!: Subject<void>;
+  @Input() enableMangaStructureMetadata = false;
 
   @Output() onDropFinished = new EventEmitter<void>();
   @Output() fileSelected = new EventEmitter<string>();
@@ -49,6 +53,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   progress = signal(0);
   items = signal<{ page: Page; url: string }[]>([]);
   isProcessing = signal(false);
+  private importedMetadata?: MangaStructureMetadata;
+  private importedPagesByAsset = new Map<string, Page>();
 
   ngOnChanges(changes: SimpleChanges) {
     // save
@@ -97,9 +103,11 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   saveAll(tab: Tab, chapter: Chapter | undefined) {
     this.loading.show();
 
-    return from(
-      this.tabsRepo.saveOrUpdateTabWithPages(tab, this.items().map(item => item.page), { chapter })
-    ).pipe(
+    const save = this.importedMetadata && !tab.id
+      ? this.tabsRepo.saveImportedMangaStructure(tab, this.importedMetadata, this.importedPagesByAsset)
+      : this.tabsRepo.saveOrUpdateTabWithPages(tab, this.items().map(item => item.page), { chapter });
+
+    return from(save).pipe(
       tap(() => {
         this.tabsService.refresh();
       }),
@@ -113,6 +121,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
   clearAll() {
     this.items.set([]);
+    this.importedMetadata = undefined;
+    this.importedPagesByAsset.clear();
   }
 
   private async rebuildUrls() {
@@ -174,12 +184,38 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     const buffer = new Uint8Array(await file.arrayBuffer());
     const archive = unzipSync(buffer);
 
+    const metadataFile = this.enableMangaStructureMetadata
+      ? archive['.molv/manga-structure.json']
+      : undefined;
+
+    if (metadataFile) {
+      try {
+        const result = parseMangaStructureMetadata(
+          JSON.parse(new TextDecoder().decode(metadataFile)),
+          new Set(Object.keys(archive))
+        );
+        if (result.metadata && this.items().length === 0) {
+          // Metadata order wins over the physical order of archive entries.
+          await this.importStructuredArchive(file, archive, result.metadata);
+          return;
+        }
+        if (result.metadata) console.warn('Ignoring archive metadata combined with other selected files.');
+        console.warn('Ignoring invalid archive manga structure metadata:', result.error);
+      } catch (error) {
+        console.warn('Ignoring unreadable archive manga structure metadata:', error);
+      }
+    }
+    else if (this.enableMangaStructureMetadata) {
+      this.enableMangaStructureMetadata = false;
+    }
+
     const entries = Object.keys(archive)
       .filter(k => /\.(jpe?g|png|gif|webp|bmp)$/i.test(k))
       .sort(numericNameSort);
 
+    this.clearImportedStructure();
     for (const entryName of entries) {
-      const blob = new Blob([archive[entryName]]);
+      const blob = this.archiveEntryToBlob(archive[entryName]);
       await this.addBlobImage(blob, this.generateName(file.name, entryName));
       this.progress.update(p => Math.min(90, p + 1));
       await sleepIfNeeded();
@@ -188,8 +224,30 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
   // MHTML
   private async extractMhtml(file: File) {
-    const imgs = await this.mhtmlService.extractImagesFromMhtml(file);
+     const result = this.enableMangaStructureMetadata
+        ? await this.mhtmlService.extractImportData(file)
+        : { metadata: undefined, assets: undefined, images: await this.mhtmlService.extractImagesFromMhtml(file) };
 
+    if (result.metadata && result.assets && this.items().length === 0) {
+      try {
+        await this.importStructuredMhtml(file, result.metadata, result.assets);
+        return;
+      } catch (error) {
+        // Do not restore a partial structure when a referenced asset cannot be read.
+        console.warn('Ignoring MHTML metadata with unreadable image assets:', error);
+      }
+    }
+    if (this.enableMangaStructureMetadata) {
+      this.enableMangaStructureMetadata = false;
+    }
+    if (result.metadata) console.warn('Ignoring MHTML metadata combined with other selected files.');
+
+    // Files without valid metadata keep the original image import path.
+    const imgs = result.metadata
+      ? await this.mhtmlService.extractImagesFromMhtml(file)
+      : result.images;
+
+    this.clearImportedStructure();
     let index = 0;
     for (const src of imgs) {
 
@@ -236,10 +294,11 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   private async addImageFile(file: File) {
+    this.clearImportedStructure();
     await this.addBlobImage(file, file.name);
   }
 
-  private async addBlobImage(blob: Blob, name?: string) {
+  private async addBlobImage(blob: Blob, name?: string): Promise<Page> {
     let pageSrc: Blob | string;
     let previewSrc: string;
 
@@ -258,10 +317,73 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       previewSrc = await this.urlService.createUrl(name!, blob);
     }
 
-    this.items.update(items => [...items, { page: { src: pageSrc, name, tabId: 0, width: size.width, height: size.height }, url: previewSrc }]);
+    const page = { src: pageSrc, name, tabId: 0, width: size.width, height: size.height };
+    this.items.update(items => [...items, { page, url: previewSrc }]);
+    return page;
+  }
+
+  private async importStructuredArchive(
+    file: File,
+    archive: Record<string, Uint8Array>,
+    metadata: MangaStructureMetadata
+  ) {
+    await this.importStructured(metadata, async item =>
+      this.addBlobImage(this.archiveEntryToBlob(archive[item.asset]), this.generateName(file.name, item.asset))
+    );
+  }
+
+  private archiveEntryToBlob(entry: Uint8Array<ArrayBufferLike>): Blob {
+    return new Blob([new Uint8Array(entry)]);
+  }
+
+  private async importStructuredMhtml(
+    file: File,
+    metadata: MangaStructureMetadata,
+    assets: ReadonlyMap<string, string>
+  ) {
+    const assetItems = metadata.mode === 'chapters'
+      ? metadata.chapters.flatMap(chapter => chapter.pages)
+      : metadata.pages;
+    const blobs = new Map<string, Blob>();
+
+    // Read every referenced asset before changing the upload list.
+    for (const item of assetItems) {
+      const response = await fetch(assets.get(item.asset)!);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      blobs.set(item.asset, await response.blob());
+    }
+
+    await this.importStructured(metadata, item =>
+      this.addBlobImage(blobs.get(item.asset)!, this.generateName(file.name, item.asset))
+    );
+  }
+
+  private async importStructured(
+    metadata: MangaStructureMetadata,
+    addPage: (item: MangaStructurePageMetadata) => Promise<Page>
+  ) {
+    const items = metadata.mode === 'chapters'
+      ? metadata.chapters.flatMap(chapter => chapter.pages)
+      : metadata.pages;
+    const pagesByAsset = new Map<string, Page>();
+
+    for (const item of items) {
+      pagesByAsset.set(item.asset, await addPage(item));
+      this.progress.update(progress => Math.min(90, progress + 1));
+      await sleepIfNeeded();
+    }
+
+    this.importedMetadata = metadata;
+    this.importedPagesByAsset = pagesByAsset;
+  }
+
+  private clearImportedStructure() {
+    this.importedMetadata = undefined;
+    this.importedPagesByAsset.clear();
   }
 
   remove(index: number) {
+    this.clearImportedStructure();
     const itUrl = this.items()[index];
     if (itUrl?.url.startsWith('blob:')) {
       this.urlService.revokeUrl(itUrl.url);
@@ -273,6 +395,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   drop(event: CdkDragDrop<any[]>) {
     if (event.previousIndex === event.currentIndex) return;
 
+    this.clearImportedStructure();
     //copy urls array
     const newUrls = [...this.items()];
     moveItemInArray(newUrls, event.previousIndex, event.currentIndex);
@@ -282,6 +405,8 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   onDrop(event: DragEvent) {
+    if (this.disabled) return;
+
     event.preventDefault();
     event.stopPropagation();
 
@@ -297,6 +422,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
   onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
+    if (this.disabled) return;
     if (input.files?.length) {
       this.onFilesDropped(input.files);
     }

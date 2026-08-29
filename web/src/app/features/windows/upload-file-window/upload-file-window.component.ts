@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, Input } from '@angular/core';
+import { Component, EventEmitter, Output, Input, signal } from '@angular/core';
 import { WindowComponent } from '../../../shared/components/window/window.component';
 import { CommonModule } from '@angular/common';
 import { Tab } from '../../../core/models/tab.model';
@@ -33,7 +33,12 @@ export class UploadFileWindowComponent {
   saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
+  isMultiUploadFinished = false;
 
+  // multi-mode related signals
+  isMultiMode = signal(false);
+  uploaderDisabled = signal(false);
+  
   constructor(
     private uiState: UiStateService,
     private draftService: MangaDraftService,
@@ -43,25 +48,34 @@ export class UploadFileWindowComponent {
 
   onUploadFinished() {
     console.log('UploadFileWindowComponent - onUploadFinished');
-  }
 
-  openChaptersMode() {
-    const tab: Tab = {
-      name: this.fileName ?? this.langService.translate('untitled'),
-      mode: ViewMod.Chapters
-    };
-
-    this.draftService.setDraft(tab);
-    this.closeWindow.emit();
-
-    // Set the view mode to 'chapters' when opening chapters mode
-    this.uiState.navigate(ViewMod.Chapters);
+    if (this.isMultiMode()) {
+      this.uploaderDisabled.set(true);
+      this.isMultiUploadFinished = true;
+    }
   }
 
   onWindowClose() {
     this.fileName = null;
-    this.clearAll$.next();
+    this.isMultiMode.set(false);
+    this.resetBaseState();
     this.closeWindow.emit();
+  }
+
+  selectSingleMode() {
+    this.isMultiMode.set(false);
+    this.resetBaseState();
+  }
+
+  selectMultiMode() {
+    this.isMultiMode.set(true);
+    this.resetBaseState();
+  }
+
+  private resetBaseState() {
+    this.isMultiUploadFinished = false;
+    this.uploaderDisabled.set(false);
+    this.clearAll$.next();
   }
 
   async saveAndClose() {
@@ -77,8 +91,17 @@ export class UploadFileWindowComponent {
 
         this.tab = tab;
       }
+      else if (this.isMultiMode() && !this.isMultiUploadFinished) {
+        this.draftService.setDraft({
+          name: this.fileName ?? this.langService.translate('untitled'),
+          mode: ViewMod.Chapters
+        });
+
+        this.uiState.navigate(ViewMod.Chapters);
+        return;
+      }
       else {
-        // for single mode, just set the tab name and save pages
+        this.tab.mode = this.isMultiMode() ? ViewMod.Chapters : ViewMod.Single;
       }
 
       this.tab.name = this.fileName ?? this.tab.name ?? this.langService.translate('untitled');

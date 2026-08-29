@@ -7,6 +7,7 @@ import { PREVIEW_MAX_SIZE } from '../db.config';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
 import { isIOS } from 'src/app/shared/utils/constants';
+import { MangaStructureMetadata } from '../../shared/models/manga-structure-metadata';
 
 export const TABS_SEED: Tab[] = [
   {
@@ -151,6 +152,19 @@ export class TabsRepository {
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
         chapterId = await db.chapters.put(chapter);
       }
+      // create a new chapter and put all pages into it
+      else if (tabToSave.mode === ViewMod.Chapters && !chapter) 
+      {
+        const newChapter = {
+          tabId: savedId as number,
+          title: 'New Chapter',
+          order: 1,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        
+        chapterId = await db.chapters.put(newChapter);
+      }
 
       // update normalized pages with real ids
       normalized.forEach(p => {
@@ -229,4 +243,55 @@ export class TabsRepository {
 
     return tabId;
   }
+
+     async saveImportedMangaStructure(
+     tab: Tab,
+     metadata: MangaStructureMetadata,
+     pagesByAsset: ReadonlyMap<string, Page>
+   ): Promise<number> {
+
+    const pages_ = new Map(pagesByAsset);
+    // The metadata was validated against every asset before this transaction starts.
+     const previewPages = metadata.mode === ViewMod.Single
+      ? metadata.pages.map(item => pages_.get(item.asset)!)
+       : [];
+     const preview = metadata.mode === ViewMod.Single
+       ? await createPreviewFromFirstPage(previewPages, PREVIEW_MAX_SIZE) ?? undefined
+       : tab.preview;
+ 
+     return db.transaction('rw', db.tabs, db.pages, db.chapters, async () => {
+       const tabId = await db.tabs.put({
+         ...tab,
+         mode: metadata.mode,
+         preview,
+         updatedAt: Date.now(),
+         createdAt: tab.createdAt ?? Date.now()
+       }) as number;
+ 
+       const pages: Page[] = [];
+       if (metadata.mode === ViewMod.Single) {
+         for (const [index, item] of metadata.pages.entries()) {
+          const page = pages_.get(item.asset)!;
+           pages.push({ ...page, id: undefined, tabId, chapterId: null, chapterOrder: null, order: index + 1 });
+         }
+       } else {
+         for (const [chapterIndex, chapterMetadata] of metadata.chapters.entries()) {
+           const chapterId = await db.chapters.add({
+             tabId,
+             title: chapterMetadata.title,
+             order: chapterIndex + 1,
+             createdAt: Date.now(),
+             updatedAt: Date.now()
+           });
+           for (const [pageIndex, item] of chapterMetadata.pages.entries()) {
+            const page = pages_.get(item.asset)!;
+             pages.push({ ...page, id: undefined, tabId, chapterId, chapterOrder: chapterIndex + 1, order: pageIndex + 1 });
+           }
+         }
+       }
+ 
+       if (pages.length) await db.pages.bulkAdd(pages);
+       return tabId;
+     });
+   }
 }

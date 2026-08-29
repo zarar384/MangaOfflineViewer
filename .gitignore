@@ -67,3 +67,7 @@ web/.npm/
 # Angular specific
 web/.angular/cache/
 web/.angular/build/
+
+# GOVNO
+.ai/
+AGENTS.md
