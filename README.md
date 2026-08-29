@@ -16,8 +16,6 @@ Minimal • Fully Offline • No Backend Required
   <a href="https://zarar384.github.io/MangaOfflineViewer/">Live Demo (GitHub Pages)</a>
   •
   <a href="https://manga-offline-viewer.netlify.app/">Live Demo (Netlify)</a>
-  •
-  <a href="https://www.youtube.com/watch?v=Wr_oV1NXK68">Video Demo</a>
 </p>
 
 <p>
