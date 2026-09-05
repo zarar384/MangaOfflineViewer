@@ -94,10 +94,16 @@ export class ImagePipelineService implements OnDestroy {
   }
 
   /**
-   * Revokes urls for pages outside the active radius around current page.
+   * Revokes urls and releases payloads for pages outside the active radius
+   * around the current reading position. Releasing page.src (not just the
+   * blob URL) matters for iOS, where pages are stored as base64 strings that
+   * ImagePipelineService never turns into cached blob URLs (see getUrl()) and
+   * would otherwise stay fully resident in memory for the rest of the session.
+   * ensurePayload() re-fetches src lazily once the page becomes visible again.
    */
   evictFarPages(
     currentId: number,
+    pages: Page[],
     pageIndexMap: Map<number, number>,
     radius: number
   ): void {
@@ -107,10 +113,12 @@ export class ImagePipelineService implements OnDestroy {
     const min = currentIndex - radius;
     const max = currentIndex + radius;
 
-    for (const [id] of this.pageUrls) {
-      const idx = pageIndexMap.get(id);
+    for (const page of pages) {
+      if (page.id == null) continue;
+      const idx = pageIndexMap.get(page.id);
       if (idx === undefined || idx < min || idx > max) {
-        this.releaseUrl(id);
+        if (this.pageUrls.has(page.id)) this.releaseUrl(page.id);
+        if (page.src != null) page.src = null;
       }
     }
   }

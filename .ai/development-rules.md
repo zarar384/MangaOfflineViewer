@@ -24,7 +24,7 @@ These are instructions. The facts behind them live in architecture.md and implem
 
 ## Offline and PWA
 
-- Do not make any normal flow depend on the helper server, and keep the worker fallback intact.
+- Do not make any normal flow depend on the helper server (it is no longer part of the import/export call graph - see `export-import.md`), and keep the MHTML worker's main-thread fallback intact.
 - Keep application data in IndexedDB. Do not cache manga content through the service worker and do not add remote persistence, synchronization, or authentication.
 - Service worker registration stays production-only.
 

@@ -46,11 +46,9 @@ It is format independent: marker `molv-manga-structure`, `version: 1`, a mode di
 
 Behavior by case: valid metadata reconstructs the structure; absent metadata uses the legacy path; malformed, unknown version, wrong mode, missing asset, or duplicate asset warns and uses the legacy path. No case aborts the import.
 
-## MHTML worker and helper server
+## MHTML worker and streaming
 
-`MhtmlExtractorService` constructs the worker in its constructor and hardcodes `localhost:3000`. The worker pings `/ping`, uploads 5 MB chunks to `/upload-chunk`, calls `/merge-chunks`, and streams image matches back. On ping failure it posts `serverOff` and the service re-sends the buffer for local parsing, which is why it keeps a copy of the ArrayBuffer before transferring ownership.
-
-`extractImportData()` deliberately does not use the worker. It decodes and parses on the main thread to read the embedded metadata and asset map.
+The helper-server-assisted parsing path (ping/upload-chunk/merge-chunks) has been removed from the client. `MhtmlExtractorService.extractStreaming()` runs the same incremental scanner (`mhtml-stream-scanner.ts`) either in the worker or, if the worker throws, on the main thread. See `export-import.md` for the full architecture, chunk-boundary-safety details, and memory model.
 
 ## PWA
 

@@ -14,9 +14,9 @@ import { isIOS } from '../../utils/constants';
 import { Chapter } from '../../../core/models/chapter.model';
 import { PagesRepository } from '../../../core/repositories/pages.repository';
 import { StorageInfoService } from 'src/app/core/services/storage-info.service';
-import { unzipSync } from 'fflate';
 import { MangaStructureMetadata, MangaStructurePageMetadata } from '../../models/manga-structure-metadata';
 import { parseMangaStructureMetadata } from '../../utils/manga-structure-metadata';
+import { ArchiveReader, openArchiveReader } from '../../utils/zip-random-access';
 
 @Component({
   selector: 'molv-drop-uploader',
@@ -180,19 +180,19 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   // ZIP / CBZ
+  // Reads one entry at a time from disk via File.slice() instead of buffering the whole archive.
   private async extractArchive(file: File) {
-    const buffer = new Uint8Array(await file.arrayBuffer());
-    const archive = unzipSync(buffer);
+    const archive = await openArchiveReader(file);
+    const metadataName = '.molv/manga-structure.json';
 
-    const metadataFile = this.enableMangaStructureMetadata
-      ? archive['.molv/manga-structure.json']
-      : undefined;
+    const hasMetadataFile = this.enableMangaStructureMetadata && archive.names.includes(metadataName);
 
-    if (metadataFile) {
+    if (hasMetadataFile) {
       try {
+        const metadataBytes = await archive.read(metadataName);
         const result = parseMangaStructureMetadata(
-          JSON.parse(new TextDecoder().decode(metadataFile)),
-          new Set(Object.keys(archive))
+          JSON.parse(new TextDecoder().decode(metadataBytes)),
+          new Set(archive.names)
         );
         if (result.metadata && this.items().length === 0) {
           // Metadata order wins over the physical order of archive entries.
@@ -209,88 +209,76 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       this.enableMangaStructureMetadata = false;
     }
 
-    const entries = Object.keys(archive)
+    const entries = archive.names
       .filter(k => /\.(jpe?g|png|gif|webp|bmp)$/i.test(k))
       .sort(numericNameSort);
 
     this.clearImportedStructure();
     for (const entryName of entries) {
-      const blob = this.archiveEntryToBlob(archive[entryName]);
-      await this.addBlobImage(blob, this.generateName(file.name, entryName));
+      const bytes = await archive.read(entryName);
+      await this.addBlobImage(new Blob([bytes]), this.generateName(file.name, entryName));
       this.progress.update(p => Math.min(90, p + 1));
       await sleepIfNeeded();
     }
   }
 
   // MHTML
+  // Streams images out of the file one at a time (see MhtmlExtractorService.extractStreaming);
+  // never holds the whole document, the whole image list, or a whole image's base64 text in
+  // memory. The one exception is metadata-driven import, which still buffers every referenced
+  // Blob (not text) before the final ordered import, because metadata can reorder pages relative
+  // to their physical position in the file and that isn't known until the scan reaches the end.
   private async extractMhtml(file: File) {
-     const result = this.enableMangaStructureMetadata
-        ? await this.mhtmlService.extractImportData(file)
-        : { metadata: undefined, assets: undefined, images: await this.mhtmlService.extractImagesFromMhtml(file) };
-
-    if (result.metadata && result.assets && this.items().length === 0) {
-      try {
-        await this.importStructuredMhtml(file, result.metadata, result.assets);
-        return;
-      } catch (error) {
-        // Do not restore a partial structure when a referenced asset cannot be read.
-        console.warn('Ignoring MHTML metadata with unreadable image assets:', error);
-      }
-    }
-    if (this.enableMangaStructureMetadata) {
-      this.enableMangaStructureMetadata = false;
-    }
-    if (result.metadata) console.warn('Ignoring MHTML metadata combined with other selected files.');
-
-    // Files without valid metadata keep the original image import path.
-    const imgs = result.metadata
-      ? await this.mhtmlService.extractImagesFromMhtml(file)
-      : result.images;
-
     this.clearImportedStructure();
-    let index = 0;
-    for (const src of imgs) {
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000); // token to abort fetch after 5 seconds
+    if (this.enableMangaStructureMetadata && this.items().length === 0) {
+      const blobsByAsset = new Map<string, Blob>();
 
-      try {
-        const response = await fetch(src, {
-          signal: controller.signal
-        });
+      const { metadataJson } = await this.mhtmlService.extractStreaming(file, image => {
+        if (image.pageId) blobsByAsset.set(image.pageId, image.blob);
+      });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const blob = await response.blob();
-
-        await this.addBlobImage(
-          blob,
-          this.generateName(file.name, `${index}`)
-        );
-      }
-      catch (error) {
-        console.warn(
-          `Failed to import image ${index + 1}/${imgs.length}`,
-          {
-            src,
-            error
+      if (metadataJson) {
+        try {
+          const parsed = parseMangaStructureMetadata(JSON.parse(metadataJson), new Set(blobsByAsset.keys()));
+          if (parsed.metadata) {
+            try {
+              await this.importStructuredMhtml(file, parsed.metadata, blobsByAsset);
+              return;
+            } catch (error) {
+              // Do not restore a partial structure when a referenced asset cannot be read.
+              console.warn('Ignoring MHTML metadata with unreadable image assets:', error);
+            }
+          } else {
+            console.warn('Ignoring invalid MHTML manga structure metadata:', parsed.error);
           }
-        );
+        } catch (error) {
+          console.warn('Ignoring unreadable MHTML manga structure metadata:', error);
+        }
       }
-      finally {
-        clearTimeout(timeout);
 
-        this.progress.set(
-          calculateProgress(85, 100, index + 1, imgs.length)
-        );
+      this.enableMangaStructureMetadata = false;
 
+      // No usable metadata: import the blobs already collected (in physical document order)
+      // instead of re-scanning the whole file a second time.
+      let index = 0;
+      const total = blobsByAsset.size || 1;
+      for (const blob of blobsByAsset.values()) {
+        await this.addBlobImage(blob, this.generateName(file.name, `${index}`));
         index++;
-
+        this.progress.set(calculateProgress(85, 100, index, total));
         await sleepIfNeeded();
       }
+      return;
     }
+
+    let index = 0;
+    await this.mhtmlService.extractStreaming(file, async image => {
+      await this.addBlobImage(image.blob, this.generateName(file.name, `${index}`));
+      index++;
+      this.progress.set(calculateProgress(85, 100, this.mhtmlService.progress(), 100));
+      await sleepIfNeeded();
+    });
   }
 
   private async addImageFile(file: File) {
@@ -324,38 +312,24 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
   private async importStructuredArchive(
     file: File,
-    archive: Record<string, Uint8Array>,
+    archive: ArchiveReader,
     metadata: MangaStructureMetadata
   ) {
     await this.importStructured(metadata, async item =>
-      this.addBlobImage(this.archiveEntryToBlob(archive[item.asset]), this.generateName(file.name, item.asset))
+      this.addBlobImage(new Blob([await archive.read(item.asset)]), this.generateName(file.name, item.asset))
     );
-  }
-
-  private archiveEntryToBlob(entry: Uint8Array<ArrayBufferLike>): Blob {
-    return new Blob([new Uint8Array(entry)]);
   }
 
   private async importStructuredMhtml(
     file: File,
     metadata: MangaStructureMetadata,
-    assets: ReadonlyMap<string, string>
+    blobs: ReadonlyMap<string, Blob>
   ) {
-    const assetItems = metadata.mode === 'chapters'
-      ? metadata.chapters.flatMap(chapter => chapter.pages)
-      : metadata.pages;
-    const blobs = new Map<string, Blob>();
-
-    // Read every referenced asset before changing the upload list.
-    for (const item of assetItems) {
-      const response = await fetch(assets.get(item.asset)!);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      blobs.set(item.asset, await response.blob());
-    }
-
-    await this.importStructured(metadata, item =>
-      this.addBlobImage(blobs.get(item.asset)!, this.generateName(file.name, item.asset))
-    );
+    await this.importStructured(metadata, item => {
+      const blob = blobs.get(item.asset);
+      if (!blob) throw new Error(`Missing image data for asset "${item.asset}"`);
+      return this.addBlobImage(blob, this.generateName(file.name, item.asset));
+    });
   }
 
   private async importStructured(

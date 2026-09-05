@@ -36,9 +36,9 @@
 
 `ExportService` (root) writes ZIP, CBZ, and MHTML. For chapter-mode manga it reloads the complete ordered structure from `ChaptersRepository` and `PagesRepository` instead of trusting the caller's page list.
 
-### Optional infrastructure
+### MHTML/ZIP streaming
 
-`MhtmlExtractorService` (root) creates the module worker `app.worker.ts` and initializes it with host `localhost` and port `3000`. The worker pings the helper server, uploads in 5 MB chunks when available, and otherwise reports `serverOff` so parsing happens locally. Both paths return image source strings.
+`MhtmlExtractorService` (root) creates the module worker `app.worker.ts`, which runs the incremental scanner in `mhtml-stream-scanner.ts` off the main thread; it no longer calls the optional helper server (that integration was removed). ZIP/CBZ import reads entries on demand via `zip-random-access.ts`. See `export-import.md` for the full architecture, format details, and memory model.
 
 ## Dependency boundaries
 

@@ -1,13 +1,10 @@
 import { Injectable, signal } from '@angular/core';
-import { isIOS } from '../../shared/utils/constants';
-import { decodeQuotedPrintable, parseHTMLForImages } from '../../shared/utils/file-parsing';
-import { MangaStructureMetadata } from '../../shared/models/manga-structure-metadata';
-import { parseMangaStructureMetadata } from 'src/app/shared/utils/manga-structure-metadata';
+import { scanMhtmlFile, MhtmlScannedImage } from '../../shared/utils/mhtml-stream-scanner';
 
-export type MhtmlImportData = {
-  images: string[];
-  metadata?: MangaStructureMetadata;
-  assets?: Map<string, string>;
+export type MhtmlImageHandler = (image: MhtmlScannedImage) => Promise<void> | void;
+
+export type MhtmlExtractResult = {
+  metadataJson?: string;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -23,95 +20,74 @@ export class MhtmlExtractorService {
         new URL('../../app.worker', import.meta.url),
         { type: 'module' }
       );
-
-      this.worker.postMessage({
-        type: 'init',
-        host: 'localhost',
-        port: 3000
-      });
     } catch {
       this.worker = null;
     }
   }
 
-  // extract images from MHTML file (using worker if available)
-  public async extractImagesFromMhtml(file: File): Promise<string[]> {
+  /**
+   * Streams every image found in the MHTML file to onImage as soon as it is decoded (in document
+   * order), and resolves with the manga-structure metadata JSON text if one was found. Never
+   * materializes the whole document, the whole set of images, or a whole image's base64 text as
+   * one string - memory stays O(chunk size + current image) for the duration of the scan.
+   */
+  public async extractStreaming(file: File, onImage: MhtmlImageHandler): Promise<MhtmlExtractResult> {
     this.progressSignal.set(0);
-    const arrayBuffer = await file.arrayBuffer();
 
     if (this.worker) {
-      return await this.extractWithWorker(arrayBuffer);
-    }
-
-    return await this.extractWithoutWorker(arrayBuffer);
-  }
-
-  public async extractImportData(file: File): Promise<MhtmlImportData> {
-    const arrayBuffer = await file.arrayBuffer();
-    const decoded = decodeQuotedPrintable(new TextDecoder().decode(arrayBuffer));
-    const document = new DOMParser().parseFromString(decoded, 'text/html');
-    const metadataElement = document.querySelector('#molv-manga-structure[type="application/json"]');
-
-    if (metadataElement?.textContent) {
       try {
-        const assets = new Map<string, string>();
-        for (const container of Array.from(document.querySelectorAll<HTMLElement>('div[id^="page-"]'))) {
-          const src = container.querySelector<HTMLImageElement>('img')?.getAttribute('src');
-          if (src) assets.set(container.id, src);
-        }
-
-        const result = parseMangaStructureMetadata(JSON.parse(metadataElement.textContent), new Set(assets.keys()));
-        if (result.metadata) return { images: [], metadata: result.metadata, assets };
-        console.warn('Ignoring invalid MHTML manga structure metadata:', result.error);
+        return await this.extractWithWorker(file, onImage);
       } catch (error) {
-        console.warn('Ignoring unreadable MHTML manga structure metadata:', error);
+        console.warn('Worker-based MHTML extraction failed, falling back to main thread:', error);
       }
     }
 
-    return { images: await this.extractImagesFromMhtml(file) };
+    return await this.extractOnMainThread(file, onImage);
   }
 
-  // worker-based extraction
-  private extractWithWorker(arrayBuffer: ArrayBuffer): Promise<string[]> {
-    const arrayBufferCopy = arrayBuffer.slice(0); //fallback
+  private async extractOnMainThread(file: File, onImage: MhtmlImageHandler): Promise<MhtmlExtractResult> {
+    let metadataJson: string | undefined;
 
+    await scanMhtmlFile(
+      file,
+      onImage,
+      json => { metadataJson = json; },
+      progress => this.progressSignal.set(progress)
+    );
+
+    return { metadataJson };
+  }
+
+  // Runs the same scanner off the main thread. The File object itself is posted to the worker
+  // (a cheap structured-clone, not a full-file copy); the worker streams back one small message
+  // per image instead of accumulating results and posting one giant payload at the end.
+  private extractWithWorker(file: File, onImage: MhtmlImageHandler): Promise<MhtmlExtractResult> {
     return new Promise((resolve, reject) => {
-      const allImages: string[] = [];
+      const id = crypto.randomUUID();
+      let metadataJson: string | undefined;
+      let pending: Promise<void> = Promise.resolve();
 
-      this.worker!.onmessage = async (e: MessageEvent) => {
+      this.worker!.onmessage = (e: MessageEvent) => {
         const msg = e.data;
-
-        if (msg.type === 'serverOff') {
-          console.warn('SERVER OFF — fallback to JS parser');
-          this.worker!.postMessage(
-            {
-              type: 'processLocal',
-              id: msg.id,
-              file: arrayBufferCopy
-            },
-            [arrayBufferCopy]
-          );
-          return;
-        }
+        if (msg.id !== id) return;
 
         if (msg.type === 'progress') {
           this.progressSignal.set(msg.progress);
         }
 
-        if (msg.type === 'html') {
-          const images = parseHTMLForImages(msg.html);
-          allImages.push(...images);
-          return;
+        if (msg.type === 'image') {
+          // Chain onto `pending` so images are handed to the caller strictly in the order they
+          // were found, one at a time (mirrors the backpressure the main-thread path gets for
+          // free from awaiting each callback before reading the next chunk).
+          pending = pending.then(() => onImage({ pageId: msg.pageId, blob: msg.blob }));
         }
 
-        if (msg.type === 'images') {
-          allImages.push(...msg.images);
-          await this.sleepIfIOS();
+        if (msg.type === 'metadata') {
+          metadataJson = msg.json;
         }
 
         if (msg.type === 'result') {
-          this.progressSignal.set(85);
-          resolve(allImages);
+          pending.then(() => resolve({ metadataJson })).catch(reject);
         }
 
         if (msg.type === 'error') {
@@ -119,41 +95,7 @@ export class MhtmlExtractorService {
         }
       };
 
-      // отправляем в воркер
-      this.worker!.postMessage(
-        {
-          id: crypto.randomUUID(),
-          file: arrayBuffer,
-          type: 'processFile'
-        },
-        [arrayBuffer] // transfer ownership
-      );
-    });
-  }
-
-  // fallback without worker
-  private async extractWithoutWorker(arrayBuffer: ArrayBuffer): Promise<string[]> {
-    try {
-      const text = new TextDecoder().decode(arrayBuffer);
-      const decoded = decodeQuotedPrintable(text);
-      const imgs = parseHTMLForImages(decoded);
-
-      this.progressSignal.set(85);
-      return imgs;
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-  }
-
-  // for iOS devices, we need to wait a bit to avoid issues with Blob URLs
-  private sleepIfIOS(): Promise<void> {
-    return new Promise(resolve => {
-      if (isIOS) {
-        setTimeout(resolve, 0);
-      } else {
-        resolve();
-      }
+      this.worker!.postMessage({ type: 'processLocal', id, file });
     });
   }
 }

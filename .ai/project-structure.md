@@ -3,7 +3,7 @@
 ## Root
 
 - `web/` Angular application.
-- `server/` optional MHTML helper: `server.js` endpoints, `mhtmlParser.js` and `utils.js` parsing, `temp/` chunk scratch space.
+- `server/` optional MHTML helper (no longer called by the client - see `export-import.md`): `server.js` endpoints, `mhtmlParser.js` and `utils.js` parsing, `temp/` chunk scratch space.
 - `start_server.bat` launches the helper with a hardcoded Node path and logs into `logs/`.
 - `docs/images/` README media only, not application assets.
 - `README.md` system overview written for humans.

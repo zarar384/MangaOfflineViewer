@@ -94,7 +94,8 @@ export class PagesRepository {
         const pages = await this.getByChapter(tabId, chapterId);
 
         return pages.map(p => ({
-          ...p
+          ...p,
+          src: null
         }));
       }
 
@@ -105,9 +106,8 @@ export class PagesRepository {
           [tabId, Dexie.maxKey, Dexie.maxKey]
         )
         .each(p => {
-          result.push({
-            ...p,
-          });
+          const meta = { ...p, src: null };
+          result.push(meta);
         });
 
       return result;

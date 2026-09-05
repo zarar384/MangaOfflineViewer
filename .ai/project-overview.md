@@ -6,7 +6,7 @@ An offline-first manga reader delivered as an Angular 20 PWA. Users import manga
 
 `web/` is the Angular client. It owns all application data in IndexedDB and works without network access after first load.
 
-`server/` is an optional Express helper started manually (`start_server.bat` or `node server.js`, port 3000). It accepts chunked MHTML uploads, extracts image sources, returns them, and deletes its temporary chunks. It has no database. When it is unreachable the client parses MHTML in a Web Worker instead.
+`server/` is an optional Express helper started manually (`start_server.bat` or `node server.js`, port 3000). It has no database. The client no longer calls it: MHTML import/export is fully streaming/incremental in-browser (Web Worker with a main-thread fallback) - see `export-import.md`.
 
 ## Technology
 

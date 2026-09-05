@@ -13,6 +13,7 @@ Read the relevant document before changing code.
 | What must and must not be done when changing code | [development-rules.md](development-rules.md) |
 | Non-obvious behavior, traps, known discrepancies | [implementation-notes.md](implementation-notes.md) |
 | How to investigate and finish a change | [ai-workflow.md](ai-workflow.md) |
+| Export/import (MHTML, ZIP/CBZ) streaming architecture, format details, memory model | [export-import.md](export-import.md) |
 
 Overview, architecture, structure, and notes state facts about the current repository.
 Development rules and workflow state instructions. Keep the two kinds of content separate.

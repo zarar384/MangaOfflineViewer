@@ -1014,7 +1014,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const currentId = this.reader.currentPageBookmark() ?? this.reader.currentPageId();
     if (currentId == null) return;
 
-    this.imagePipeline.evictFarPages(currentId, this.pageIndexMap, this.CLEANUP_RADIUS);
+    this.imagePipeline.evictFarPages(currentId, this.pages, this.pageIndexMap, this.CLEANUP_RADIUS);
   }
 
   private async handleNavigation(pageId: number): Promise<void> {

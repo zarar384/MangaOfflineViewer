@@ -72,7 +72,7 @@ export class ReaderWrapperComponent implements OnInit {
       const tab = await this.tabsService.getTabById(this.activeManga);
       if (!tab) return;
 
-      await this.exportService.exportManga(tab, this.reader.pages(), format);
+      await this.exportService.exportManga(tab, format);
 
       console.log(`Manga exported as ${format}`);
 
