@@ -2,7 +2,7 @@
 
 ## 1] Точка входа
 
-`exportManga(tab, format)` в [export.service.ts](export.service.ts) - единственная публичная точка входа.
+`exportManga(tab, format)` в [export.service.ts](../export.service.ts) - единственная публичная точка входа.
 
 ```txt
 format = MHTML -> exportMHTML()
@@ -106,4 +106,4 @@ marker: MANGA_STRUCTURE_METADATA_MARKER
 version: MANGA_STRUCTURE_METADATA_VERSION
 ```
 
-Формат versioned - при импорте под каждую версию свой парсер, см. [import.README.md](../../shared/components/molv-drop-uploader/import.README.md).
+Формат versioned - при импорте под каждую версию свой парсер, см. [import.README.md](../../../shared/components/molv-drop-uploader/import.README.md).
