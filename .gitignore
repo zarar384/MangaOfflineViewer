@@ -49,7 +49,9 @@ build/
 out/
 
 # IDE/editor directories and files
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
 .idea/
 *.sublime-workspace
 *.sublime-project

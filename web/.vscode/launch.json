@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Angular",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:4200",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "trace": true,
+      "smartStep": true,
+
+      "skipFiles": [
+        "**/node_modules/**/*.js"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Angular Server",
+      "program": "${workspaceFolder}/node_modules/@angular/cli/bin/ng",
+      "args": [
+        "serve",
+        "--source-map=true",
+        "--watch=true"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to Chrome",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Debug (Server + Client)",
+      "configurations": [
+        "Angular Server",
+        "Debug Angular"
+      ],
+      "stopAll": true
+    }
+  ]
+}

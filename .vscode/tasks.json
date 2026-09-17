@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "molv start",
+      "type": "shell",
+      "command": "npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "angular",
+        "pattern": {
+          "regexp": ".*"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "bundle generation complete\\.",
+          "endsPattern": "Compiled successfully\\.|Angular Live Development Server is listening"
+        }
+      }
+    },
+    {
+      "label": "molv stop",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/.vscode/scripts/kill-port.js",
+        "4200"
+      ],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --open --configuration development",
-    "build": "ng build --configuration production",
+    "start": "ng serve --configuration development",
+    "start:open": "ng serve --open --configuration development",
+    "build": "ng build --configuration production-local",
     "test": "ng test",
     "deploy:gh": "ng build --configuration=production-gh && npx angular-cli-ghpages --dir=dist/MangaOfflineViewerAngular/MangaOfflineViewer"
   },

@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Angular",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:4200",
+      "webRoot": "${workspaceFolder}/web",
+      "sourceMaps": true,
+      "smartStep": true,
+      "skipFiles": [
+        "**/node_modules/**/*.js"
+      ],
+      "preLaunchTask": "molv start",
+      "postDebugTask": "molv stop"
+    }
+  ]
+}
