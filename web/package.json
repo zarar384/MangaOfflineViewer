@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --configuration development",
-    "start:open": "ng serve --open --configuration development",
-    "build": "ng build --configuration production-local",
+    "start": "npm run version:generate && ng serve --configuration development",
+    "start:open": "npm run version:generate && ng serve --open --configuration development",
+    "build": "npm run version:generate && ng build --configuration production-local",
     "test": "ng test",
-    "deploy:gh": "ng build --configuration=production-gh && npx angular-cli-ghpages --dir=dist/MangaOfflineViewerAngular/MangaOfflineViewer"
+    "deploy:gh": "npm run build:gh && npx angular-cli-ghpages --dir=dist/MangaOfflineViewerAngular/MangaOfflineViewer",
+    "version:generate": "node scripts/generate-app-version.mjs",
+    "postinstall": "npm run version:generate",
+    "build:gh": "npm run version:generate && ng build --configuration production-gh"
   },
   "dependencies": {
     "@angular/animations": "^20.3.12",

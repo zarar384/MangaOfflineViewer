@@ -69,3 +69,6 @@ web/.npm/
 # Angular specific
 web/.angular/cache/
 web/.angular/build/
+
+# Generated application build metadata
+web/src/app/core/generated/app-version.ts

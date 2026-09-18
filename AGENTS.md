@@ -16,7 +16,9 @@ Run from `web/`:
 - `web/cheatsheet.txt` is the maintained command reference.
 
 There is no test setup: `angular.json` defines no `test` target and the repository contains no spec files, so `npm test` fails.
-`npm run build` also fails because it selects a `production` configuration that does not exist. Do not change these scripts unless asked.
+`npm run build` builds `production-local`; `npm run build:gh` builds `production-gh`.
+These scripts generate app version metadata first. Before direct `ng` commands, run `npm run version:generate`.
+`npm ci` also generates the ignored `core/generated/app-version.ts`; never commit that generated file.
 
 ## Architectural invariants
 

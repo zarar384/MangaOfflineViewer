@@ -1,4 +1,6 @@
 {
+    "appVersion": "Версия",
+    "buildDate": "Дата сборки",
     "create": "Создать",
     "untitled": "Без названия",
     "storage": "Хранилище",

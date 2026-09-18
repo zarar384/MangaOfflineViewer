@@ -5,6 +5,7 @@ import { LanguageService, SupportedLangs } from '../../../core/services/language
 import { UiStateService } from '../../../core/services/ui-state.service';
 import { MolvModule } from '../../../shared/components/molv-module.component';
 import { WindowComponent } from '../../../shared/components/window/window.component';
+import { APP_VERSION } from '../../../core/generated/app-version';
 import { SwUpdate } from '@angular/service-worker';
 
 @Component({
@@ -20,6 +21,9 @@ export class SettingsWindowComponent {
 
   private updates = inject(SwUpdate, { optional: true });
   private uiState = inject(UiStateService);
+
+  // Version of the code currently running, also available offline.
+  readonly appVersion = APP_VERSION;
 
   // LANGUAGE SETTINGS
   language: SupportedLangs = SupportedLangs.EN;

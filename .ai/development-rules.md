@@ -54,7 +54,8 @@ These are instructions. The facts behind them live in architecture.md and implem
 
 - Run `npx ng build` from `web/` after TypeScript or template changes.
 - There is no test target and no spec files. Do not add a test framework unless asked.
-- Do not modify `npm run build` or `npm test`; both are known broken and intentionally left alone.
+- `npm run build` generates version metadata and builds production-local; `npm test` has no configured target.
+- Before direct `ng` builds, run `npm run version:generate`.
 - Review `git status --short` and `git diff --check`. Preserve unrelated worktree changes.
 
 ## AI context files

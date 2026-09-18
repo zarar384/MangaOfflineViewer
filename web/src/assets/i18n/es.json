@@ -1,4 +1,6 @@
 {
+    "appVersion": "Versión",
+    "buildDate": "Fecha de compilación",
     "create": "Crear",
     "untitled": "Sin título",
     "storage": "Almacenamiento",
