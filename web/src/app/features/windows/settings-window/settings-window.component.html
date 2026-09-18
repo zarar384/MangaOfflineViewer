@@ -16,6 +16,16 @@
         <span class="setting-label">{{'update' | transloco}}</span>
         <button class="molv-btn molv-btn-pink" [disabled]="!updateAvailable()" (click)="updateApp()"> {{'update' | transloco}} </button>
       </div>
+      <div class="app-version" [title]="appVersion.buildId">
+        <div>
+          <span class="setting-label">{{'appVersion' | transloco}}:</span>
+          <span>{{ appVersion.version }} · {{ appVersion.commit }}{{ appVersion.dirty ? '-dirty' : '' }}</span>
+        </div>
+        <div class="build-date">
+          {{'buildDate' | transloco}}:
+          <time [attr.datetime]="appVersion.builtAt">{{ appVersion.builtAt | date:'yyyy-MM-dd HH:mm:ss':'UTC' }} UTC</time>
+        </div>
+      </div>
     </div>
   </div>
 </app-window>
