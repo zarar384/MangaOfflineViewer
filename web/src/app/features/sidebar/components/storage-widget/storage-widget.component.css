@@ -8,8 +8,4 @@
 
 .storage-info { display:flex; justify-content:space-between; color:#9aa5c7; font-size:12px; }
 
-@media (min-width:700px) and (max-width:1200px) {
-    .storage-widget {
-        margin-bottom:110px;
-    }
-}
+.storage-widget { margin-bottom:0; }

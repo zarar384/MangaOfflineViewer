@@ -13,8 +13,21 @@
 
     </div>
 
-    <div class="sidebar-divider"></div>
+    <div class="sidebar-footer">
+        <div class="sidebar-divider"></div>
 
-    <app-storage-widget></app-storage-widget>
+        <app-storage-widget></app-storage-widget>
 
+        <div class="app-version" [title]="appVersion.buildId">
+            <div>
+                <span class="setting-label">{{'appVersion' | transloco}}:</span>
+                <span>{{ appVersion.version }} · {{ appVersion.commit }}{{ appVersion.dirty ? '-dirty' : '' }}</span>
+            </div>
+            <div class="build-date">
+                {{'buildDate' | transloco}}:
+                <time [attr.datetime]="appVersion.builtAt">{{ appVersion.builtAt | date:'yyyy-MM-dd HH:mm:ss':'UTC' }}
+                    UTC</time>
+            </div>
+        </div>
+    </div>
 </div>

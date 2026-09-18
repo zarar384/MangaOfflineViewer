@@ -4,10 +4,10 @@
     {
       "label": "molv start",
       "type": "shell",
-      "command": "npm start",
-      "options": {
-        "cwd": "${workspaceFolder}/web"
-      },
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/.vscode/scripts/start-dev-server.js"
+      ],
       "isBackground": true,
       "presentation": {
         "reveal": "silent",

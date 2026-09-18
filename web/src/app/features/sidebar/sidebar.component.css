@@ -1,9 +1,20 @@
 .sidebar { display:flex; flex-direction:column; height:100%; padding:12px; gap:12px; box-sizing:border-box; }
-
 .sidebar-menu { flex:1; min-height:0; overflow:auto; }
+.sidebar-divider { display:none; }
+.sidebar-footer { display:flex; flex-direction:column; gap:4px; flex-shrink:0; margin-top:auto; }
 
-.sidebar-divider { flex:0 0 1px; background:linear-gradient(to right, rgba(42,49,72,0), rgba(42,49,72,.9) 15%, rgba(42,49,72,1) 50%, rgba(42,49,72,.9) 85%, rgba(42,49,72,0)); }
+app-storage-widget { display:block; flex-shrink:0; }
 
-app-storage-widget { display:block; margin-top:auto; }
+.app-version { padding:0 4px; color:#858b9c; font-size:12px; font-weight:400; line-height:1.5; overflow-wrap:anywhere; text-align:center; }
+.app-version .setting-label { margin-right:4px; color:inherit; font-size:inherit; font-weight:inherit; }
 
-@media (max-width:700px) { app-storage-widget { margin-bottom:88px; } }
+.build-date { margin-top:2px; color:inherit; font-size:inherit; }
+
+@media (max-width:700px) {
+    .sidebar-footer { margin-bottom:88px; }
+    .app-version { font-size:10px; }
+}
+
+@media (min-width:700px) and (max-width:1200px) {
+    .sidebar-footer { margin-bottom:110px; }
+}

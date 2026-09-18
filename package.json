@@ -5,6 +5,7 @@
     "start:open": "npm --prefix web run start:open",
     "build": "npm --prefix web run build",
     "test": "npm --prefix web run test",
-    "deploy:gh": "npm --prefix web run deploy:gh"
+    "deploy:gh": "npm --prefix web run deploy:gh",
+    "version:generate": "npm --prefix web run version:generate"
   }
 }
