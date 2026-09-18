@@ -1,4 +1,7 @@
 {
+    "appVersion": "Version",
+    "buildDate": "Built",
+    "create": "Create",
     "untitled": "Untitled",
     "storage": "Storage",
     "open": "Open",
