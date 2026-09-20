@@ -30,6 +30,10 @@ export class SettingsWindowComponent {
   // Expose enum to template
   supportedLangs = SupportedLangs;
 
+  // BLURRED CONTENT 
+  readonly showBlurredContent = this.uiState.showBlurredContent;
+  readonly hideBlurredManga = this.uiState.hideBlurredContent
+
   constructor(private langService: LanguageService) {
     this.language = this.uiState.getValue<SupportedLangs>('language') || this.langService.getLang();
   }
@@ -53,5 +57,14 @@ export class SettingsWindowComponent {
     this.uiState.clearUpdate();
 
     document.location.reload();
+  }
+
+  // BLURRED CONTENT SETTINGS
+  onShowBlurredContentChange(value: boolean): void {
+    this.uiState.setShowBlurredContent(value);
+  }
+
+  onHideBlurredContentChange(value: boolean): void {
+    this.uiState.setHideBlurredContent(value);
   }
 }

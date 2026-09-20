@@ -1,5 +1,6 @@
-<app-window [visible]="isVisible" title="{{'settings' | transloco}}" [width]="'500px'" [height]="'400px'" position="center"
-  [showClose]="true" [showHide]="false" [blockBackground]="true" [showTransparency]="false" (close)="onWindowClose()">
+<app-window [visible]="isVisible" title="{{'settings' | transloco}}" [width]="'500px'" [height]="'400px'"
+  position="center" [showClose]="true" [showHide]="false" [blockBackground]="true" [showTransparency]="false"
+  (close)="onWindowClose()">
   <div>
     <div class="controls">
       <div class="setting-left">
@@ -13,8 +14,18 @@
         </molv-dropdown>
       </div>
       <div class="setting-left">
+        <span class="setting-label">{{ 'showBlurredContent' | transloco }}:</span>
+        <molv-switch [checked]="showBlurredContent()"
+          (checkedChange)="onShowBlurredContentChange($event)"></molv-switch>
+      </div>
+      <div class="setting-left">
+        <span class="setting-label">{{ 'hideBlurredContent' | transloco }}:</span>
+        <molv-switch [checked]="hideBlurredManga()" (checkedChange)="onHideBlurredContentChange($event)"></molv-switch>
+      </div>
+      <div class="setting-left">
         <span class="setting-label">{{'update' | transloco}}</span>
-        <button class="molv-btn molv-btn-pink" [disabled]="!updateAvailable()" (click)="updateApp()"> {{'update' | transloco}} </button>
+        <button class="molv-btn molv-btn-pink" [disabled]="!updateAvailable()" (click)="updateApp()"> {{'update' |
+          transloco}} </button>
       </div>
     </div>
   </div>

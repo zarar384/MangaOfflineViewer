@@ -34,13 +34,31 @@
 
 .card-menu { position:absolute; top:36px; right:0; max-width:150px; padding:6px; display:flex; flex-direction:column; gap:4px; background:rgba(27,33,50,.96); backdrop-filter:blur(12px); border:1px solid #343c56; border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.45); animation:cardMenu .15s ease; z-index:100; }
 
-.card-menu-item { display:flex; align-items:center; gap:10px; width:100%; height:36px; padding:0 10px; border:none; border-radius:8px; background:transparent; color:#d6dcef; font-size:13px; font-weight:500; cursor:pointer; transition:background .18s,color .18s; }
+.card-menu-item { display:flex; align-items:center; gap:10px; width:100%; min-height:36px; padding:8px 10px; box-sizing:border-box; border:none; border-radius:8px; background:transparent; color:#d6dcef; font-size:13px; font-weight:500; text-align:left; cursor:pointer; transition:background .18s,color .18s; }
 
 .card-menu-item:hover { background:#2d3550; color:#fff; }
 
 .card-menu-item.danger:hover { background:rgba(255,91,112,.14); color:#ff8fa2; }
 
-.card-menu-item img { width:16px; height:16px; opacity:.9; }
+.card-menu-item img { width:16px; height:16px; flex-shrink:0; opacity:.9; }
+
+.card-content { position: relative; border-radius: inherit; }
+
+/* blur the whole content, including title and actions */
+.card-content-blurred { filter: blur(12px); pointer-events: none; user-select: none; }
+
+/* clip blurred edges only while concealed */
+.card.card-concealed { overflow: hidden; }
+.card.card-concealed:hover { transform: none; }
+
+.card-open { display: block; width: 100%; padding: 0; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+
+/* keep the reveal action outside the blurred layer */
+.card-reveal { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; width: 100%; padding: 16px; border: 0; border-radius: inherit; background: rgba(15, 18, 30, .24); color: #ffd6e8; font: inherit; font-weight: 600; cursor: pointer; }
+.card-reveal span { padding: 8px 12px; border-radius: 8px; background: rgba(15, 18, 30, .82); }
+
+.card-open:focus-visible, .card-reveal:focus-visible { outline: 2px solid #ffd6e8; outline-offset: -3px; }
+.card-menu-item:disabled { opacity: .5; cursor: wait; }
 
 @keyframes cardMenu {
 from { opacity:0; transform:translateY(-6px) scale(.96); }

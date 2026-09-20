@@ -1,69 +1,65 @@
+@if (blurError()) {
+<p role="alert">{{ 'blurSaveError' | transloco }}</p>
+}
+
 <div class="grid">
-    @for (tabData of tabs(); track tabData.tab.id) {
-    <div class="card" (click)="openChapterInTab(tabData)">
+  @for (tabData of tabs(); track tabData.tab.id) {
+  <div class="card" [class.card-concealed]="tabData.isConcealed">
+    <div class="card-content" [class.card-content-blurred]="tabData.isConcealed"
+      [attr.inert]="tabData.isConcealed ? '' : null" [attr.aria-hidden]="tabData.isConcealed ? 'true' : null">
+      <div class="header">
+        <div class="card-menu-wrapper">
+          <button type="button" class="molv-card-action" [attr.aria-label]="'cardActions' | transloco"
+            [attr.aria-expanded]="openedMenuId() === tabData.tab.id"
+            (click)="toggleMenu(tabData.tab.id!); $event.stopPropagation()">
+            <img src="assets/icons/molv-more.svg" class="molv-more-icon" alt="">
+          </button>
 
-        <div class="header">
-            <!-- Edit (only single view mode) -->
-            @if (tabData.tab.mode != isSingle) {
+          @if (openedMenuId() === tabData.tab.id) {
+          <div #menu class="card-menu" (click)="$event.stopPropagation()">
+            @if (tabData.tab.mode === isSingle) {
+            <button type="button" class="card-menu-item" (click)="openEditWindow(tabData.tab); openedMenuId.set(null)">
+              <img src="assets/icons/molv-settings.svg" class="molv-settings-icon" alt="">
+              {{ 'edit' | transloco }}
+            </button>
+            }
 
-            <button class="molv-card-action" (click)="remove(tabData.tab.id!); $event.stopPropagation()">
-
-                <img src="assets/icons/molv-close.svg" class="molv-close-icon">
-
+            <button type="button" class="card-menu-item" [disabled]="tabData.isSavingBlur"
+              (click)="toggleBlur(tabData.tab, $event)">
+              <img [src]="tabData.tab.isBlurred ? 'assets/icons/molv-enable-blur.svg' : 'assets/icons/molv-disable-blur.svg'"
+                class="molv-blur-icon" alt="">
+              {{ (tabData.tab.isBlurred ? 'disableBlur' : 'enableBlur') | transloco }}
             </button>
 
-            }
-            <!-- Edit and Delete -->
-            @else {
-
-            <div class="card-menu-wrapper">
-
-                <button class="molv-card-action" (click)="toggleMenu(tabData.tab.id!); $event.stopPropagation()">
-
-                    <img src="assets/icons/molv-more.svg" class="molv-more-icon">
-
-                </button>
-
-                @if (openedMenuId() === tabData.tab.id) {
-
-                <div #menu class="card-menu" (click)="$event.stopPropagation()">
-
-                    <button class="card-menu-item"
-                        (click)="openEditWindow(tabData.tab); openedMenuId.set(null); $event.stopPropagation()">
-
-                        <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
-                        {{ 'edit' | transloco }}
-
-                    </button>
-
-                    <button class="card-menu-item danger"
-                        (click)="remove(tabData.tab.id!); openedMenuId.set(null); $event.stopPropagation()">
-
-                        <img src="assets/icons/molv-close.svg" class="molv-close-icon">
-                        {{ 'delete' | transloco }}
-
-                    </button>
-
-                </div>
-
-                }
-
-            </div>
-
-            }
-
+            <button type="button" class="card-menu-item danger"
+              (click)="remove(tabData.tab.id!); openedMenuId.set(null)">
+              <img src="assets/icons/molv-close.svg" class="molv-close-icon" alt="">
+              {{ 'delete' | transloco }}
+            </button>
+          </div>
+          }
         </div>
+      </div>
 
+      <button type="button" class="card-open" (click)="openChapterInTab(tabData)">
         <div class="cover" [style.backgroundImage]="'url(' + tabData.previewUrl + ')'">
-            <div class="cover-overlay">
-                <div class="title">{{ tabData.tab.name }}</div>
-            </div>
+          <div class="cover-overlay">
+            <div class="title">{{ tabData.tab.name }}</div>
+          </div>
         </div>
-
         <div class="meta">
-            <div class="meta-actions">{{ tabData.tab.mode == isSingle ? 'read' : 'open' | transloco }} →</div>
+          <div class="meta-actions">
+            {{ (tabData.tab.mode === isSingle ? 'read' : 'open') | transloco }} →
+          </div>
         </div>
-
+      </button>
     </div>
+
+    @if (tabData.isConcealed) {
+    <button type="button" class="card-reveal" (click)="revealCard(tabData.tab.id!, $event)">
+      <span>{{ 'revealCard' | transloco }}</span>
+    </button>
     }
+  </div>
+  }
 </div>

@@ -16,4 +16,6 @@ export interface Tab {
   createdAt?: number;
 
   mode?: TabMode;
+
+  isBlurred?: boolean;
 }

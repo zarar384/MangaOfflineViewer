@@ -82,6 +82,15 @@ export class TabsRepository {
     return db.tabs.orderBy('id').offset(offset).limit(perPage).toArray();
   }
 
+  async setBlurred(tabId: number, isBlurred: boolean): Promise<void> {
+    // update only the isBlurred; keep activity order unchanged
+    const tab = await db.tabs.update(tabId, { isBlurred });
+
+    if (!tab) {
+      throw new Error(`Tab with id ${tabId} not found`);
+    }
+  }
+
   async saveOrUpdateTabWithPages(
     tab: Tab,
     pages: Array<any>,

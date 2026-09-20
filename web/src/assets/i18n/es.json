@@ -1,4 +1,11 @@
 {
+    "blurSaveError": "Error al guardar el desenfoque",
+    "disableBlur": "Desactivar desenfoque",
+    "enableBlur": "Activar desenfoque",
+    "showBlurredContent": "Mostrar contenido desenfocado",
+    "hideBlurredContent": "Ocultar contenido desenfocado",
+    "cardActions": "Acciones de la tarjeta",
+    "revealCard": "Mostrar contenido",
     "appVersion": "Versión",
     "buildDate": "Fecha de compilación",
     "create": "Crear",

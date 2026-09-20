@@ -267,6 +267,24 @@ export class MangaDB extends Dexie {
       tags: '++id, normalized'
     });
 
+    // v16
+    // add isBlurred field to all tabs (false by default)
+    this.version(16).stores({
+      userTabs: '++id, tabId',
+      tabs: '++id, updatedAt, createdAt, mode, *artistIds, *tagIds',
+      pages: '++id, tabId, chapterId, chapterOrder, order, width, height, [tabId+chapterId], [tabId+chapterOrder+order]',
+      bookmarks: '++id, tabId, pageId, chapterId, [tabId+chapterId], [tabId+pageId]',
+      chapters: '++id, tabId, order, [tabId+order]',
+      artists: '++id, normalized',
+      tags: '++id, normalized'
+    }).upgrade(async tx => {
+      await tx.table<Tab>(STORE_TABS)
+        .toCollection()
+        .modify(tab => {
+          tab.isBlurred ??= false;
+        });
+    });
+
     // future migrations can be added like version(n).upgrade(...)
     // example
     // this.version(2).stores({

@@ -51,8 +51,19 @@ export class UiStateService {
 
   selectedMangaId = this.selectedMangaIdSignal.asReadonly();
 
+  // Content visibility
+  private showBlurredContentSignal = signal(false);
+  private hideBlurredContentSignal = signal(false);
+
+  showBlurredContent = this.showBlurredContentSignal.asReadonly();
+  hideBlurredContent = this.hideBlurredContentSignal.asReadonly();
+
   constructor() {
     const saved = this.getState();
+
+    // restore content visibility
+    this.showBlurredContentSignal.set(saved.showBlurredContent === true);
+    this.hideBlurredContentSignal.set(saved.hideBlurredContent === true);
 
     if (saved.openedChapters) {
       this.openedChaptersSignal.set(saved.openedChapters);
@@ -194,5 +205,18 @@ export class UiStateService {
 
   clearUpdate() {
     this.updateAvailableSignal.set(false);
+  }
+
+  // CONTENT VISIBILITY
+  setShowBlurredContent(value: boolean) {
+    this.showBlurredContentSignal.set(value);
+
+    this.saveState({ showBlurredContent: value });
+  }
+
+  setHideBlurredContent(value: boolean) {
+    this.hideBlurredContentSignal.set(value);
+    
+    this.saveState({ hideBlurredContent: value });
   }
 }

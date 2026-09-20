@@ -20,7 +20,14 @@ import { ChaptersRepository } from '../repositories/chapters.repository';
 export class TabsService {
 
   private page = signal(1);
+  readonly pageState = this.page.asReadonly();
+
   private perPage = signal(10);
+  readonly perPageState = this.perPage.asReadonly();
+
+  // ignore results from older list requests
+  private loadToken = 0;
+
   private hydrated = signal(false);
 
   private userTabs = signal<UserTab[]>([]);
@@ -92,10 +99,10 @@ export class TabsService {
     await this.refresh();
   }
 
- async deleteChapter(chapterId: number) {
+  async deleteChapter(chapterId: number) {
     await this.chaptersRepo.delete(chapterId);
- }
-  
+  }
+
   filterByTokens(
     tokens: SearchToken[],
     query: string
@@ -155,14 +162,48 @@ export class TabsService {
     );
   }
 
+  async setBlurred(id: number, isBlurred: boolean): Promise<void> {
+    await this.repo.setBlurred(id, isBlurred);
 
+    // blure does not change preview content
+    await this.load(this.page(), this.perPage());
+  }
+
+  /* FLOW
+    Load manga
+    Filter out hidden manga
+    Load artists and tags
+    Sort
+    Apply search
+    Validate page number
+    Apply pagination
+    Prepare previews
+    Publish results
+  */
   private async load(page: number, perPage: number) {
+    const requestId = ++this.loadToken;
 
     // normalize search query (trim + lowercase)
     const tokens = this.searchTokens();
+    const hideBlurredManga = this.uiState.hideBlurredContent();
+
+    // reject results when request parameters have changed
+    const isCurrentRequest = () =>
+      requestId === this.loadToken &&
+      page === this.page() &&
+      perPage === this.perPage() &&
+      tokens === this.searchTokens() &&
+      hideBlurredManga === this.uiState.hideBlurredContent();
 
     // load all tabs from repository
     let allTabs = await this.repo.getAll();
+
+    if (!isCurrentRequest()) return;
+
+    // exclude marked manga before metadata loading and pagination
+    if (hideBlurredManga) {
+      allTabs = allTabs.filter(tab => !tab.isBlurred);
+    }
 
     // preload artists/tags for filtering
     const artistMap = new Map<number, string[]>();
@@ -282,14 +323,40 @@ export class TabsService {
       });
     }
 
-    // total count after filtering
-    this.totalTabs.set(allTabs.length);
+    if (!isCurrentRequest()) return;
+
+    const total = allTabs.length;
+
+    // keep the current page within the filtered list
+    const lastPage = Math.max(
+      1,
+      Math.ceil(total / perPage)
+    );
+
+    const currentPage = Math.min(
+      Math.max(1, page),
+      lastPage
+    );
+
+    if (currentPage !== page) {
+      this.page.set(currentPage);
+
+      this.uiState.saveState({
+        page: currentPage
+      });
+
+      // the existing paging effect will load the corrected page
+      return;
+
+    }
 
     // pagination
-    const start = (page - 1) * perPage;
+    const start = (currentPage - 1) * perPage;
 
-    const pagedTabs =
-      allTabs.slice(start, start + perPage);
+    const pagedTabs = allTabs.slice(
+      start,
+      start + perPage
+    );
 
     // previews
     const previewData = await Promise.all(
@@ -299,13 +366,18 @@ export class TabsService {
       }))
     );
 
+    const userTabs = await this.userTabsRepo.getAll();
+
+    if (!isCurrentRequest()) return;
+
+    // total after filtering
+    this.totalTabs.set(total);
+
     // update state
     this.tabs.set(previewData);
 
     // load user tabs
-    this.userTabs.set(
-      await this.userTabsRepo.getAll()
-    );
+    this.userTabs.set(userTabs);
   }
 
   async removeTab(id: number) {

@@ -4,3 +4,5 @@
 .setting-left {  display: flex;  align-items: center;  gap: 30%;}
 .setting-right {  display: flex;  justify-content: space-between;  align-items: center;  gap: 15px;}
 .setting-label {  font-weight: 500;  min-width: 100px;}
+
+input[type="checkbox"] { accent-color: #ffd6e8; }
