@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+
+<path d="M211 20 Q213 33 224 36 Q213 39 211 52 Q208 39 198 36 Q208 33 211 20Z" fill="#fff" stroke="#d0cdd2" stroke-width="2.5"/>
+<path d="M40 193 Q42 204 51 207 Q42 210 40 220 Q38 210 29 207 Q38 204 40 193Z" fill="#fff" stroke="#d0cdd2" stroke-width="2.5"/>
+<g>
+<g fill="#fff" stroke="#cecccf" stroke-width="3" stroke-linejoin="round">
+<!-- pointed eyelids with small irregular cuts -->
+<path d="M18 131 L34 116 L31 106 L44 109 Q57 89 80 80 L77 70 L94 76 Q124 63 155 76 L170 69 L167 81 Q188 89 208 111 L225 104 L220 119 L240 130 L221 137 Q205 160 181 174 L185 183 L169 180 Q134 197 98 182 L83 185 L86 176 Q58 164 37 142 L22 147 L27 136 Z
+M45 130 Q83 89 127 88 Q173 88 213 130 Q174 171 128 172 Q83 172 45 130 Z" fill-rule="evenodd"/>
+<!-- iris -->
+<path d="M129 96 Q156 96 159 126 Q160 155 131 165 Q103 161 98 135 Q95 110 118 100 L116 111 L129 107Z"/>
+</g>
+<!-- pupil and cut-out highlights -->
+<path d="M130 113 Q142 123 137 143 L128 153 L121 140 Q117 125 130 113Z" fill="#cecccf"/>
+<path d="M117 101 L120 115 L133 118 L120 122 L117 135 L113 122 L102 118 L113 114Z" fill="#fff"/>
+<path d="M145 142 L147 149 L153 151 L147 153 L145 160 L143 153 L137 151 L143 149Z" fill="#fff"/>
+</g>
+
+</svg>

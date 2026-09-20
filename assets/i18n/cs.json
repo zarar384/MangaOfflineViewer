@@ -1,4 +1,11 @@
 {
+    "blurSaveError": "Chyba při ukládání rozmazání",
+    "disableBlur": "Vypnout rozmazání",
+    "enableBlur": "Zapnout rozmazání",
+    "showBlurredContent": "Zobrazit rozmazaný obsah",
+    "hideBlurredContent": "Skrýt rozmazaný obsah",
+    "cardActions": "Akce karty",
+    "revealCard": "Zobrazit obsah",
     "appVersion": "Verze",
     "buildDate": "Sestaveno",
     "create": "Vytvořit",

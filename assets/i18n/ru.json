@@ -1,4 +1,11 @@
 {
+    "blurSaveError": "Ошибка при сохранении размытия",
+    "disableBlur": "Отключить размытие",
+    "enableBlur": "Включить размытие",
+    "showBlurredContent": "Показать размытое содержимое",
+    "hideBlurredContent": "Скрыть размытое содержимое",
+    "cardActions": "Действия с карточкой",
+    "revealCard": "Показать содержимое",
     "appVersion": "Версия",
     "buildDate": "Дата сборки",
     "create": "Создать",

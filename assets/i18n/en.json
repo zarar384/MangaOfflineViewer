@@ -1,4 +1,11 @@
 {
+    "blurSaveError": "Error saving blur",
+    "disableBlur": "Turn off blur",
+    "enableBlur": "Turn on blur",
+    "showBlurredContent": "Show blurred content",
+    "hideBlurredContent": "Hide blurred content",
+    "cardActions": "Card actions",
+    "revealCard": "Show content",
     "appVersion": "Version",
     "buildDate": "Built",
     "create": "Create",
