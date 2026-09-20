@@ -141,6 +141,7 @@ Examples:
 - Manga metadata (tabs, chapters, artists, tags)
 - Pages and extracted images
 - Bookmarks / reading progress
+- Per-manga blur flag, plus global show/hide settings for blurred content
 
 ### UI-related State
 

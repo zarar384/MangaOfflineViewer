@@ -8,7 +8,7 @@
 
 ### Library and selection
 
-`TabsService` (root) owns the library list, paging, search filtering, preview URLs, the active tab, and the `open()` flow that loads pages and hands them to the reader. It is the entry point for opening a manga or chapter.
+`TabsService` (root) owns the library list, paging, search filtering, blurred-content filtering, preview URLs, the active tab, and the `open()` flow that loads pages and hands them to the reader. It is the entry point for opening a manga or chapter.
 
 ### Reader state
 
@@ -20,7 +20,7 @@
 
 ### UI state
 
-`UiStateService` (root) owns current view, selected manga, sidebar, window visibility, opened chapters, reader setting values, and update availability, persisted to the local storage key `ui-state`.
+`UiStateService` (root) owns current view, selected manga, sidebar, window visibility, opened chapters, reader setting values, content visibility (`showBlurredContent`, `hideBlurredContent`) toggles, and update availability, persisted to the local storage key `ui-state`.
 
 ### Draft editing
 
@@ -62,6 +62,7 @@ Exceptions that already exist in the code. Treat them as the local convention, n
 | Data | Authoritative | Derived | Temporary |
 | --- | --- | --- | --- |
 | Manga entry | `tabs` table | `TabsService.tabsState`, preview URLs | `MangaDraftService` draft |
+| Manga blur flag | `Tab.isBlurred` (`tabs` table) | `TabsComponent` concealed-card state | per-card `revealedIds` reveal set, session only, never persisted |
 | Chapters | `chapters` table | `ChaptersListService.chapters` | `ChaptersListService.pendingOrder` |
 | Pages and image payloads | `pages` table, `src` is a Blob or a data URL on iOS | `PageMeta` projections, uploader thumbnails | blob URLs in `ImagePipelineService` and `ObjectUrlService` |
 | Chapter order | `Chapter.order` | `Page.chapterOrder` mirror | pending reorder draft |
@@ -80,7 +81,9 @@ Exceptions that already exist in the code. Treat them as the local convention, n
 
 **Compound index availability.** Ordering queries rely on `[tabId+chapterOrder+order]`, `[tabId+chapterId]`, and `[tabId+order]`. Removing or renaming an indexed field without a new Dexie version silently breaks those queries against existing user databases.
 
-**Schema versions are append-only.** Users hold live databases at version 15. Editing a released `version(n).stores(...)` block instead of adding a new one corrupts upgrades. Migrations must be additive and must not delete user content.
+**Schema versions are append-only.** Users hold live databases at version 16. Editing a released `version(n).stores(...)` block instead of adding a new one corrupts upgrades. Migrations must be additive and must not delete user content.
+
+**Blur reveal is never persisted.** Only `Tab.isBlurred` and the two global toggles (`showBlurredContent`, `hideBlurredContent`) are persisted. `TabsComponent.revealedIds` (per-card reveal) is session-only state and must stay component-local.
 
 **Blob URL ownership.** `ObjectUrlService` caches by string key, and `ImagePipelineService` caches by page id and delegates revocation to it. Creating a URL outside these owners leaks memory; revoking one directly leaves a stale cache entry that later returns a dead URL.
 

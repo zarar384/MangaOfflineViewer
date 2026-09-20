@@ -21,6 +21,7 @@ These are instructions. The facts behind them live in architecture.md and implem
 - Reuse the owning store: `TabsService` for library and selection, `ReaderService` for reader state, `UiStateService` for UI state, `MangaDraftService` for unsaved manga edits, `ChaptersListService` for chapter drafts.
 - Do not add another state mechanism. Signals plus the existing RxJS usage are the convention.
 - Remember that `ChaptersListService` and `BookmarksService` are component-scoped, not root-provided.
+- Per-manga blur (`Tab.isBlurred`) belongs to `TabsService`/`TabsRepository`; the global reveal/hide toggles belong to `UiStateService`. Keep per-card temporary reveal state component-local and never persist it.
 
 ## Offline and PWA
 

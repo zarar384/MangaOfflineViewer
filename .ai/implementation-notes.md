@@ -4,9 +4,10 @@ Non-obvious behavior and traps. These are current implementation details, not pe
 
 ## Persistence traps
 
-- `DB_VERSION = 1` in `db.config.ts` is stale. The real schema is at version 15 and the constant is only referenced by commented-out recreate code in `manga-db.ts`. Do not treat it as the schema version.
+- `DB_VERSION = 1` in `db.config.ts` is stale. The real schema is at version 16 and the constant is only referenced by commented-out recreate code in `manga-db.ts`. Do not treat it as the schema version.
 - `STORE_ARTISTS = 'artist'` and `STORE_TAGS = 'tag'` do not match the real table names `artists` and `tags`. They are unused.
 - Schema version 12 is skipped; versions go 11 then 13.
+- Schema version 16 adds `Tab.isBlurred`, defaulted to `false` for existing rows by the upgrade callback.
 - `USE_SEEDS` is `false`, so `SeedService` no-ops and the seed constants inside the repositories are dead in normal runs.
 - `TabsRepository.delete()` cascades inside one transaction, but `ChaptersRepository.delete()` performs three separate deletes without a transaction. That inconsistency is pre-existing.
 - `ChaptersRepository.update()` has a side effect: it reorders every chapter of the tab.
@@ -45,6 +46,12 @@ Defined in `shared/models/manga-structure-metadata.ts` with validation in `share
 It is format independent: marker `molv-manga-structure`, `version: 1`, a mode discriminant, and ordered chapter or page arrays referencing opaque asset ids. Array position carries order; database ids, order fields, and page names are deliberately not serialized. ZIP stores the JSON at `.molv/manga-structure.json` and uses archive filenames as assets. MHTML embeds a JSON script element with id `molv-manga-structure` and uses `page-N` element ids as assets.
 
 Behavior by case: valid metadata reconstructs the structure; absent metadata uses the legacy path; malformed, unknown version, wrong mode, missing asset, or duplicate asset warns and uses the legacy path. No case aborts the import.
+
+## Content visibility (blur)
+
+`TabsService.setBlurred()` writes through `TabsRepository.setBlurred()` and then reloads the library; the comment `blure does not change preview content` documents that the preview is left untouched. `TabsService.load()` filters out `isBlurred` tabs before pagination when `UiStateService.hideBlurredContent()` is true, alongside its existing stale-request guard.
+
+`TabsComponent` computes `isConcealed` per card as `isBlurred && !showBlurredContent && not in revealedIds`. `revealedIds` (temporary per-card reveal) and `savingBlurIds` (write-in-flight guard) are component-local signals reset by an `effect` whenever page, page size, view, or the global toggles change. `toggleBlur()` ignores repeat clicks while a write is pending and sets `blurError` on failure instead of throwing.
 
 ## MHTML worker and streaming
 

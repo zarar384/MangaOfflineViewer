@@ -1,6 +1,6 @@
 # Project Overview
 
-An offline-first manga reader delivered as an Angular 20 PWA. Users import manga from local files, organize them as single-volume or multi-chapter entries, read them in several reading modes, bookmark pages, tag and search their library, and export manga back to files.
+An offline-first manga reader delivered as an Angular 20 PWA. Users import manga from local files, organize them as single-volume or multi-chapter entries, read them in several reading modes, bookmark pages, tag and search their library, blur individual manga with global reveal/hide settings, and export manga back to files.
 
 ## Runtime parts
 

@@ -52,6 +52,7 @@ Critical, do-not-casually-revert decisions:
 - Do not refactor unrelated code, weaken types, or silence compiler errors instead of fixing them.
 - Reader runtime code is timing sensitive. Read `web/src/app/features/reader/README.md` before changing scrolling, virtualization, navigation, or image loading.
 - Treat imported files as untrusted input. Do not introduce unsanitized HTML rendering or bypass Angular sanitization.
+- Manga blur (`Tab.isBlurred`, plus the global `showBlurredContent`/`hideBlurredContent` settings) is a display-only visibility filter, not access control or encryption. Do not rely on it to protect data.
 
 ## Verification
 
