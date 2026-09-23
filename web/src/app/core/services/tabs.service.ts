@@ -27,7 +27,6 @@ export class TabsService {
 
   // ignore results from older list requests
   private loadToken = 0;
-  private openToken = 0;
 
   private hydrated = signal(false);
 
@@ -415,7 +414,6 @@ export class TabsService {
     pageId?: number | null;
     chapterId?: number | null;
   }) {
-    const token = ++this.openToken;
 
     // clear states
     this.draftService.clear();
@@ -427,7 +425,6 @@ export class TabsService {
     }
 
     const tab = await this.getTabById(mangaId);
-    if (token !== this.openToken) return;
     if (!tab) {
       await this.setSelectedManga(null);
       return;
@@ -448,7 +445,7 @@ export class TabsService {
       pages = await this.pagesRepo.getMeta(mangaId);
     }
 
-    if (token !== this.openToken || !pages.length) return;
+    if (!pages.length) return;
 
     // determine current page id
     const currentPageId = pageId ?? pages[0].id!;
@@ -467,7 +464,6 @@ export class TabsService {
 
   // UI STATE INTERACTIONS
   private async setSelectedManga(mangaId: number | null, mod: ViewMod | null = null) {
-    const token = this.openToken;
     {
       // if no mangaId is provided, navigate to home and clear selection
       if (!mangaId) {
@@ -478,7 +474,6 @@ export class TabsService {
 
       // try to find the tab by mangaId. If not found, navigate home and clear selection
       const tab = await this.getTabById(mangaId);
-      if (token !== this.openToken) return;
       if (!tab) {
         this.uiState.navigate(ViewMod.Home);
         this.uiState.setSelectedManga(null);

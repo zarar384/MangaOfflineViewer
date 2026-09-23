@@ -9,8 +9,6 @@
 
   @for (page of visiblePages; track page.id) {
     <div class="image-container"
-         [class.cover-page]="page.id === pages[0]?.id"
-         [style.margin-right]="readerMode === 'dual' && page.id === pages[pages.length - 1]?.id && (pages.length - (dualPageCover ? 1 : 0)) % 2 === 1 ? '50%' : null"
          [style.margin-bottom.px]="readerMode === 'scroll' ? readerGap : 0">
 
       <img
@@ -18,8 +16,6 @@
         class="reader-img"
         [attr.width]="page.width || null"
         [attr.height]="page.height || null"
-        [style.aspect-ratio]="readerMode === 'scroll' && page.width && page.height ? page.width + ' / ' + page.height : null"
-        [style.height.px]="readerMode === 'scroll' && !(page.width && page.height) ? 0 : null"
         [attr.data-page-id]="page.id"
         [alt]="'page ' + page.id"
       />

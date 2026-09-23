@@ -14,7 +14,7 @@ export class ImagePipelineService implements OnDestroy {
   private readonly device = inject(DeviceCapabilitiesService);
 
   // pageId to object url cache
-  private pageUrls = new Map<number, string>();
+  private readonly pageUrls = new Map<number, string>();
 
   // page ids currently loading
   private readonly loadingSet = new Set<number>();
@@ -46,9 +46,7 @@ export class ImagePipelineService implements OnDestroy {
     if (!(page.src instanceof Blob) || page.id == null) return '';
 
     if (!this.pageUrls.has(page.id)) {
-      const cache = this.pageUrls;
       const url = await this.urlService.createUrl(`${page.id}`, page.src);
-      if (cache !== this.pageUrls) return '';
       this.pageUrls.set(page.id, url);
     }
 
@@ -60,34 +58,20 @@ export class ImagePipelineService implements OnDestroy {
     // Skip if already loaded with same source.
     if (img.src === url && img.complete && img.naturalHeight > 0) return;
 
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        img.onload = null;
-        img.onerror = null;
-        img.removeAttribute('src');
-        reject(new Error('Image load timed out'));
-      }, 12_000);
+    return new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 12_000);
 
-      img.onload = async () => {
-        img.onload = null;
-        img.onerror = null;
-        try {
-          if (this.device.supportsImageDecode()) await img.decode();
-          if (img.naturalWidth > 0 && img.naturalHeight > 0) resolve();
-          else reject(new Error('Image has no dimensions'));
-        } catch (error) {
-          reject(error);
-        } finally {
-          clearTimeout(timeout);
-        }
-      };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        img.onload = null;
-        img.onerror = null;
-        reject(new Error('Image load failed'));
-      };
+      const cleanup = () => clearTimeout(timeout);
+
+      img.onload = () => { cleanup(); resolve(); };
+      img.onerror = () => { cleanup(); resolve(); };
+
       img.src = url;
+
+      // decode helps avoid jank on large pages.
+      if (this.device.supportsImageDecode()) {
+        img.decode().catch(() => {});
+      }
     });
   }
 
@@ -144,7 +128,7 @@ export class ImagePipelineService implements OnDestroy {
     for (const id of this.pageUrls.keys()) {
       this.urlService.revokeUrl(String(id));
     }
-    this.pageUrls = new Map<number, string>();
+    this.pageUrls.clear();
     this.loadingSet.clear();
   }
 

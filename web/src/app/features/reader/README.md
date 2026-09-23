@@ -24,37 +24,29 @@ V = виртуальное окно
 
 ## 2] Open flow
 
-Триггер: change в `reader.pages()` при новом open.
+Триггер: change в `reader.pages()`.
 
 ```txt
 rebuild pageIndexMap
-reset virtual window + rebuild virtualization index
-clear url caches
-detach old image elements (даже при тех же page ids)
-updateVisiblePages(startIndex)
+rebuild virtualization index
 reset runtime flags and counters
+clear url caches
+updateVisiblePages(startIndex)
 rebuildChapterTracking()
 showLoaderNow()
 loadToken++
 navToken++
-handleNavigation(currentPageId)
-```
-
-После готовности цели:
-
-```txt
 setupObserver()
 observeAllImages()
 setupScrollPreloadListener()
-resetIsOpen()
-tryLoadAdjacentChapters(currentIndex, allowPrev=true, allowNext=true)
+tryLoadAdjacentChapters(startIndex, allowPrev=false)
 ```
 
 Ключевое правило open:
 
 ```txt
-open и явный переход используют handleNavigation()
-ждем целевую картинку, не весь буфер
+на первом кадре preload только next chapter
+prev preload отключен чтобы не сдвигать viewport
 ```
 
 ## 3] Merge flow
@@ -62,37 +54,31 @@ open и явный переход используют handleNavigation()
 Триггер: `reader.pagesUpdateKind() === 'merge'`.
 
 ```txt
-capture previousFirstId из старого pageIndexMap
-rebuild pageIndexMap + virtualization index
 mergeChapterTracking()
 resolve anchorId
 detect prepend
-preserveScroll(anchorId) -> updateVisiblePages(anchorIndex)
-release isPrepending
-requestAnimationFrame -> observeNewImages() + loadVisibleRange()
+preserveScroll(anchorId)
+updateVisiblePages(anchorIndex)
+observeNewImages()
+loadVisibleRange()
 ```
 
 Prepend detection:
 
 ```txt
-previousFirstId = начало полного буфера до обновления
-новый первый id != previousFirstId
-previousFirstId остается в новом буфере
+firstNewId идет раньше firstVisibleId в global index
 ```
 
-Выбор якоря:
+Поведение в page mode после prepend:
 
 ```txt
-active navigation -> focusPageId, окно обновляется без компенсации
-иначе -> страница с наибольшим видимым пересечением
-fallback -> bookmark / currentPageId / первая страница окна
+scrollToPageImmediately(anchorId)
 ```
 
-После prepend:
+После снятия `isPrepending`:
 
 ```txt
 loadVisibleRange(8000 iOS / 12000 others)
-отложенный callback проверяет destroyed, loadToken и navToken
 ```
 
 ## 4] Virtual window
@@ -170,51 +156,28 @@ bookmark обновляется только когда нет активной 
 
 ## 6] Image loading pipeline
 
-Observer, `loadVisibleRange()` и navigation используют `loadOnePage()`.
+Пайплайн вызывается из observer и из `loadVisibleRange()`.
 
 ```txt
 ensurePageLoaded(page)
 getOrCreateUrl(page)
-resolve missing dimensions (если нужны)
 loadImage(img, url)
-release load slot
-cleanupFarImages()
-loadVisibleRange()
+cleanupFarImages(currentId)
 ```
 
 Ограничения:
 
 ```txt
 MAX_LOAD = 12
-loadingSet хранит img, promise и failed
-повторный запрос -> await существующей загрузки
-нет слотов -> цель navigation ждет, background подхватит следующий проход
-видимые страницы загружаются раньше дальнего запаса
-```
-
-Геометрия:
-
-```txt
-width/height известны -> место резервируется до назначения src
-width/height отсутствуют -> load вне DOM через существующий pipeline
-naturalWidth/naturalHeight -> preserveScroll() -> назначение src в DOM
-полученные размеры остаются в памяти, БД не меняется
+loadingSet защищает от дублей
 ```
 
 В [image-pipeline.service.ts](engine/image-pipeline.service.ts):
 
 ```txt
-loadIntoElement ждет load и decode() (если доступен)
-timeout = 12s
-error / timeout -> rejected promise, не успешная готовность
-```
-
-Завершение загрузки:
-
-```txt
-проверить loadToken и принадлежность записи перед изменением счетчиков
-ошибка сохраняется до нового open, автоматического бесконечного retry нет
-освободился слот -> loadVisibleRange() подхватывает пропущенные загрузки
+loadIntoElement timeout = 12s
+img.onerror не роняет пайплайн
+decode() используется когда доступен
 ```
 
 ## 7] Loader
@@ -338,31 +301,25 @@ updateActiveChapter(currentPageId)
 ```txt
 navToken++
 focusPageId = pageId
-isNavigating = true
-showLoaderNow() для вертикальных режимов
+showLoaderNow()
 waitForImages()
 resolvePageIndexForNavigation()
+isNavigating = true
 updateVisiblePages(index)
-requestAnimationFrame
-waitForImages()
-waitForTarget(pageId) -> loadOnePage()
-scrollToPageImmediately(pageId)
+preload around target
+requestAnimationFrame + forced reflow
+waitForTarget(pageId)
+scrollController.scrollToPage()
 setCurrentPage + setCurrentPageBookmark + updateActiveChapter
-setupObserver + observeAllImages + setupScrollPreloadListener
-resetIsOpen + tryLoadAdjacentChapters
 hideLoader()
 isNavigating = false
-focusPageId = null
-loadVisibleRange()
 ```
 
-Готовность и отмена:
+Target preload range:
 
 ```txt
-waitForImages() ждет DOM, не загрузку картинки
-waitForTarget() ждет целевую картинку через общий pipeline
-после async ожиданий -> проверить destroyed и navToken
-только текущая navigation пишет позицию и освобождает флаги
+before = MAX_LOAD * 2
+after = MAX_LOAD
 ```
 
 ## 13] Navigation outside current buffer
@@ -386,39 +343,23 @@ timeout = 10s
 
 ## 14] preserveScroll
 
-Используется при изменении виртуального окна и получении размеров старых страниц.
+Используется когда меняется виртуальное окно и нужно удержать якорь в том же месте экрана.
 
 ```txt
 capture anchor position
-isRestoringScroll = true
-callback() меняет окно / размеры
-detectChanges()
+callback() mutates DOM/window
+next animation frame
 re-query anchor
 apply shift compensation to scrollTop/scrollLeft
-restore isRestoringScroll
 ```
 
-Правило коррекции:
+Bypass conditions:
 
 ```txt
-замер, изменение DOM и компенсация выполняются синхронно
-между замерами нет requestAnimationFrame
-движение пользователя между кадрами не попадает в поправку
-```
-
-Геометрия и browser anchoring:
-
-```txt
-известные размеры сохраняются до и после загрузки
-неизвестные размеры применяются атомарно через preserveScroll()
-overflow-anchor:none внутри ридера -> браузер не дублирует компенсацию
-```
-
-Без коррекции позиции:
-
-```txt
-active navigation
-missing container / anchor
+mode = page
+isNavigating
+isRestoringScroll
+missing anchor
 ```
 
 ## 15] Mode / gap reflow
@@ -426,20 +367,13 @@ missing container / anchor
 Mode change effect:
 
 ```txt
-первоначальный запуск -> без перехода
-смена режима -> resolve anchor -> handleNavigation(anchor)
-смена dualPageCover в dual -> тот же переход с текущей выбранной страницей
-```
-
-Выбор цели:
-
-```txt
-active navigation -> focusPageId
-иначе -> bookmark / currentPageId / viewport anchor
-bookmark приоритетнее currentPageId, который может отставать в page mode
-dual сохраняет выбранную страницу внутри текущего разворота
-более широкая соседняя страница не перезаписывает bookmark
-выход из dual -> та же выбранная страница
+resolve anchor
+set isNavigating=true
+updateVisiblePages(anchorIndex)
+setupObserver + observeAllImages
+scrollToPageImmediately(anchor)
+loadVisibleRange()
+release flags
 ```
 
 Gap change effect:
@@ -450,33 +384,12 @@ preserveScroll(anchor)
 updateVisiblePages(anchorIndex)
 ```
 
-Зависимости effects:
-
-```txt
-handleNavigation() и preserveScroll() вызываются через untracked
-effects страниц и навигации не подписываются на reader.mode
-mode effect сохраняет явную зависимость от reader.mode
-```
-
 ## 16] Input behavior
-
-Dual spreads:
-
-```txt
-dualPageCover=true -> [1], [2, 3], [4, 5], ...
-dualPageCover=false -> [1, 2], [3, 4], ...
-обложка занимает отдельный экран и определяется по полному буферу
-переход выравнивает начало разворота, bookmark сохраняет выбранную страницу
-шаг назад с любой страницы [2, 3] -> [1] при включенной обложке
-последний неполный разворот дополняется пустой половиной экрана
-```
 
 Keyboard:
 
 ```txt
 ArrowRight/ArrowLeft работают только в horizontal и dual
-в полях ввода и окнах настройки клавиши не перелистывают ридер
-обработанная клавиша отменяет стандартную прокрутку браузера
 ```
 
 Wheel:
@@ -489,8 +402,6 @@ Gesture:
 
 ```txt
 swipe-next/swipe-prev обрабатываются только в horizontal и dual
-touch-action:pan-y pinch-zoom исключает вторую горизонтальную прокрутку браузера
-multi-touch не распознается как swipe, pinch-zoom остается браузеру
 tap event пробрасывается
 ```
 
@@ -523,13 +434,4 @@ freezeBookmarkUpdates = isPrepending || isNavigating || isRestoringScroll
 
 ```txt
 новый open/reset отменяет старые async load continuation
-```
-
-Открытие из библиотеки и reader settings:
-
-```txt
-TabsService.openToken отменяет результат более старого open()
-loadPages() / loadBookmarks() проверяют актуальную mangaId после чтения БД
-goToPage() в settings использует open(), без второго независимого перехода
-readerGap=0 сохраняется при повторном создании wrapper
 ```
