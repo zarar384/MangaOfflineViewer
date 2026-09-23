@@ -1,0 +1,59 @@
+<div
+  class="reader-hud"
+  [class.visible]="visible"
+  [attr.inert]="visible ? null : ''"
+  [attr.aria-hidden]="!visible"
+  [attr.aria-label]="'readerControls' | transloco"
+  (pointerenter)="interactionStarted.emit()"
+  (pointerleave)="interactionEnded.emit()"
+  (focusin)="interactionStarted.emit()"
+  (focusout)="interactionEnded.emit()"
+  role="toolbar">
+
+  <div class="reader-position">
+    @if (chapterOrder !== null) {
+      <span class="chapter-label">
+        {{ 'chapter' | transloco }} {{ chapterOrder }}
+      </span>
+
+      <span class="position-separator" aria-hidden="true"></span>
+    }
+
+    <span
+      class="page-position"
+      [attr.aria-label]="'pageProgress' | transloco: { current: currentPage, total: totalPages }"
+      aria-live="polite">
+      <span class="current-page">{{ currentPage }}</span>
+      <span class="page-divider" aria-hidden="true">/</span>
+      <span>{{ totalPages }}</span>
+    </span>
+  </div>
+
+  <div class="reader-actions">
+    <button
+      type="button"
+      class="hud-button"
+      [class.active]="bookmarked"
+      [disabled]="bookmarkPending"
+      [attr.aria-pressed]="bookmarked"
+      [attr.aria-label]="(bookmarked ? 'removeBookmark' : 'addBookmark') | transloco"
+      [title]="(bookmarked ? 'removeBookmark' : 'addBookmark') | transloco"
+      (click)="bookmarkClicked.emit()">
+
+      @if (bookmarkPending) {
+        <span class="molv-spinner small" aria-hidden="true"></span>
+      } @else {
+        <img src="assets/icons/molv-bookmark.svg" alt="" aria-hidden="true">
+      }
+    </button>
+
+    <button
+      type="button"
+      class="hud-button"
+      [attr.aria-label]="'readSettings' | transloco"
+      [title]="'readSettings' | transloco"
+      (click)="settingsClicked.emit()">
+      <img src="assets/icons/molv-settings.svg" alt="" aria-hidden="true">
+    </button>
+  </div>
+</div>

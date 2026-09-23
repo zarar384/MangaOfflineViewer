@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, EventEmitter, inject, Input, Output } from '@angular/core';
+import { Component, effect, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FileFormat } from 'src/app/shared/enums/file-format';
 import { Bookmark } from '../../../core/models/bookmark';
 import { BookmarksRepository } from '../../../core/repositories/bookmark.repository';
@@ -32,7 +32,7 @@ export interface ReaderPage {
   styleUrl: './reader-settings-window.component.css',
   standalone: true
 })
-export class ReaderSettingsWindowComponent {
+export class ReaderSettingsWindowComponent implements OnChanges {
   @Input() isVisible = false;
   @Input() mode: ReadingMode = 'scroll';
   @Input() downloadMod: FileFormat = FileFormat.MHTML;
@@ -79,6 +79,13 @@ export class ReaderSettingsWindowComponent {
         this.loadPages();
       });
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isVisible']?.currentValue !== true) return;
+
+    void this.loadBookmarks();
+    void this.loadPages();
   }
 
   onWindowClose() {

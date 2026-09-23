@@ -9,6 +9,23 @@
 >
 </reader-settings-window>
 
-<div class="reader-container-wrapper">
+<div
+  class="reader-container-wrapper"
+  (pointermove)="onReaderActivity()"
+  (pointerdown)="onReaderActivity()"
+  (wheel)="onReaderActivity()">
   <manga-reader></manga-reader>
+
+  <reader-hud
+    [visible]="hudVisible() && !showSettingsWindow"
+    [currentPage]="currentPageNumber()"
+    [totalPages]="currentPageTotal()"
+    [chapterOrder]="currentChapterOrder()"
+    [bookmarked]="currentPageBookmarked()"
+    [bookmarkPending]="bookmarkPending()"
+    (bookmarkClicked)="toggleCurrentPageBookmark()"
+    (settingsClicked)="openReaderSettings()"
+    (interactionStarted)="holdHud()"
+    (interactionEnded)="releaseHud()">
+  </reader-hud>
 </div>

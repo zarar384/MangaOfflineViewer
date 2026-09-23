@@ -31,13 +31,15 @@
 
   </button>
 
-  <button
-    class="molv-btn molv-btn-pink"
-    (click)="openSettingsWindow()">
+  @if (viewMode !== ViewMod.Single) {
+    <button
+      class="molv-btn molv-btn-pink"
+      (click)="openSettingsWindow()">
 
-    <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
+      <img src="assets/icons/molv-settings.svg" class="molv-settings-icon">
 
-  </button>
+    </button>
+  }
 
 </div>
 

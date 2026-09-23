@@ -14,14 +14,18 @@ export class BookmarksRepository {
     return db.bookmarks.get(id);
   }
 
-  async exists(tabId: number, pageId: number) {
-  const bookmark = await db.bookmarks
-    .where('[tabId+pageId]')
-    .equals([tabId, pageId])
-    .first();
+  async getByPage(tabId: number, pageId: number) {
+    return db.bookmarks
+      .where('[tabId+pageId]')
+      .equals([tabId, pageId])
+      .first();
+  }
 
-  return !!bookmark;
-}
+  async exists(tabId: number, pageId: number) {
+    const bookmark = await this.getByPage(tabId, pageId);
+
+    return !!bookmark;
+  }
   
   async getAll(tabId: number, chapterId?: number | undefined) {
     if (chapterId !== undefined) {
