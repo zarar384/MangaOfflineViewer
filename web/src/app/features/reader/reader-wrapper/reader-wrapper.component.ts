@@ -97,7 +97,7 @@ export class ReaderWrapperComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Restore reader UI settings from last session.
-    this.gap = this.uiState.getValue<number>('readerGap') || 0.5;
+    this.gap = this.uiState.getValue<number>('readerGap') ?? 0.5;
     this.mode = this.uiState.getValue<ReadingMode>('readerMode') || 'scroll';
     this.downloadMod = this.uiState.getValue<FileFormat>('downloadMod') || FileFormat.MHTML;
 

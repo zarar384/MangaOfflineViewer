@@ -202,8 +202,6 @@ export class ReaderSettingsWindowComponent implements OnChanges {
       chapterId: page?.chapterId ?? snapshot.chapterId ?? undefined,
     });
 
-    // Ensure navigation lands on the requested page after reader reopen.
-    this.reader.goToPage(pageId);
   }
 
   async loadPages() {
@@ -211,7 +209,9 @@ export class ReaderSettingsWindowComponent implements OnChanges {
     if (!reader.mangaId) return;
 
     try {
-      this.pages = (await this.pagesRepo.getMeta(reader.mangaId)).map(p => ({
+      const pages = await this.pagesRepo.getMeta(reader.mangaId);
+      if (this.reader.mangaId() !== reader.mangaId) return;
+      this.pages = pages.map(p => ({
         id: p.id!,
         order: p.order,
         chapterId: p.chapterId,
@@ -354,14 +354,13 @@ export class ReaderSettingsWindowComponent implements OnChanges {
 
     try {
       const bookmarks = await this.bookmarksRepo.getAll(reader.mangaId);
+      if (this.reader.mangaId() !== reader.mangaId) return;
 
       this.bookmarks = bookmarks.sort((a, b) =>
         numericNameSort(`${a}`, `${b}`)
       );
 
-      if (reader.currentPageBookmark) {
-        this.selectedBookmarkId = bookmarks.find(b => b.tabId === reader.mangaId && b.pageId === reader.currentPageBookmark)?.id || null;
-      }
+      this.selectedBookmarkId = bookmarks.find(b => b.pageId === this.reader.currentPageBookmark())?.id ?? null;
 
     } catch (err) {
       console.log(`Error loading bookmarks for manga ${reader.mangaId}`, err);

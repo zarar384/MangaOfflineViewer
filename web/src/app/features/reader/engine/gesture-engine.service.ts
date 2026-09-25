@@ -61,6 +61,7 @@ export class GestureEngineService implements OnDestroy {
   }
 
   private onTouchStart(e: TouchEvent): void {
+    if (e.touches.length !== 1) { this.touch0 = null; return; }
     this.touch0 = e.touches[0];
     this.startX = this.touch0.clientX;
     this.startY = this.touch0.clientY;
@@ -68,6 +69,7 @@ export class GestureEngineService implements OnDestroy {
   }
 
   private onTouchMove(e: TouchEvent): void {
+    if (e.touches.length !== 1) { this.touch0 = null; return; }
     if (e.touches.length === 1) {
       const t = e.touches[0];
       this.velPoints.push({ x: t.clientX, y: t.clientY, t: performance.now() });

@@ -34,7 +34,7 @@ export class ScrollControllerService {
 
       container.scrollLeft = scrollLeft;
     } else {
-      const newTop = target.offsetTop + target.offsetHeight * progress;
+      const newTop = targetRect.top - containerRect.top + container.scrollTop + targetRect.height * progress;
       container.scrollTop = newTop;
     }
   }

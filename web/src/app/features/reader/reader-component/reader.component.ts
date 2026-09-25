@@ -1,4 +1,4 @@
-﻿import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild } from '@angular/core';
+﻿import { AfterViewInit, Component, QueryList, ViewChildren, ElementRef, OnDestroy, effect, DestroyRef, untracked, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Page } from '../../../core/models/page.model';
 import { LoadingService } from '../../../core/services/loading.service';
@@ -54,7 +54,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
   private MAX_LOAD = 12;
   private loadingCount = 0;
-  private loadingSet = new Set<number>();
+  private loadingSet = new Map<number, { img: HTMLImageElement; promise: Promise<boolean>; failed: boolean }>();
   private isLoaderVisible = false;
 
   // Used to cancel stale async navigation steps.
@@ -90,6 +90,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   private scrollPreloadThrottled = false;
 
   constructor(
+    private changeDetector: ChangeDetectorRef,
     private loading: LoadingService,
     public reader: ReaderService,
     private pagesRepo: PagesRepository,
@@ -106,7 +107,12 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       const pages = this.reader.pages();
       const pagesUpdateKind = this.reader.pagesUpdateKind();
 
-      if (!pages?.length) return;
+      if (!pages?.length) {
+        this.loadToken++;
+        this.navToken++;
+        this.hideLoader();
+        return;
+      }
 
       // Read without tracking. This effect should react only to page updates,
       // not to mode/open state changes!
@@ -122,8 +128,10 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         last: pages.at(-1)?.id,
       });
 
+      const previousFirstId = this.pageIndexMap.keys().next().value;
       this.pageIndexMap.clear();
       pages.forEach((p, i) => this.pageIndexMap.set(p.id!, i));
+      if (pagesUpdateKind !== 'merge') this.virtualization.reset();
       this.virtualization.rebuildIndex(pages);
 
       // Needed by waitForPageIndexUpdate during async navigation.
@@ -133,6 +141,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         this.mergeChapterTracking(pages);
 
         const anchorId = untracked(() =>
+          this.focusPageId ??
           this.getViewportAnchorPageId() ??
           this.reader.currentPageBookmark() ??
           this.reader.currentPageId() ??
@@ -143,46 +152,30 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           ? (this.pageIndexMap.get(anchorId) ?? 0)
           : 0;
 
-        const firstNewId = pages[0]?.id;
-        const firstVisibleId = this.visiblePages[0]?.id;
-        const isPrependMerge =
-          firstNewId !== undefined &&
-          firstVisibleId !== undefined &&
-          firstNewId !== firstVisibleId &&
-          (this.pageIndexMap.get(firstNewId) ?? 0) <
-          (this.pageIndexMap.get(firstVisibleId) ?? 0);
+        const isPrependMerge = previousFirstId !== undefined &&
+          pages[0]?.id !== previousFirstId && this.pageIndexMap.has(previousFirstId);
 
         if (isPrependMerge) {
           this.isPrepending = true;
         }
 
         if (!this.isNavigating && anchorId != null) {
-          this.preserveScroll(anchorId, () => {
+          untracked(() => this.preserveScroll(anchorId, () => {
             this.updateVisiblePages(anchorIndex);
-          });
+          }));
         } else {
           // even if navigation is in progress, the virtualization window must be updated!! 
           // otherwise the merged pages will never get a DOM element
           this.updateVisiblePages(anchorIndex);
         }
 
+        this.isPrepending = false;
+        const token = this.loadToken;
+        const navigation = this.navToken;
         requestAnimationFrame(() => {
+          if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
           this.observeNewImages();
-          this.loadVisibleRange();
-
-          if (isPrependMerge) {
-            // preserveScroll() above already compensates the anchor shift
-            // uniformly for every mode (including page mode) - no need for
-            // a mode-specific re-scroll here anymore.
-            requestAnimationFrame(() => {
-              this.isPrepending = false;
-
-              // Warm newly prepended images with a larger preload range.
-              requestAnimationFrame(() => {
-                this.loadVisibleRange(isIOS ? 8000 : 12000);
-              });
-            });
-          }
+          this.loadVisibleRange(isPrependMerge ? (isIOS ? 8000 : 12000) : undefined);
         });
         return;
       }
@@ -202,10 +195,16 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         ? (this.pageIndexMap.get(currentPageId) ?? 0)
         : 0;
 
-      if (mode === 'dual' && !this.dualPageCover && startIndex % 2 === 1) {
+      if (mode === 'dual' && !untracked(() => this.dualPageCover) && startIndex % 2 === 1) {
         startIndex = Math.max(0, startIndex - 1);
       }
 
+      // Reopening can reuse page ids. Detach old elements before their pending
+      // image handlers can overlap a new session loading the same page.
+      if (this.imgRefs?.length) {
+        this.visiblePages = [];
+        untracked(() => this.changeDetector.detectChanges());
+      }
       this.updateVisiblePages(startIndex);
 
       this.loadingSet.clear();
@@ -229,116 +228,38 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.loadToken++;
       this.navToken++;
 
-      const container = this.readerContainer?.nativeElement;
-      if (container) {
-        container.scrollTop = 0;
-        if (this.isHorizontalLikeMode()) {
-          container.scrollLeft = 0;
-        }
-      }
-
-      requestAnimationFrame(() => {
-        // Scroll to the target page before enabling the observer.
-        // Otherwise the observer may initialize from the wrong page and
-        // update the virtualization window incorrectly.
-        if (currentPageId != null) {
-          this.scrollToPageImmediately(currentPageId);
-        }
-
-        this.setupObserver();
-        this.observeAllImages();
-        this.setupScrollPreloadListener();
-
-        if (currentPageId != null) {
-          // On the first open, the target page may not be rendered yet.
-          // Retry once it becomes available.
-          this.waitForTarget(currentPageId).then(() => {
-            if (this.destroyed) return;
-            
-            this.scrollToPageImmediately(currentPageId);
-
-            // Preload adjacent chapters after the initial navigation so the user
-            // can immediately continue to the next/previous chapter.
-            if (isOpen) {
-              this.reader.resetIsOpen();
-              const currentIndex = this.pageIndexMap.get(currentPageId) ?? startIndex;
-
-              this.tryLoadAdjacentChapters(currentIndex, { allowPrev: true, allowNext: true });
-            }
-          });
-        }
-
-        // TODO: FIX
-        // Disabled: breaks initial page navigation.
-        // if (isOpen) {
-        //   this.reader.resetIsOpen();
-        //   // Only preload the next chapter on initial open to avoid shifting the viewport.
-        //   this.tryLoadAdjacentChapters(startIndex, { allowPrev: false });
-        // }
-      });
+      // Opening and explicit navigation share the same readiness and cancellation path.
+      untracked(() => void this.handleNavigation(currentPageId ?? pages[startIndex].id!));
     });
 
+    let previousNavTick = untracked(() => this.reader.navTick());
+
     effect(() => {
-      this.reader.navTick();
+      const tick = this.reader.navTick();
+      if (tick === previousNavTick) return;
+      previousNavTick = tick;
       const pageId = untracked(() => this.reader.currentPageId());
 
       if (!pageId) return;
 
-      this.handleNavigation(pageId);
+      untracked(() => void this.handleNavigation(pageId));
     });
 
 
+    let previousMode = untracked(() => this.reader.mode());
+    let previousCover = untracked(() => this.dualPageCover);
     effect(() => {
       const mode = this.reader.mode();
+      const cover = this.dualPageCover;
+      const changed = mode !== previousMode || (mode === 'dual' && cover !== previousCover);
+      previousMode = mode;
+      previousCover = cover;
+      if (!changed) return;
       untracked(() => {
         if (!this.reader.pages().length) return;
-
-        this.dbg('mode-effect:fired', { mode });
-        this.dbgTrace('mode-effect');
-
-        const anchorId =
-          this.reader.currentPageId() ??
-          this.reader.currentPageBookmark() ??
-          this.getViewportAnchorPageId() ??
-          null;
-
-        this.navToken++;
-        this.isNavigating = true;
-        this.focusPageId = anchorId;
-
-        if (anchorId != null) {
-          let anchorIndex = this.pageIndexMap.get(anchorId);
-          if (anchorIndex !== undefined) {
-            if (mode === 'dual' && !this.dualPageCover && anchorIndex % 2 === 1) {
-              anchorIndex = Math.max(0, anchorIndex - 1);
-            }
-            this.updateVisiblePages(anchorIndex);
-          }
-
-          this.reader.setCurrentPage(anchorId);
-          this.reader.setCurrentPageBookmark(anchorId);
-          this.updateActiveChapter(anchorId);
-        }
-
-        this.visibleUnloadedCount = 0;
-        this.cancelLoaderDebounce();
-        this.hideLoader();
-
-        requestAnimationFrame(() => {
-          this.setupObserver();
-          this.observeAllImages();
-
-          if (anchorId != null) {
-            this.scrollToPageImmediately(anchorId);
-          }
-
-          requestAnimationFrame(() => {
-            if (this.destroyed) return;
-            this.isNavigating = false;
-            this.focusPageId = null;
-            this.loadVisibleRange();
-          });
-        });
+        const anchorId = this.focusPageId ?? this.reader.currentPageBookmark() ??
+          this.reader.currentPageId() ?? this.getViewportAnchorPageId();
+        if (anchorId != null) void this.handleNavigation(anchorId);
       });
     });
 
@@ -378,11 +299,15 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       this.gestureEngine.attach(container, (event) => this.handleGesture(event));
 
       const keyHandler = (e: KeyboardEvent) => {
+        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey ||
+            (e.target instanceof Element && e.target.closest('app-window, input, textarea, select, button, a, [contenteditable]'))) return;
         const mode = this.reader.mode();
         if (mode === 'horizontal' || mode === 'dual') {
           if (e.key === 'ArrowRight') {
+            e.preventDefault();
             this.goToAdjacentPage(1);
           } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
             this.goToAdjacentPage(-1);
           }
         }
@@ -484,6 +409,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       if (this.isNavigating || this.isPrepending || this.isRestoringScroll) return;
 
       const token = this.loadToken;
+      const navigation = this.navToken;
 
       const containerRect = root?.getBoundingClientRect();
       const containerSize = this.isHorizontalLikeMode()
@@ -517,17 +443,20 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           const bCenter = this.isHorizontalLikeMode()
             ? (b.boundingClientRect.left - containerStart) + b.boundingClientRect.width / 2
             : (b.boundingClientRect.top - containerStart) + b.boundingClientRect.height / 2;
-          return Math.abs(aCenter - center) - Math.abs(bCenter - center);
+          return Number(this.isImageInViewport(b.target as HTMLImageElement)) -
+            Number(this.isImageInViewport(a.target as HTMLImageElement)) ||
+            Math.abs(aCenter - center) - Math.abs(bCenter - center);
         })
         .slice(0, this.MAX_LOAD * 2);
 
       this.updateReadingPosition();
+      this.loadVisibleRange();
 
       let windowUpdated = false;
 
       for (const entry of visible) {
 
-        if (token !== this.loadToken) return;
+        if (this.destroyed || token !== this.loadToken || navigation !== this.navToken || this.freezeBookmarkUpdates) return;
 
         const img = entry.target as HTMLImageElement;
         const id = Number(img.dataset['pageId']);
@@ -552,7 +481,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             });
 
             if (!this.isPrepending && !this.isRestoringScroll && !this.isNavigating) {
-              this.preserveScroll(id, () => { this.updateVisiblePages(globalIndex); });
+              this.preserveScroll(this.getViewportAnchorPageId() ?? id, () => { this.updateVisiblePages(globalIndex); });
             }
             windowUpdated = true;
           }
@@ -612,27 +541,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   // Called from observer and scroll listener to keep bookmark in sync.
   private updateReadingPosition(): void {
     if (this.freezeBookmarkUpdates || this.focusPageId !== null) return;
-
-    const bounds = this.getViewportBounds(this.readerContainer?.nativeElement);
-
-    let anchorId: number | null = null;
-    let bestOverlap = 0;
-
-    this.imgRefs.forEach(ref => {
-      const img = ref.nativeElement;
-
-      if (!img.isConnected) return;
-
-      const rect = img.getBoundingClientRect();
-      const overlap = this.isHorizontalLikeMode()
-        ? Math.max(0, Math.min(rect.right, bounds.end) - Math.max(rect.left, bounds.start))
-        : Math.max(0, Math.min(rect.bottom, bounds.end) - Math.max(rect.top, bounds.start));
-      if (overlap > bestOverlap) {
-        bestOverlap = overlap;
-        anchorId = Number(img.dataset['pageId']) || null;
-      }
-    });
-
+    const anchorId = this.getViewportAnchorPageId();
     if (!anchorId) return;
 
     // In page mode currentPage is owned by navigation flow.
@@ -663,10 +572,13 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.scrollPreloadThrottled = true;
 
+      const token = this.loadToken;
+      const navigation = this.navToken;
       requestAnimationFrame(() => {
+        this.scrollPreloadThrottled = false;
+        if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
         this.loadVisibleRange();
         this.updateReadingPosition();
-        this.scrollPreloadThrottled = false;
       });
     };
 
@@ -687,14 +599,22 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Pass preloadPx to override the default lookahead distance (e.g. after prepend).
    */
   private loadVisibleRange(preloadPx?: number) {
-    if (this.isPrepending || this.isRestoringScroll) return;
+    if (this.destroyed || this.isNavigating || this.isPrepending || this.isRestoringScroll) return;
 
     const PRELOAD_PX = preloadPx ?? (isIOS ? 1500 : 2500);
     const token = this.loadToken;
 
     const bounds = this.getViewportBounds(this.readerContainer?.nativeElement);
 
-    this.imgRefs.forEach(ref => {
+    this.imgRefs.toArray().sort((a, b) => {
+      const ar = this.getElementAxisBounds(a.nativeElement);
+      const br = this.getElementAxisBounds(b.nativeElement);
+      const av = ar.end > bounds.start && ar.start < bounds.end;
+      const bv = br.end > bounds.start && br.start < bounds.end;
+      const ad = Math.max(bounds.start - ar.end, ar.start - bounds.end, 0);
+      const bd = Math.max(bounds.start - br.end, br.start - bounds.end, 0);
+      return Number(bv) - Number(av) || ad - bd;
+    }).forEach(ref => {
       if (this.destroyed) return;
       if (token !== this.loadToken) return;
 
@@ -793,6 +713,8 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     globalIndex: number,
     options: { allowNext?: boolean; allowPrev?: boolean } = {}
   ): void {
+    const token = this.loadToken;
+    const navigation = this.navToken;
     const total = this.reader.pages().length;
     const chapterId = this.reader.chapterId();
     const allowNext = options.allowNext ?? true;
@@ -829,6 +751,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.chaptersRepo.getNextChapter(chapterId)
         .then(next => {
+          if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
           const nextId = next?.id;
           if (!nextId || this.loadedChapterIds.has(nextId)) {
             this.fetchingNext = false;
@@ -836,6 +759,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           }
 
           return this.pagesRepo.getMetaByChapter(nextId).then(newPages => {
+            if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
             if (!newPages?.length) { this.fetchingNext = false; return; }
 
             this.dbg('tryLoadAdjacentChapters:MERGE NEXT', { chapterId, nextId, globalIndex, total, newPagesCount: newPages.length });
@@ -844,7 +768,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             this.fetchingNext = false;
           });
         })
-        .catch(() => { this.fetchingNext = false; });
+        .catch(() => {}).finally(() => {
+          if (!this.destroyed && token === this.loadToken && navigation === this.navToken) this.fetchingNext = false;
+        });
     }
 
     if (allowPrev && !this.fetchingPrev && globalIndex <= this.CHAPTER_TRIGGER) {
@@ -852,6 +778,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
       this.chaptersRepo.getPrevChapter(chapterId)
         .then(prev => {
+          if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
           const prevId = prev?.id;
           if (!prevId || this.loadedChapterIds.has(prevId)) {
             this.fetchingPrev = false;
@@ -859,6 +786,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
           }
 
           return this.pagesRepo.getMetaByChapter(prevId).then(newPages => {
+            if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return;
             if (!newPages?.length) { this.fetchingPrev = false; return; }
 
             this.loadedChapterIds.add(prevId);
@@ -866,7 +794,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
             this.fetchingPrev = false;
           });
         })
-        .catch(() => { this.fetchingPrev = false; });
+        .catch(() => {}).finally(() => {
+          if (!this.destroyed && token === this.loadToken && navigation === this.navToken) this.fetchingPrev = false;
+        });
     }
   }
 
@@ -888,8 +818,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
    * Resolves the page data, gets its blob URL from ImagePipelineService,
    * and loads it into the image element.
    *
-   * If the request becomes stale while loading, releases any newly created
-   * URL to avoid leaking unused blob URLs.
+   * Session cancellation is checked before committing geometry or readiness.
    */
   private async resolveAndLoad(
     page: PageMeta,
@@ -897,61 +826,80 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     isStale: () => boolean
   ): Promise<boolean> {
     if (page.id == null) return false;
-    const pageId = page.id;
-    const alreadyExists = this.imagePipeline.hasUrl(pageId);
-
     await this.ensurePageLoaded(page);
     if (this.destroyed || isStale()) return false;
-
     const url = await this.getOrCreateUrl(page);
-    if (this.destroyed) return false;
+    if (this.destroyed || isStale() || !url) return false;
 
-    if (isStale()) {
-      if (!alreadyExists) this.imagePipeline.releaseUrl(pageId);
-      return false;
+    // Unknown legacy dimensions must not resize an on-screen image asynchronously.
+    // Load through the same pipeline off-DOM, then commit its geometry atomically.
+    if (!(page.width! > 0 && page.height! > 0)) {
+      const probe = new Image();
+      await this.loadImage(probe, url);
+      if (this.destroyed || isStale()) return false;
+      const anchorId = this.getViewportAnchorPageId() ?? this.reader.currentPageBookmark();
+      this.preserveScroll(anchorId ?? page.id, () => {
+        page.width = probe.naturalWidth;
+        page.height = probe.naturalHeight;
+      });
     }
 
-    if (!url) return false;
-
+    if (this.destroyed || isStale() || !img.isConnected) return false;
     await this.loadImage(img, url);
-    return !this.destroyed;
+    return !this.destroyed && !isStale() && img.isConnected && img.complete && img.naturalHeight > 0;
   }
 
-  /**
-   * Loads a single page and handles loading state, loader visibility,
-   * and cleanup around resolveAndLoad().
-   */
-  private async loadOnePage(page: PageMeta, img: HTMLImageElement, token: number): Promise<void> {
-    if (page.id == null) return;
+  /** Shared in-flight promises prevent duplicate handlers and enforce the load limit. */
+  private async loadOnePage(page: PageMeta, img: HTMLImageElement, token: number): Promise<boolean> {
+    if (page.id == null || this.destroyed || token !== this.loadToken || !img.isConnected) return false;
     const id = page.id;
+    const existing = this.loadingSet.get(id);
+    if (existing) {
+      const loaded = await existing.promise;
+      if (this.destroyed || token !== this.loadToken) return false;
+      if (existing.failed || existing.img === img || (!loaded && existing.img.isConnected)) return loaded;
+      return this.loadOnePage(page, img, token);
+    }
+    if (img.complete && img.naturalHeight > 0) return true;
 
-    if (this.loadingSet.has(id)) return;
-    if (this.loadingCount >= this.MAX_LOAD) return;
+    while (this.loadingCount >= this.MAX_LOAD) {
+      // Background work is picked up by the completion pass; navigation waits for a slot.
+      if (this.focusPageId !== id) return false;
+      await Promise.race([...this.loadingSet.values()].filter(load => !load.failed).map(load => load.promise));
+      if (this.destroyed || token !== this.loadToken || this.focusPageId !== id) return false;
+      const pending = this.loadingSet.get(id);
+      if (pending) return pending.promise;
+    }
 
     const inViewport = this.isImageInViewport(img);
     if (inViewport) {
       this.visibleUnloadedCount++;
       this.scheduleLoader();
     }
-
-    this.loadingSet.add(id);
     this.loadingCount++;
-
-    try {
-      const loaded = await this.resolveAndLoad(page, img, () => this.destroyed || token !== this.loadToken);
-      if (loaded) this.cleanupFarImages();
-    } finally {
-      this.loadingSet.delete(id);
-      this.loadingCount--;
-
-      if (inViewport && this.visibleUnloadedCount > 0) {
-        this.visibleUnloadedCount--;
+    const operation = { img, promise: Promise.resolve(false), failed: false };
+    operation.promise = (async () => {
+      let loaded = false;
+      try {
+        loaded = await this.resolveAndLoad(page, img, () => token !== this.loadToken);
+        return loaded;
+      } catch {
+        return false;
+      } finally {
+        if (!this.destroyed && token === this.loadToken && this.loadingSet.get(id) === operation) {
+          // Retain failures for this open session, so completion passes cannot retry forever.
+          operation.failed = !loaded && img.isConnected;
+          if (!operation.failed) this.loadingSet.delete(id);
+          this.loadingCount--;
+          if (loaded) this.cleanupFarImages();
+          if (inViewport) this.visibleUnloadedCount--;
+          if (this.visibleUnloadedCount === 0 && !this.isNavigating) this.hideLoader();
+          this.loadVisibleRange();
+        }
       }
-
-      if (this.visibleUnloadedCount === 0) {
-        this.hideLoader();
-      }
-    }
+    })();
+    this.loadingSet.set(id, operation);
+    return operation.promise;
   }
 
   private handleGesture(event: GestureEvent): void {
@@ -981,17 +929,11 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     let targetIndex: number;
 
     if (isDualMode) {
-      if (hasCover && currentIndex === 0) {
-        targetIndex = step > 0 ? 1 : 0;
-      } else if (hasCover && currentIndex === 1) {
-        targetIndex = step > 0 ? 3 : 0;
-      } else if (hasCover) {
-        const spreadStart = currentIndex % 2 === 0 ? currentIndex : currentIndex - 1;
-        targetIndex = Math.max(1, Math.min(this.pages.length - 1, spreadStart + step * 2));
-      } else {
-        const spreadStart = Math.floor(currentIndex / 2) * 2;
-        targetIndex = Math.max(0, Math.min(this.pages.length - 1, spreadStart + step * 2));
-      }
+      const offset = hasCover ? 1 : 0;
+      const spreadStart = currentIndex < offset ? 0
+        : offset + Math.floor((currentIndex - offset) / 2) * 2;
+      targetIndex = hasCover && spreadStart === 0
+        ? (step > 0 ? 1 : 0) : Math.max(0, spreadStart + step * 2);
     } else {
       targetIndex = currentIndex + step;
     }
@@ -1009,7 +951,7 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
  * not the most recently loaded page.
  */
   private cleanupFarImages(): void {
-    if (this.isRestoringScroll) return;
+    if (this.isNavigating || this.isRestoringScroll || this.loadingCount > 0) return;
 
     const currentId = this.reader.currentPageBookmark() ?? this.reader.currentPageId();
     if (currentId == null) return;
@@ -1025,6 +967,9 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
 
     this.focusPageId = pageId;
+    this.isNavigating = true;
+    this.fetchingNext = false;
+    this.fetchingPrev = false;
 
     if (!this.isHorizontalLikeMode()) {
       this.showLoaderNow();
@@ -1048,101 +993,61 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
       }
 
       this.isNavigating = true;
-      this.updateVisiblePages(index);
+      const windowIndex = this.reader.mode() === 'dual' && !this.dualPageCover && index % 2 === 1
+        ? Math.max(0, index - 1) : index;
+      this.updateVisiblePages(windowIndex);
 
       await new Promise(r => requestAnimationFrame(r));
 
       this.dbg(`handleNavigation:after-resolve:${pageId}`, { navToken, currentNavToken: this.navToken });
-      if (navToken !== this.navToken) return;
+      if (this.destroyed || navToken !== this.navToken) return;
 
       await this.waitForImages();
-      if (navToken !== this.navToken) return;
-
-      const PRELOAD_BEFORE = this.MAX_LOAD * 2;
-      const PRELOAD_AFTER = this.MAX_LOAD;
-
-      const localIndex = this.visiblePages.findIndex(p => p.id === pageId);
-      if (localIndex === -1) return;
-
-      const start = Math.max(0, localIndex - PRELOAD_BEFORE);
-      const end = Math.min(this.visiblePages.length, localIndex + PRELOAD_AFTER + 1);
-      const toLoad = this.visiblePages.slice(start, end);
-
-      await Promise.all(
-        toLoad.map(async (page) => {
-          if (page.id == null || this.loadingSet.has(page.id)) return;
-          this.loadingSet.add(page.id);
-
-          try {
-            const img = this.imgRefs.find(r =>
-              Number(r.nativeElement.dataset['pageId']) === page.id
-            )?.nativeElement;
-
-            if (!img) return;
-
-            // Single shared load pipeline used by every reading mode/path.
-            await this.resolveAndLoad(page, img, () => this.destroyed || navToken !== this.navToken);
-          } finally {
-            this.loadingSet.delete(page.id!);
-          }
-        })
-      );
-
-      if (navToken !== this.navToken) return;
-
-      await new Promise<void>(resolve => {
-        requestAnimationFrame(() => {
-          void document.body.offsetHeight;
-          resolve();
-        });
-      });
-
-      if (navToken !== this.navToken) return;
+      if (this.destroyed || navToken !== this.navToken) return;
 
       const container = this.readerContainer?.nativeElement;
       const target = await this.waitForTarget(pageId);
-
-      if (target && container) {
-        const pageMode = this.reader.mode();
-        this.scrollController.scrollToPage(
-          pageId,
-          (id) => this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement,
-          container,
-          pageMode,
-          0
-        );
-      }
+      if (this.destroyed || navToken !== this.navToken || !target || !container) return;
+      this.scrollToPageImmediately(pageId);
 
       this.reader.setCurrentPage(pageId);
       this.reader.setCurrentPageBookmark(pageId);
       this.updateActiveChapter(pageId);
+      this.setupObserver();
+      this.observeAllImages();
+      this.setupScrollPreloadListener();
+      this.reader.resetIsOpen();
+      this.tryLoadAdjacentChapters(this.pageIndexMap.get(pageId) ?? index);
 
     } finally {
       // Only the still-current navigation may clear these shared flags;
       // a stale/superseded call must not stomp on a newer in-flight navigation.
-      if (navToken === this.navToken) {
-        if (!this.isHorizontalLikeMode()) {
-          this.hideLoader();
-        }
+      if (!this.destroyed && navToken === this.navToken) {
+        this.hideLoader();
         this.isNavigating = false;
         this.focusPageId = null;
+        this.loadVisibleRange();
       }
     }
   }
 
   // Loads the target chapter into buffer when needed and returns page index.
   private async resolvePageIndexForNavigation(pageId: number): Promise<number | undefined> {
+    const token = this.loadToken;
+    const navigation = this.navToken;
+    const mangaId = this.reader.mangaId();
     const directIndex = this.pageIndexMap.get(pageId);
     if (directIndex !== undefined) return directIndex;
 
     const targetPage = await this.pagesRepo.get(pageId);
+    if (this.destroyed || token !== this.loadToken || navigation !== this.navToken || targetPage?.tabId !== mangaId) return undefined;
     const targetChapterId = targetPage?.chapterId;
 
     if (!targetPage || targetChapterId == null) return undefined;
 
     if (!this.loadedChapterIds.has(targetChapterId)) {
       const newPages = await this.pagesRepo.getMetaByChapter(targetChapterId);
-      if (!newPages.length) return undefined;
+      if (this.destroyed || token !== this.loadToken || navigation !== this.navToken || !newPages.length) return undefined;
 
       let direction: 'next' | 'prev' = 'next';
       const currentChapterId = this.reader.chapterId();
@@ -1158,12 +1063,14 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
         }
       }
 
+      if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return undefined;
       this.loadedChapterIds.add(targetChapterId);
       this.reader.mergePages(newPages, direction);
 
       await this.waitForPageIndexUpdate(pageId);
     }
 
+    if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return undefined;
     const finalIndex = this.pageIndexMap.get(pageId);
     return finalIndex;
   }
@@ -1229,64 +1136,31 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
   * Applies to all reading modes.
   */
   private preserveScroll(anchorId: number, callback: () => void): void {
+    if (this.destroyed) return;
+    if (!this.imgRefs) {
+      callback();
+      return;
+    }
     const container = this.readerContainer?.nativeElement;
-
-    if (this.isNavigating || !container) {
-      this.dbg('preserveScroll:skip(isNavigating||!container)', { anchorId, isNavigating: this.isNavigating });
-      callback();
-      return;
-    }
-
-    if (this.isRestoringScroll) {
-      this.dbg('preserveScroll:skip(isRestoringScroll)', { anchorId });
-      callback();
-      return;
-    }
-
-    const anchorEl = this.imgRefs.find(r =>
-      Number(r.nativeElement.dataset['pageId']) === anchorId
-    )?.nativeElement;
-
-    if (!anchorEl) {
-      callback();
-      return;
-    }
-
-    const prevAnchorViewportStart = this.isHorizontalLikeMode()
-      ? anchorEl.getBoundingClientRect().left
-      : anchorEl.getBoundingClientRect().top;
-
-    this.dbg('preserveScroll:start', { anchorId, prevAnchorViewportStart });
-
+    const anchorEl = this.imgRefs?.find(r => Number(r.nativeElement.dataset['pageId']) === anchorId)?.nativeElement;
+    const horizontal = this.isHorizontalLikeMode();
+    const previous = anchorEl && container ? this.getElementAxisBounds(anchorEl).start : null;
+    const restoring = this.isRestoringScroll;
     this.isRestoringScroll = true;
-
-    callback();
-
-    // Wait one frame so DOM is updated, then compensate anchor shift.
-    requestAnimationFrame(() => {
-      const newAnchorEl = this.imgRefs.find(r =>
-        Number(r.nativeElement.dataset['pageId']) === anchorId
-      )?.nativeElement;
-
-      if (newAnchorEl) {
-        const newAnchorViewportStart = this.isHorizontalLikeMode()
-          ? newAnchorEl.getBoundingClientRect().left
-          : newAnchorEl.getBoundingClientRect().top;
-        const shift = newAnchorViewportStart - prevAnchorViewportStart;
-        this.dbg('preserveScroll:compensate', { anchorId, newAnchorViewportStart, shift, willApply: Math.abs(shift) > 0.5 });
+    try {
+      callback();
+      this.changeDetector.detectChanges();
+      const next = this.imgRefs?.find(r => Number(r.nativeElement.dataset['pageId']) === anchorId)?.nativeElement;
+      if (!this.isNavigating && previous != null && next && container) {
+        const shift = this.getElementAxisBounds(next).start - previous;
         if (Math.abs(shift) > 0.5) {
-          if (this.isHorizontalLikeMode()) {
-            container.scrollLeft += shift;
-          } else {
-            container.scrollTop += shift;
-          }
+          if (horizontal) container.scrollLeft += shift;
+          else container.scrollTop += shift;
         }
-      } else {
-        this.dbg('preserveScroll:compensate:no newAnchorEl (anchor page got evicted!)', { anchorId });
       }
-
-      this.isRestoringScroll = false;
-    });
+    } finally {
+      this.isRestoringScroll = restoring;
+    }
   }
 
   private scrollToPageImmediately(pageId: number): void {
@@ -1296,11 +1170,25 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     this.dbg('scrollToPageImmediately:before', { pageId });
     this.dbgTrace('scrollToPageImmediately');
 
+    const mode = this.reader.mode();
+    let targetId = pageId;
+    if (mode === 'dual') {
+      const index = this.pageIndexMap.get(pageId);
+      const offset = this.dualPageCover ? 1 : 0;
+      if (index !== undefined && index >= offset) {
+        const spreadStart = offset + Math.floor((index - offset) / 2) * 2;
+        targetId = this.pages[spreadStart]?.id ?? pageId;
+      }
+    }
+
     this.scrollController.scrollToPage(
-      pageId,
-      (id) => this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement,
+      targetId,
+      (id) => {
+        const img = this.imgRefs.find(r => Number(r.nativeElement.dataset['pageId']) === id)?.nativeElement;
+        return mode === 'dual' ? img?.parentElement ?? undefined : img;
+      },
       container,
-      this.reader.mode(),
+      mode,
       0
     );
 
@@ -1310,30 +1198,31 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
     const container = this.readerContainer?.nativeElement;
     if (!container || !this.imgRefs?.length) return null;
 
-    const containerRect = container.getBoundingClientRect();
-    const viewportCenter = this.isHorizontalLikeMode()
-      ? containerRect.left + containerRect.width / 2
-      : containerRect.top + containerRect.height / 2;
-
+    const bounds = this.getViewportBounds(container);
     let bestId: number | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
+    let bestOverlap = 0;
     this.imgRefs.forEach(ref => {
-      const img = ref.nativeElement;
-      const id = Number(img.dataset['pageId']);
-      if (!id) return;
-
-      const rect = img.getBoundingClientRect();
-      const center = this.isHorizontalLikeMode()
-        ? rect.left + rect.width / 2
-        : rect.top + rect.height / 2;
-      const distance = Math.abs(center - viewportCenter);
-
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestId = id;
+      if (!ref.nativeElement.isConnected) return;
+      const rect = this.getElementAxisBounds(ref.nativeElement);
+      const overlap = Math.max(0, Math.min(rect.end, bounds.end) - Math.max(rect.start, bounds.start));
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestId = Number(ref.nativeElement.dataset['pageId']) || null;
       }
     });
+
+    if (this.reader.mode() === 'dual' && bestId != null) {
+      const currentId = this.reader.currentPageBookmark();
+      const currentIndex = currentId != null ? this.pageIndexMap.get(currentId) : undefined;
+      const bestIndex = this.pageIndexMap.get(bestId);
+      const offset = this.dualPageCover ? 1 : 0;
+      if (currentIndex !== undefined && bestIndex !== undefined &&
+          Math.floor((currentIndex - offset) / 2) === Math.floor((bestIndex - offset) / 2)) {
+        // A spread contains two pages, but entering it must not change which
+        // page is restored on leaving dual mode merely because its partner is wider.
+        return currentId!;
+      }
+    }
 
     return bestId;
   }
@@ -1389,24 +1278,35 @@ export class ReaderComponent implements AfterViewInit, OnDestroy {
 
 
   private async waitForImages(): Promise<void> {
+    const token = this.loadToken;
+    const navigation = this.navToken;
     let tries = 0;
-    while (this.imgRefs && this.imgRefs.length === 0 && tries < 10) {
+    while ((!this.imgRefs || this.imgRefs.length === 0) && !this.destroyed && token === this.loadToken && navigation === this.navToken && tries < 10) {
       await new Promise(r => setTimeout(r, 30));
       tries++;
     }
   }
 
   private async waitForTarget(pageId: number): Promise<HTMLElement | undefined> {
+    const token = this.loadToken;
+    const navigation = this.navToken;
     let attempts = 0;
 
     while (attempts < 20) {
       await new Promise(r => requestAnimationFrame(r));
 
+      if (this.destroyed || token !== this.loadToken || navigation !== this.navToken) return undefined;
       const el = this.imgRefs.find(r =>
         Number(r.nativeElement.dataset['pageId']) === pageId
       )?.nativeElement;
 
-      if (el) return el;
+      if (el) {
+        const page = this.visiblePages.find(p => p.id === pageId);
+        if (!page) return undefined;
+        const loaded = await this.loadOnePage(page, el, token);
+        if (this.destroyed || token !== this.loadToken || navigation !== this.navToken || !loaded) return undefined;
+        return el;
+      }
       attempts++;
     }
 
