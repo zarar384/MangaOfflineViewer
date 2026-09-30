@@ -214,4 +214,4 @@ No bidirectional or real-time communication.
 
 - Browser storage quotas apply
 - No cross-device sync
-- Single-user, single-device data model
+- Single-user, single-device data model 
