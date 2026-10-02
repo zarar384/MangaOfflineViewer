@@ -94,7 +94,7 @@
               <molv-dropdown [(value)]="dwnldMod" [options]="getFileFormatOptions()" placeholder="{{'select' | transloco}}">
               </molv-dropdown>
 
-              <button class="molv-btn molv-btn-pink" (click)="export(dwnldMod)">
+              <button class="molv-btn molv-btn-pink" [disabled]="!dwnldMod" (click)="export(dwnldMod)">
                 {{'download' | transloco}}
               </button>
 

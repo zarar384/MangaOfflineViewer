@@ -2,19 +2,45 @@
 
   <div class="manga-header">
 
-    <div class="card">
-      <div class="cover">
-        <img [src]="previewUrl()" />
-      </div>
-      @if (isEditMode()) {
-      <div class="header">
-        <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">{{ 'change' | transloco }}</button>
+<div class="card-column">
 
-        <input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
-      </div>
-      }
-
+  <div class="card">
+    <div class="cover">
+      <img [src]="previewUrl()" />
     </div>
+
+    @if (isEditMode()) {
+    <div class="header">
+      <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">
+        {{ 'change' | transloco }}
+      </button>
+
+      <input
+        #fileInput
+        type="file"
+        accept="image/*"
+        hidden
+        (change)="onFileSelected($event)" />
+    </div>
+    }
+  </div>
+
+  <div class="download-row">
+    <molv-dropdown
+      [(value)]="dwnldMod"
+      [options]="getFileFormatOptions()"
+      [placeholder]="'select' | transloco">
+    </molv-dropdown>
+
+    <button
+      class="molv-btn molv-btn-pink"
+      [disabled]="!dwnldMod || isEditMode()"
+      (click)="export(dwnldMod)">
+      {{ 'download' | transloco }}
+    </button>
+  </div>
+
+</div>
 
     <div class="info">
 

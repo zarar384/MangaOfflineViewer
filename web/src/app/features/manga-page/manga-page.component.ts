@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, SimpleChanges, effect, signal } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from '../../core/models/tab.model';
 import { TabsService } from '../../core/services/tabs.service';
@@ -16,18 +16,26 @@ import { MolvTextboxComponent } from 'src/app/shared/components/molv-textbox/mol
 import { MolvMetaInputComponent } from 'src/app/shared/components/molv-meta-input/molv-meta-input.component';
 import { ChaptersListService } from '../../core/services/chapters-list.service';
 import { BookmarksService } from 'src/app/core/services/bookmarks.service';
+import { MolvModule } from 'src/app/shared/components/molv-module.component';
+import { FileFormat } from 'src/app/shared/enums/file-format';
+import { UiStateService } from 'src/app/core/services/ui-state.service';
+import { LoadingService } from 'src/app/core/services/loading.service';
+import { ExportService } from 'src/app/core/services/export.service';
 
 @Component({
   selector: 'manga-page',
   templateUrl: './manga-page.component.html',
   styleUrls: ['./manga-page.component.css'],
-  imports: [ChapterListComponent, FormsModule, CommonModule, TranslocoPipe, MolvMetaInputComponent, MolvTextboxComponent],
+  imports: [ChapterListComponent, FormsModule, CommonModule, TranslocoPipe, MolvMetaInputComponent, MolvTextboxComponent, MolvModule],
   providers: [ChaptersListService, BookmarksService],
   standalone: true
 })
 export class MangaPageComponent implements OnChanges {
 
   @Input() activeManga: number | null = null;
+  @Input() downloadMod: FileFormat = FileFormat.MHTML;
+
+  @Output() downloadModChange = new EventEmitter<FileFormat>();
 
   tab = signal<Tab | null>(null);
   artists = signal<Artist[]>([]);
@@ -40,23 +48,29 @@ export class MangaPageComponent implements OnChanges {
   artistSuggestions = signal<Artist[]>([]);
   tagSuggestions = signal<Tag[]>([]);
 
+
   constructor(
     private tabsService: TabsService,
     public draftService: MangaDraftService,
     private artistsRepo: ArtistsRepository,
     private tagsRepo: TagsRepository,
     private chaptersListService: ChaptersListService,
-    private bookmarksService: BookmarksService
+    private bookmarksService: BookmarksService,
+    private uiState: UiStateService,
+    private loading: LoadingService,
+    private exportService: ExportService,
   ) {
+    this.downloadMod = this.uiState.getValue<FileFormat>('downloadMod') || FileFormat.MHTML;
+
     effect(() => {
       this.updatePreview();
     });
   }
 
-    async ngOnChanges(changes: SimpleChanges) {
+  async ngOnChanges(changes: SimpleChanges) {
     if (changes['activeManga']) {
       const id = changes['activeManga'].currentValue;
-     await this.loadManga(id);
+      await this.loadManga(id);
     }
   }
 
@@ -379,5 +393,46 @@ export class MangaPageComponent implements OnChanges {
     return this.tags()
       .map(tag => tag.name)
       .join('; ');
+  }
+
+  // DOWNLOAD / EXPORT
+  get dwnldMod(): FileFormat {
+    return this.downloadMod;
+  }
+
+  set dwnldMod(value: FileFormat) {
+    this.downloadMod = value;
+    this.uiState.saveState({ downloadMod: this.downloadMod });
+    this.downloadModChange.emit(value);
+  }
+
+  getFileFormatOptions(): { value: FileFormat; label: string }[] {
+    return Object.values(FileFormat).map(format => ({
+      value: format,
+      label: format.toUpperCase()
+    }));
+  }
+
+  isExporting = false;
+  async export(format: FileFormat) {
+    if (this.activeManga === null) return;
+
+    try {
+      this.isExporting = true;
+      this.loading.show();
+
+      const tab = await this.tabsService.getTabById(this.activeManga);
+      if (!tab) return;
+
+      await this.exportService.exportManga(tab, format);
+
+      console.log(`Manga exported as ${format}`);
+
+    } catch (err) {
+      console.error(`Error exporting manga as ${format}`, err);
+    } finally {
+      this.isExporting = false;
+      this.loading.hide();
+    }
   }
 }
