@@ -15,7 +15,7 @@ Non-obvious behavior and traps. These are current implementation details, not pe
 
 ## Save paths
 
-`TabsRepository.saveOrUpdateTabWithPages()` is the normal upload and edit path. It builds a preview from the first page in single mode, assigns `order` by array index, defaults `chapterOrder` to `-1` when no chapter is supplied, deletes pages no longer present in the target scope, and writes in chunks of 10 on iOS and 50 elsewhere.
+`TabsRepository.saveOrUpdateTabWithPages()` is the normal upload and edit path. It builds a preview from the first page in single mode, assigns `order` by array index, uses `-1` as a temporary `chapterOrder` before chapter creation, then assigns the saved chapter order to its pages, deletes pages no longer present in the target scope, and writes in chunks of 10 on iOS and 50 elsewhere.
 
 `TabsRepository.saveImportedMangaStructure()` is used only for a validated new structured import. It creates chapters and pages in one transaction using metadata array positions as order.
 

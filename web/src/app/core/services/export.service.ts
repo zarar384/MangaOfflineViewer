@@ -226,7 +226,7 @@ export class ExportService {
         const chapters = await this.chaptersRepo.getAll(tab.id);
         const pages: ExportPage[] = [];
         for (const chapter of chapters) {
-            for (const id of await this.pagesRepo.getOrderedIds(tab.id, chapter.order)) {
+            for (const id of await this.pagesRepo.getOrderedIds(tab.id, chapter)) {
                 pages.push({ id, chapterId: chapter.id });
             }
         }

@@ -156,6 +156,7 @@ export class TabsRepository {
       const savedId = await db.tabs.put(tabToSave);
 
       let chapterId: number | undefined = undefined;
+      let chapterOrder = chapter?.order;
 
       // save chapter if needed and get chapterId for pages
       if (tabToSave.mode === ViewMod.Chapters && chapter) {
@@ -173,6 +174,7 @@ export class TabsRepository {
         };
         
         chapterId = await db.chapters.put(newChapter);
+        chapterOrder = newChapter.order;
       }
 
       // update normalized pages with real ids
@@ -181,6 +183,11 @@ export class TabsRepository {
 
         if (!p.chapterId) {
           p.chapterId = chapterId ?? null;
+        }
+        // A chapter created above did not exist when pages were normalized. Replace the
+        // temporary/stale order with the actual chapter order before saving its pages.
+        if (chapterId !== undefined && p.chapterId === chapterId && chapterOrder !== undefined) {
+          p.chapterOrder = chapterOrder;
         }
       });
 

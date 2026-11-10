@@ -192,9 +192,16 @@ drag-and-drop reordering.
 ## Export flow (updated 2026-11-10)
 
 `exportManga(tab, format)` loads only chapter metadata and ordered page IDs, using
-`PagesRepository.getOrderedIds()` (key-only compound-index query). Each page is fetched by ID
-immediately before writing; no getAll/getByChapter payload arrays or Promise.all over chapters.
-The chapterOrder denormalization invariant is unchanged; no database migrations are required.
+`PagesRepository.getOrderedIds(tabId, chapter?)`. The normal compound-index path is key-only,
+but its full ID set is checked against actual membership by chapterId (or tabId in Single mode).
+Legacy plain imports can have chapterOrder = -1 despite belonging to a chapter with order = 1;
+null/missing ordering fields can omit pages from the index too. On a mismatch, a cursor reads
+one row at a time, retains only id/order/chapterOrder, then sorts those references. This must
+check membership, not just counts: chapters with swapped orders can have equal page counts.
+Each page is fetched by ID immediately before writing; no getAll/getByChapter payload arrays
+or Promise.all over chapters. Existing rows export without reimport or a database migration.
+New plain imports assign the actual chapter order after the chapter has been saved/created;
+the temporary -1 used before chapter creation is no longer persisted for its pages.
 
 `ExportOutput` writes to a unique OPFS temporary file through `export-output.worker.ts` and
 `createSyncAccessHandle()`. Every chunk is acknowledged before producing the next, bounding

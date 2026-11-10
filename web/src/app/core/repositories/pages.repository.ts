@@ -3,6 +3,7 @@ import { Page } from '../models/page.model';
 import { db } from '../database/manga-db';
 import { Dexie } from 'dexie';
 import { PageMeta } from 'src/app/shared/models/page-meta.model';
+import { Chapter } from '../models/chapter.model';
 
 export const PAGES_SEED: Page[] = [
   {
@@ -61,16 +62,35 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
-  // Key-only export query: never structured-clone all Blob/base64 payloads into memory.
-  // Chapter.order and Page.chapterOrder are kept in sync by ChaptersRepository.reorder().
-  async getOrderedIds(tabId: number, chapterOrder?: number): Promise<number[]> {
-    return db.pages
+  async getOrderedIds(tabId: number, chapter?: Pick<Chapter, 'id' | 'order'>): Promise<number[]> {
+    if (chapter && chapter.id == null) throw new Error('Cannot export a chapter without an id.');
+    // Chapter membership is authoritative. Older plain imports can have chapterOrder = -1,
+    // and null/missing ordering fields omit rows from the compound index altogether.
+    const scope = chapter
+      ? db.pages.where('[tabId+chapterId]').equals([tabId, chapter.id!])
+      : db.pages.where('tabId').equals(tabId);
+    const memberIds = await scope.primaryKeys();
+    if (!memberIds.length) return [];
+
+    const orderedIds = await db.pages
       .where('[tabId+chapterOrder+order]')
       .between(
-        [tabId, chapterOrder ?? Dexie.minKey, Dexie.minKey],
-        [tabId, chapterOrder ?? Dexie.maxKey, Dexie.maxKey]
+        [tabId, chapter?.order ?? Dexie.minKey, Dexie.minKey],
+        [tabId, chapter?.order ?? Dexie.maxKey, Dexie.maxKey]
       )
       .primaryKeys();
+    const members = new Set(memberIds);
+    if (orderedIds.length === members.size && orderedIds.every(id => members.has(id))) {
+      return orderedIds; // Normal path stays key-only, without deserializing image payloads.
+    }
+
+    // Read legacy rows one at a time and retain only ordering fields, never a payload array.
+    const ordering: { id: number; order: number; chapterOrder: number }[] = [];
+    await scope.each(page => {
+      ordering.push({ id: page.id!, order: page.order ?? 0, chapterOrder: page.chapterOrder ?? -1 });
+    });
+    ordering.sort((a, b) => (chapter ? 0 : a.chapterOrder - b.chapterOrder) || a.order - b.order);
+    return ordering.map(page => page.id);
   }
 
   async getAll(tabId: number, chapterId?: number): Promise<Page[]> {
