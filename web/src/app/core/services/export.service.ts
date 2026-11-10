@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Zip, ZipDeflate } from 'fflate';
+import { Zip, ZipDeflate, ZipPassThrough, ZipInputFile } from 'fflate';
 import { Tab } from '../models/tab.model';
 import { Page } from '../models/page.model';
-import { downloadBlob, getImageExtension } from '../../shared/utils/file-parsing';
+import { getImageExtension } from '../../shared/utils/file-parsing';
 import { isIOS } from '../../shared/utils/constants';
 import { FileFormat } from 'src/app/shared/enums/file-format';
 import { ChaptersRepository } from '../repositories/chapters.repository';
@@ -10,255 +10,249 @@ import { PagesRepository } from '../repositories/pages.repository';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { MangaStructureMetadata, MANGA_STRUCTURE_METADATA_MARKER, MANGA_STRUCTURE_METADATA_VERSION } from '../../shared/models/manga-structure-metadata';
 import { Chapter } from '../models/chapter.model';
-import { createQPEncodeState, encodeQuotedPrintableChunk, finalizeQPEncode, QPEncodeState } from '../../shared/utils/quoted-printable-stream';
-import { createBase64EncodeState, encodeBase64Chunk, finalizeBase64Encode } from '../../shared/utils/base64-stream';
+import { createQPEncodeState, encodeQuotedPrintableChunk, finalizeQPEncode } from '../../shared/utils/quoted-printable-stream';
+import { createBase64EncodeState, encodeBase64Chunk, finalizeBase64Encode, createBase64DecodeState, decodeBase64Chunk } from '../../shared/utils/base64-stream';
+import { ExportOutput } from '../../shared/utils/export-output';
 
-type ExportStructure = {
-    pages: Page[];
-    chapters: Chapter[];
-};
+type ExportPage = { id: number; chapterId?: number };
+type ExportStructure = { pages: ExportPage[]; chapters: Chapter[] };
 
-// Bytes-per-image-slice fed to the incremental base64 encoder during MHTML export; keeps only a
-// small window of an image's bytes resident at once instead of base64-encoding it all in one go.
-const MHTML_ENCODE_CHUNK_BYTES = 256 * 1024;
+const EXPORT_CHUNK_BYTES = 256 * 1024;
+// fflate writes classic ZIP, not ZIP64. Fail before its 32/16-bit fields wrap around.
+const ZIP_MAX_BYTES = 0xffffffff;
+const ZIP_MAX_ENTRIES = 0xffff;
 
-@Injectable({
-    providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ExportService {
+    private exporting = false;
+
     constructor(
         private chaptersRepo: ChaptersRepository,
         private pagesRepo: PagesRepository
     ) { }
 
-    // export manga as MHTML or ZIP
     async exportManga(tab: Tab | null, format: FileFormat): Promise<void> {
-        if (!tab) {
-            console.error('No tab provided for export.');
-            return;
+        if (!tab) return;
+        if (this.exporting) throw new Error('An export is already in progress.');
+        if (![FileFormat.MHTML, FileFormat.ZIP, FileFormat.CBZ].includes(format)) {
+            throw new Error(`Unsupported export format: ${format}`);
         }
-
-        const structure = await this.getExportStructure(tab);
-
-        if (format === FileFormat.MHTML) {
-            await this.exportMHTML(tab, structure);
-        } else if (format === FileFormat.ZIP || format === FileFormat.CBZ) {
-            await this.exportArchive(tab, structure, format);
-        }
-    }
-
-    // MHTML
-    // using for export and import MHTML files (same structure)
-    // Streams the document out as an array of byte chunks (header, then incrementally
-    // QP-encoded HTML/base64 per page) instead of building one giant HTML string and running a
-    // single whole-string QP encode over it - only the current page's bytes are resident in
-    // memory per iteration, mirroring the approach already used by exportArchive() below.
-    private async exportMHTML(tab: Tab, structure: ExportStructure): Promise<void> {
+        this.exporting = true;
+        let output: ExportOutput | undefined;
         try {
-            const { pages } = structure;
-            const textEncoder = new TextEncoder();
-            const chunks: BlobPart[] = [];
+            const structure = await this.getExportStructure(tab);
+            output = await ExportOutput.create();
+            if (format === FileFormat.MHTML) await this.exportMHTML(tab, structure, output);
+            else await this.exportArchive(tab, structure, output);
 
-            // RFC822 headers are written as plain text (never quoted-printable encoded),
-            // matching wrapMHTML()'s previous behavior exactly.
-            let headers = `From: <Saved by MHTML Viewer>\r\n`;
-            headers += `Subject: ${tab.name}\r\n`;
-            headers += `Date: ${new Date().toUTCString()}\r\n`;
-            headers += `MIME-Version: 1.0\r\n`;
-            headers += `Content-Type: text/html; charset=utf-8\r\n`;
-            headers += `Content-Transfer-Encoding: quoted-printable\r\n`;
-            headers += `\r\n`;
-            chunks.push(textEncoder.encode(headers));
-
-            // A single QP encoder state is shared across the whole body (prologue, every page,
-            // metadata, suffix) since the original ran one QP encode pass over the whole HTML.
-            let qpState: QPEncodeState = createQPEncodeState();
-            const writeQP = (text: string) => {
-                if (!text) return;
-                const result = encodeQuotedPrintableChunk(text, qpState);
-                qpState = result.state;
-                if (result.output) chunks.push(textEncoder.encode(result.output));
-            };
-
-            writeQP(`<!DOCTYPE html>\n<html>\n<head>\n<title>${tab.name}</title>\n<meta charset="utf-8">\n</head>\n<body>\n`);
-
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-
-                if (isIOS && typeof page.src === 'string') {
-                    // page.src is already a base64 data URL string on iOS; reuse its base64 text
-                    // as-is instead of decoding to bytes and re-encoding to base64.
-                    const match = page.src.match(/^data:([^;]+);base64,([\s\S]*)$/);
-                    if (!match) {
-                        console.warn(`Unsupported page source for page ${i + 1}`);
-                        continue;
-                    }
-                    const mimeType = match[1].startsWith('image/') ? match[1] : 'image/png';
-                    writeQP(`<div id="page-${i + 1}">\n<img src="data:${mimeType};base64,`);
-                    writeQP(match[2]);
-                    writeQP(`" alt="Image ${i + 1}" style="display:block;margin:10px 0;">\n</div>\n\n`);
-                    continue;
-                }
-
-                if (!(page.src instanceof Blob)) {
-                    console.warn(`Unsupported page source for page ${i + 1}`);
-                    continue;
-                }
-
-                const mimeType = page.src.type && page.src.type.startsWith('image/') ? page.src.type : 'image/png';
-                writeQP(`<div id="page-${i + 1}">\n<img src="data:${mimeType};base64,`);
-
-                const bytes = new Uint8Array(await page.src.arrayBuffer());
-                let b64State = createBase64EncodeState();
-                for (let off = 0; off < bytes.length; off += MHTML_ENCODE_CHUNK_BYTES) {
-                    const slice = bytes.subarray(off, Math.min(off + MHTML_ENCODE_CHUNK_BYTES, bytes.length));
-                    const encResult = encodeBase64Chunk(slice, b64State);
-                    b64State = encResult.state;
-                    writeQP(encResult.output);
-                }
-                writeQP(finalizeBase64Encode(b64State));
-
-                writeQP(`" alt="Image ${i + 1}" style="display:block;margin:10px 0;">\n</div>\n\n`);
-            }
-
-            const metadata = this.createMetadata(tab.mode, structure, (_, index) => `page-${index + 1}`);
-            if (metadata) {
-                // The manifest links each logical page to the HTML asset id.
-                writeQP(`<script id="molv-manga-structure" type="application/json">${JSON.stringify(metadata)}</script>\n`);
-            }
-            writeQP(`</body>\n</html>`);
-
-            const flushed = finalizeQPEncode(qpState);
-            if (flushed) chunks.push(textEncoder.encode(flushed));
-
-            const blob = new Blob(chunks, { type: 'message/rfc822' });
-            downloadBlob(blob, `${tab.name.replace(/[^a-zA-Z0-9А-Яа-яЁё]/gi, '_').toLowerCase()}.mhtml`);
-
+            const name = tab.name.replace(/[^a-zA-Z0-9А-Яа-яЁё]/gi, '_');
+            await output.download(
+                `${format === FileFormat.MHTML ? name.toLowerCase() : name}.${format}`,
+                format === FileFormat.MHTML ? 'message/rfc822' : 'application/zip'
+            );
         } catch (error) {
-            console.error('Error exporting MHTML:', error);
+            await output?.abort();
+            // Let callers handle failure; never report a failed/truncated download as success.
+            throw error;
+        } finally {
+            this.exporting = false;
         }
     }
 
-    // ZIP / CBZ
-    // Streams one page into the archive at a time instead of holding every page's bytes
-    // plus the whole compressed output in memory simultaneously (Zip/ZipDeflate are synchronous,
-    // main-thread streams from fflate; only the current page's bytes are resident per iteration).
-    private async exportArchive(tab: Tab, structure: ExportStructure, extension: FileFormat = FileFormat.ZIP): Promise<void> {
-        try {
-            const { pages } = structure;
-            const assetNames = new Map<Page, string>();
-            const chunks: Uint8Array<ArrayBuffer>[] = [];
-            let streamError: unknown;
+    private async exportMHTML(tab: Tab, structure: ExportStructure, output: ExportOutput): Promise<void> {
+        const encoder = new TextEncoder();
+        await output.write(encoder.encode(
+            `From: <Saved by MHTML Viewer>\r\nSubject: ${tab.name}\r\nDate: ${new Date().toUTCString()}\r\n` +
+            `MIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n`
+        ));
+        // Keep the legacy encoding and a single state across all page/chunk boundaries.
+        let qpState = createQPEncodeState();
+        const writeQP = async (text: string) => {
+            for (let offset = 0; offset < text.length; offset += EXPORT_CHUNK_BYTES) {
+                const result = encodeQuotedPrintableChunk(text.slice(offset, offset + EXPORT_CHUNK_BYTES), qpState);
+                qpState = result.state;
+                await output.write(encoder.encode(result.output));
+            }
+        };
+        await writeQP(`<!DOCTYPE html>\n<html>\n<head>\n<title>${tab.name}</title>\n<meta charset="utf-8">\n</head>\n<body>\n`);
 
-            const zipStream = new Zip((error, chunk) => {
-                if (error) { streamError = error; return; }
-                if (chunk) chunks.push(chunk);
-            });
+        for (let i = 0; i < structure.pages.length; i++) {
+            const page = await this.readPage(structure.pages[i]);
+            const dataUrl = isIOS && typeof page.src === 'string' ? /^data:([^;]+);base64,/.exec(page.src) : null;
+            if (!(page.src instanceof Blob) && !dataUrl) {
+                console.warn(`Unsupported page source for page ${i + 1}`);
+                continue;
+            }
+            const sourceType = page.src instanceof Blob ? page.src.type : dataUrl![1];
+            const mimeType = sourceType.startsWith('image/') ? sourceType : 'image/png';
+            await writeQP(`<div id="page-${i + 1}">\n<img src="data:${mimeType};base64,`);
 
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                let arrayBuffer: ArrayBuffer;
-                let ext: string;
-
-                if (page.src instanceof Blob) {
-                    arrayBuffer = await page.src.arrayBuffer();
-                    ext = getImageExtension(page.src.type);
+            if (isIOS && typeof page.src === 'string' && dataUrl) {
+                // Do not match/copy the whole payload or decode then re-encode the iOS string.
+                for (let offset = dataUrl[0].length; offset < page.src.length; offset += EXPORT_CHUNK_BYTES) {
+                    await writeQP(page.src.slice(offset, offset + EXPORT_CHUNK_BYTES));
                 }
-                else if (isIOS && typeof page.src === 'string') {
-                    const response = await fetch(page.src);
-                    arrayBuffer = await response.arrayBuffer();
+            } else if (page.src instanceof Blob) {
+                let state = createBase64EncodeState();
+                for (let offset = 0; offset < page.src.size; offset += EXPORT_CHUNK_BYTES) {
+                    const bytes = new Uint8Array(await page.src.slice(offset, offset + EXPORT_CHUNK_BYTES).arrayBuffer());
+                    const result = encodeBase64Chunk(bytes, state);
+                    state = result.state;
+                    await writeQP(result.output);
+                }
+                await writeQP(finalizeBase64Encode(state));
+            }
+            await writeQP(`" alt="Image ${i + 1}" style="display:block;margin:10px 0;">\n</div>\n\n`);
+        }
+
+        // Preserve unconditional index-based MHTML naming for legacy compatibility (AGENTS.md).
+        const metadata = this.createMetadata(tab.mode, structure, (_, index) => `page-${index + 1}`);
+        if (metadata) await writeQP(`<script id="molv-manga-structure" type="application/json">${JSON.stringify(metadata)}</script>\n`);
+        await writeQP('</body>\n</html>');
+        await output.write(encoder.encode(finalizeQPEncode(qpState)));
+    }
+
+    private async exportArchive(tab: Tab, structure: ExportStructure, output: ExportOutput): Promise<void> {
+        const assetNames = new Map<number, string>();
+        // fflate's callback is synchronous. Drain every push before producing the next chunk;
+        // an async callback/promise chain here would silently buffer the whole archive again.
+        let pending: Uint8Array<ArrayBuffer>[] = [];
+        let streamError: Error | undefined;
+        let totalBytes = 0;
+        let entryCount = 0;
+        const zip = new Zip((error, chunk) => {
+            if (error) { streamError = error; return; }
+            totalBytes += chunk.length;
+            if (totalBytes >= ZIP_MAX_BYTES) {
+                streamError = new Error('Export exceeds the classic ZIP size limit (4 GiB).');
+            } else pending.push(chunk);
+        });
+        const drain = async () => {
+            if (streamError) throw streamError;
+            const chunks = pending;
+            pending = [];
+            for (const chunk of chunks) await output.write(chunk);
+        };
+        const add = (entry: ZipInputFile) => {
+            if (++entryCount >= ZIP_MAX_ENTRIES) throw new Error('Export exceeds the classic ZIP entry limit.');
+            zip.add(entry);
+        };
+
+        try {
+            for (let i = 0; i < structure.pages.length; i++) {
+                const page = await this.readPage(structure.pages[i]);
+                let ext: string;
+                if (page.src instanceof Blob) ext = getImageExtension(page.src.type);
+                else if (isIOS && typeof page.src === 'string' && /^data:([^;]+);base64,/.test(page.src)) {
                     const match = page.src.match(/^data:image\/([a-zA-Z0-9+]+);/);
                     ext = match ? match[1] : 'jpeg';
-                }
-                else {
+                } else {
                     console.warn(`Unsupported page source for page ${i + 1}`);
                     continue;
                 }
-
-                if (streamError) throw streamError;
-
-                const assetName = `${i + 1}.${ext}`;
-                assetNames.set(page, assetName);
-
-                const entryStream = new ZipDeflate(assetName);
-                zipStream.add(entryStream);
-                entryStream.push(new Uint8Array(arrayBuffer), true);
+                const name = `${i + 1}.${ext}`;
+                assetNames.set(structure.pages[i].id, name);
+                // PNG/JPEG/WebP/GIF are already compressed. STORE avoids expensive main-thread
+                // recompression and is supported by both the existing importer and CBZ readers.
+                const entry = new ZipPassThrough(name);
+                add(entry);
+                for await (const chunk of this.imageChunks(page)) {
+                    entry.push(chunk, false);
+                    await drain();
+                }
+                entry.push(new Uint8Array(0), true);
+                await drain();
             }
-
-            const metadata = this.createMetadata(tab.mode, structure, page => assetNames.get(page));
+            const metadata = this.createMetadata(tab.mode, structure, page => assetNames.get(page.id));
             if (metadata) {
-                const metaStream = new ZipDeflate('.molv/manga-structure.json');
-                zipStream.add(metaStream);
-                metaStream.push(new TextEncoder().encode(JSON.stringify(metadata)), true);
+                const entry = new ZipDeflate('.molv/manga-structure.json');
+                add(entry);
+                const json = JSON.stringify(metadata);
+                const encoder = new TextEncoder();
+                // Preserve surrogate pairs while bounding metadata compression work, too.
+                for (let offset = 0; offset < json.length;) {
+                    let end = Math.min(offset + EXPORT_CHUNK_BYTES, json.length);
+                    if (end < json.length && /[\uD800-\uDBFF]/.test(json[end - 1])) end--;
+                    entry.push(encoder.encode(json.slice(offset, end)), false);
+                    await drain();
+                    offset = end;
+                }
+                entry.push(new Uint8Array(0), true);
+                await drain();
             }
-
-            zipStream.end();
-            if (streamError) throw streamError;
-
-            const content = new Blob(chunks, { type: 'application/zip' });
-            downloadBlob(content, `${tab.name.replace(/[^a-zA-Z0-9А-Яа-яЁё]/gi, '_')}.${extension.toLowerCase()}`);
-
-        } catch (error) {
-            console.error('Error exporting archive:', error);
+            zip.end();
+            await drain();
+        } finally {
+            zip.terminate();
+            pending = [];
         }
+    }
+
+    private async *imageChunks(page: Page): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+        if (page.src instanceof Blob) {
+            for (let offset = 0; offset < page.src.size; offset += EXPORT_CHUNK_BYTES) {
+                yield new Uint8Array(await page.src.slice(offset, offset + EXPORT_CHUNK_BYTES).arrayBuffer());
+            }
+        } else if (isIOS && typeof page.src === 'string') {
+            const header = /^data:([^;]+);base64,/.exec(page.src)!;
+            let state = createBase64DecodeState();
+            for (let offset = header[0].length; offset < page.src.length; offset += EXPORT_CHUNK_BYTES) {
+                const text = page.src.slice(offset, offset + EXPORT_CHUNK_BYTES).replace(/\s/g, '');
+                // fetch(dataURL) buffered both the complete string and decoded image on Safari.
+                if (/[^A-Za-z0-9+/=]/.test(text)) throw new Error('Invalid base64 page source.');
+                const result = decodeBase64Chunk(text, state);
+                state = result.state;
+                yield new Uint8Array(result.output);
+            }
+            // fetch also accepted unpadded base64. Preserve that compatibility.
+            if (state.pending.length === 1) throw new Error('Invalid base64 page source.');
+            if (state.pending.length) {
+                yield new Uint8Array(decodeBase64Chunk('='.repeat(4 - state.pending.length), state).output);
+            }
+        }
+    }
+
+    private async readPage(reference: ExportPage): Promise<Page> {
+        const page = await this.pagesRepo.get(reference.id);
+        if (!page) throw new Error(`Page ${reference.id} was removed during export.`);
+        return page;
     }
 
     private async getExportStructure(tab: Tab): Promise<ExportStructure> {
-        if (!tab.id) {
-            return { pages: [], chapters: [] };
-        }
-
+        if (!tab.id) return { pages: [], chapters: [] };
         if (tab.mode === ViewMod.Single) {
-            var pages = await this.pagesRepo.getAll(tab.id);
-            return { pages, chapters: [] };
+            return { pages: (await this.pagesRepo.getOrderedIds(tab.id)).map(id => ({ id })), chapters: [] };
         }
-
         const chapters = await this.chaptersRepo.getAll(tab.id);
-        const pagesByChapter = await Promise.all(
-            chapters.map(chapter => this.pagesRepo.getByChapter(tab.id!, chapter.id!))
-        );
-
-        return {
-            pages: pagesByChapter.flat().map(page => ({ ...page })),
-            chapters
-        };
+        const pages: ExportPage[] = [];
+        for (const chapter of chapters) {
+            for (const id of await this.pagesRepo.getOrderedIds(tab.id, chapter.order)) {
+                pages.push({ id, chapterId: chapter.id });
+            }
+        }
+        return { pages, chapters };
     }
 
     private createMetadata(
-        mode: Tab['mode'],
-        structure: ExportStructure,
-        getAsset: (page: Page, index: number) => string | undefined
+        mode: Tab['mode'], structure: ExportStructure,
+        getAsset: (page: ExportPage, index: number) => string | undefined
     ): MangaStructureMetadata | undefined {
-        if(mode === ViewMod.Single) return undefined; // TODO: I haven't figured out yet why metadata is needed for single mode
-        const { pages } = structure;
-        const isChapters = mode === ViewMod.Chapters;
-
-        // Do not publish a partial manifest when legacy export skipped an unsupported page.
-        if (pages.some((page, index) => !getAsset(page, index))) return undefined;
-
-        const base = {
-            marker: MANGA_STRUCTURE_METADATA_MARKER,
-            version: MANGA_STRUCTURE_METADATA_VERSION
-        } as const;
-
-        if (!isChapters) {
-            return {
-                ...base,
-                mode: ViewMod.Single,
-                pages: pages.map((page, index) => ({ asset: getAsset(page, index)! }))
-            };
+        if (mode === ViewMod.Single) return undefined;
+        const assets = structure.pages.map(getAsset);
+        if (assets.some(asset => !asset)) return undefined;
+        const base = { marker: MANGA_STRUCTURE_METADATA_MARKER, version: MANGA_STRUCTURE_METADATA_VERSION } as const;
+        if (mode !== ViewMod.Chapters) {
+            return { ...base, mode: ViewMod.Single, pages: assets.map(asset => ({ asset: asset! })) };
         }
-
-        return {
-            ...base,
-            mode: ViewMod.Chapters,
-            chapters: structure.chapters.map(chapter => {
-                const chapterPages = pages.filter(page => page.chapterId === chapter.id);
-                return {
-                    title: chapter.title,
-                    pages: chapterPages.map(page => ({ asset: getAsset(page, pages.indexOf(page))! }))
-                };
-            })
-        };
+        // Linear grouping instead of filter/indexOf for every page of every chapter.
+        const byChapter = new Map<number | undefined, { asset: string }[]>();
+        structure.pages.forEach((page, index) => {
+            let group = byChapter.get(page.chapterId);
+            if (!group) { group = []; byChapter.set(page.chapterId, group); }
+            group.push({ asset: assets[index]! });
+        });
+        return { ...base, mode: ViewMod.Chapters, chapters: structure.chapters.map(chapter => ({
+            title: chapter.title, pages: byChapter.get(chapter.id) ?? []
+        })) };
     }
 }

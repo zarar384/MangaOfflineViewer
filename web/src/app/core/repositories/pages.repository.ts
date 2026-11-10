@@ -61,6 +61,18 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
+  // Key-only export query: never structured-clone all Blob/base64 payloads into memory.
+  // Chapter.order and Page.chapterOrder are kept in sync by ChaptersRepository.reorder().
+  async getOrderedIds(tabId: number, chapterOrder?: number): Promise<number[]> {
+    return db.pages
+      .where('[tabId+chapterOrder+order]')
+      .between(
+        [tabId, chapterOrder ?? Dexie.minKey, Dexie.minKey],
+        [tabId, chapterOrder ?? Dexie.maxKey, Dexie.maxKey]
+      )
+      .primaryKeys();
+  }
+
   async getAll(tabId: number, chapterId?: number): Promise<Page[]> {
     try {
       if (!tabId) return [];

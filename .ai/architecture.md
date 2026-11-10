@@ -34,7 +34,7 @@
 
 ### Export
 
-`ExportService` (root) writes ZIP, CBZ, and MHTML. For chapter-mode manga it reloads the complete ordered structure from `ChaptersRepository` and `PagesRepository` instead of trusting the caller's page list.
+`ExportService` (root) writes ZIP, CBZ, and MHTML. For chapter-mode manga it reads chapter metadata and ordered page IDs from `ChaptersRepository` and `PagesRepository`, then fetches page payloads one at a time. Output is written incrementally to a temporary OPFS file (Blob fallback if unavailable); see `export-import.md`.
 
 ### MHTML/ZIP streaming
 
@@ -71,7 +71,7 @@ Exceptions that already exist in the code. Treat them as the local convention, n
 | Reading position | `ReaderService` signals, `bookmarks` table | observer derived anchors | scroll offsets |
 | UI state | local storage `ui-state` via `UiStateService` | component fields initialized from it | none |
 | Imported content | uploader `Page` objects, then IndexedDB after save | uploader thumbnails | captured metadata held until save |
-| Exported content | IndexedDB read at export time | the written ZIP or MHTML | none |
+| Exported content | IndexedDB read at export time | the written ZIP or MHTML | OPFS export file or Blob parts, removed after download/abort |
 
 `Page.chapterOrder` is a denormalized copy of `Chapter.order` that exists so `[tabId+chapterOrder+order]` returns a whole manga in reading order in one query. `Chapter.order` wins on conflict.
 

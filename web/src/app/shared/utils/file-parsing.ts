@@ -124,13 +124,23 @@ export function blobToDataURL(blob: Blob): Promise<string> {
   });
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string, onReleased?: () => void) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 100);
+  // Safari needs the anchor in the document and time to consume a large download.
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  try {
+    a.click();
+  } finally {
+    a.remove();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      onReleased?.();
+    }, 60_000);
+  }
 }
 
 export function getImageSize(blob: Blob): Promise<{ width: number; height: number }> {

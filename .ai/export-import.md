@@ -189,48 +189,49 @@ persisted `order`/`chapterOrder` fields, not filename/archive order — see `AGE
 Non-metadata imports go through the same `addBlobImage`/`items` signal path used by manual
 drag-and-drop reordering.
 
-## Export flow (`export.service.ts`)
+## Export flow (updated 2026-11-10)
 
-`exportManga(tab, pages, format)` builds an `ExportStructure` (`{ pages, chapters }`, fetched via
-`ChaptersRepository`/`PagesRepository` when `tab.mode === ViewMod.Chapters`) and dispatches to
-`exportMHTML` or `exportArchive`.
+`exportManga(tab, format)` loads only chapter metadata and ordered page IDs, using
+`PagesRepository.getOrderedIds()` (key-only compound-index query). Each page is fetched by ID
+immediately before writing; no getAll/getByChapter payload arrays or Promise.all over chapters.
+The chapterOrder denormalization invariant is unchanged; no database migrations are required.
 
-### MHTML (`exportMHTML`)
-Builds the output as an array of `BlobPart` byte chunks instead of one HTML string:
-1. RFC822 headers written as plain UTF-8 bytes (not QP-encoded) — matches the format spec above.
-2. One `QPEncodeState` is shared across the **entire** body (prologue, every page, metadata,
-   suffix) — mirrors the old code's single whole-string `encodeQuotedPrintable(html)` call.
-3. Per page: if `page.src` is a `Blob`, its bytes are read once (`arrayBuffer()`) and pushed through
-   `encodeBase64Chunk` in `MHTML_ENCODE_CHUNK_BYTES` (256 KiB) slices, each result immediately fed
-   through `encodeQuotedPrintableChunk` — only one page's bytes are ever resident at a time. If
-   `isIOS && typeof page.src === 'string'` (iOS stores pages as data URLs, see below), the base64
-   **text** is extracted via `/^data:([^;]+);base64,([\s\S]*)$/` and fed directly through the QP
-   encoder — no decode-to-bytes-and-re-encode round trip.
-4. `mimeType` is forced to `image/png` (keeping the original bytes/base64 unchanged) whenever the
-   source blob/data-URL's declared type isn't `image/*` — replicates the old code's fallback
-   exactly.
-5. `createMetadata(tab.mode, structure, (_, index) => \`page-${index + 1}\`)` — **intentionally**
-   unconditional index-based asset naming (not a `Map<Page,string>` built only from successfully
-   written pages, unlike the ZIP path below). This replicates a pre-existing latent bug: if a page
-   is skipped (unsupported `page.src`), the metadata can reference a `page-N` asset id that was
-   never written. Do **not** "fix" this without deliberate discussion — it must stay bug-for-bug
-   compatible with files already exported by this and earlier versions.
-6. Final `Blob(chunks, { type: 'message/rfc822' })` — the finished byte array is still fully
-   resident before being handed back (see Memory model below).
+`ExportOutput` writes to a unique OPFS temporary file through `export-output.worker.ts` and
+`createSyncAccessHandle()`. Every chunk is acknowledged before producing the next, bounding
+the queue. The worker awaits flush/close/truncate for older Safari implementations as well.
+After close, getFile() supplies a disk-backed download without reading the whole result.
+Object URLs and their temporary files are released after 60 seconds. Abort closes the handle
+before terminating the worker and deleting the file; termination alone can race with lock release.
+Expired temporary files (over one day) are cleaned on the next export.
 
-### ZIP/CBZ (`exportArchive`)
-Already streaming from an earlier phase, unchanged by this work: one page's bytes are read, then
-pushed through `fflate`'s `Zip`/`ZipDeflate` streaming API one entry at a time; asset names are
-recorded in a `Map<Page, string>` populated only for pages that were actually written, so
-`createMetadata` here **cannot** reference a missing asset (this is the correct/fixed version of
-the pattern the MHTML path deliberately does not use, per point 5 above).
+If OPFS/getFile/Worker initialization is unavailable, output falls back to small Blob parts
+(not retained Uint8Array buffers). This still needs O(output size) browser blob storage.
+Write/quota errors after initialization abort; there is no partial-file fallback or download.
+Errors propagate to callers; a service guard prevents simultaneous exports.
 
-### `createMetadata`
-Shared by both formats. Returns `undefined` for `ViewMod.Single` mode currently (not yet
-implemented/needed — leave as-is unless asked to change), and for chapters/multi-page mode returns
-`undefined` if any page has no resolvable asset (avoids publishing a manifest referencing missing
-assets, except for the MHTML index-based-naming gap noted above, which bypasses this guard because
-`getAsset` never actually returns `undefined` for that lambda).
+### MHTML
+The legacy RFC822 headers and one shared QP state are preserved. Blob input is sliced BEFORE
+arrayBuffer(), in 256 KiB windows, then incrementally base64/QP encoded. iOS strings have only
+their data-URL header matched; the payload is sent to QP in small text slices, without fetch or
+decode/re-encode. Existing codec quirks are unchanged.
+
+Unconditional index-based page-N metadata naming is deliberately preserved per AGENTS.md:
+unsupported sources can be skipped in the body while remaining referenced in the manifest.
+The MIME fallback to image/png and metadata placement at the end are unchanged.
+
+### ZIP/CBZ
+Images use fflate ZipPassThrough (STORE), avoiding main-thread recompression of compressed
+images. This may increase archive size, especially for compressible originals. Blob input is
+sliced; iOS base64 is incrementally decoded without fetch(dataURL). Every synchronous Zip push
+is fully drained to the async output before another push. Metadata uses chunked ZipDeflate.
+Classic ZIP output is rejected before 32-bit size or 16-bit entry-count fields overflow; ZIP64
+is not generated. Asset names are still recorded only for written images, and a skipped image
+suppresses archive metadata. Names/extensions retain their legacy rules.
+
+### Metadata
+Marker/version and Single-mode omission are unchanged. Chapter grouping is linear in page
+count rather than repeated filter/indexOf. See the tracked service export README for the current
+flow, limitations and validation details.
 
 ## Metadata format (`manga-structure-metadata.ts` model + parser)
 
@@ -271,13 +272,20 @@ decision, not a deletion of the helper. Do not re-wire the client back to the he
   giant string.
 - **Import (ZIP/CBZ)**: O(central directory size + current entry bytes); central directory and
   local-file headers are tiny relative to archive size.
-- **Export (both formats)**: CPU/heap **working set** is O(current page's bytes + chunk), but the
-  **finished output** (chunk array / fflate output) is still fully assembled in memory before one
-  `Blob` and one `downloadBlob()` call — total resident memory for the completed file still scales
-  with total output size. Truly bounding this would require streaming directly to disk via the File
-  System Access API / OPFS, which was evaluated and **deliberately deferred** (Safari/iOS OPFS
-  support is 15.2+, and `showSaveFilePicker` isn't supported in Safari at all). This is a known,
-  disclosed gap, not an oversight.
+- **Export (all formats, OPFS)**: O(page IDs + chapter metadata + current page + chunk)
+  in application memory. Completed output is disk-backed. iOS still deserializes one full
+  base64 page string from IndexedDB. Browser/OS internal memory is implementation-dependent.
+- **Export (Blob fallback)**: incremental input and immediate Blob conversion avoid retained
+  byte arrays, but total browser blob storage still scales with output size. No universal
+  large-file guarantee on unsupported/private-mode browsers or devices with insufficient space.
+
+2026-11-10 validation: Angular build plus real Chromium IndexedDB/OPFS/Worker tests, including
+the iOS string branch via user agent (not actual Safari). Six 256 MiB runs covered all formats
+and both source types; SHA-256 matched for all 64 reimported images. Outputs were ~256 MiB ZIP/CBZ
+and ~341 MiB MHTML; measured test-page JS heap ~81–102 MiB (not process RSS). Failure cleanup,
+disk-full injection, concurrent-export rejection, Blob fallback, single/empty manga, unsupported
+sources and 1–7 byte MHTML scan boundaries passed. Native Chromium downloads for all three
+formats were also saved and compared by size and SHA-256. Real Safari device validation remains.
 
 ## Benchmarks (throwaway scripts, not committed — see repo memory for how to reproduce)
 
