@@ -137,57 +137,40 @@ to `>` is safe). A regression script covering this, the fallback chain, and adve
 sizes lives at `web/scripts/mhtml-img-src-priority.regression.ts` (not wired into any test runner;
 run manually per the header comment).
 
-Metadata-driven import cannot know how to place a page until the whole file has been scanned
-(metadata can reorder pages relative to their physical position in the document), so the only place
-in the whole pipeline that still buffers multiple whole images at once is the caller
-(`molv-drop-uploader`'s `extractMhtml`), which holds a `Map<string, Blob>` of every image keyed by
-page id until the scan finishes. This is an accepted, documented limitation (buffers Blobs, not
-base64 text or a giant string — still a large improvement over the old code, just not O(chunk)
-for this one mode). The default (non-metadata) import path stays O(chunk + current image) with no
-buffering across images.
+Chapter metadata can reorder pages and is discovered after the image data. The uploader stages
+payloads in IndexedDB and keeps only a list of small thumbnails and references. MHTML scanning
+keeps every image in physical order, with a separate map of unambiguous asset IDs.
 
-## Import flow (`molv-drop-uploader.components.ts`)
+## Import flow (molv-drop-uploader.components.ts)
 
-`onFilesDropped` → `processFile` dispatches by extension: `.zip`/`.cbz` → `extractArchive`,
-`.mhtml`/`.mht` → `extractMhtml`, image files → `addImageFile`.
+One drop is processed at a time. Each accepted image is decoded to a small thumbnail; its original
+payload is staged in the v17 importDrafts table. iOS-compatible data URLs are generated one page at
+a time. Normal cancel, failure and item removal discard staged rows and revoke owned preview URLs.
+Old abandoned drafts expire after seven days and are pruned on the next import.
 
-### MHTML (`extractMhtml`)
-- If `enableMangaStructureMetadata` is on **and** no items have been added yet in this drop: scans
-  the file once via `MhtmlExtractorService.extractStreaming`, collecting images into
-  `Map<pageId, Blob>` and capturing metadata JSON if present. If the JSON parses and validates
-  (`parseMangaStructureMetadata`, asset ids checked against the collected page ids), imports via
-  `importStructuredMhtml` (metadata order) and returns early. Otherwise falls back to importing the
-  already-collected blobs in **physical document order** (no second scan) and disables
-  `enableMangaStructureMetadata` for the rest of this drop.
-- Otherwise (metadata disabled, or a second/later file in a multi-file drop): streams straight
-  through, calling `addBlobImage` per image as it arrives; progress is driven by
-  `MhtmlExtractorService.progress()` (byte-based percentage), since the streaming API doesn't know
-  the total image count upfront.
-- Known minor behavior nuance vs. the pre-streaming code: a metadata attempt is now skipped
-  entirely (not attempted-then-discarded) once `items().length > 0`, so `enableMangaStructureMetadata`
-  is not explicitly flipped off in that specific scenario. This has no functional effect (the
-  metadata path was already a no-op once items exist) but means a 3rd+ file in one drop may not
-  see the flag as `false` the way earlier code did.
+### MHTML
 
-### ZIP/CBZ (`extractArchive`)
-Reads only the central directory up front (`openArchiveReader`/`zip-random-access.ts`), then reads
-one entry's compressed bytes at a time via `File.slice()` — the whole archive is never buffered.
-Falls back to `unzipSync` (fflate) for ZIP64 archives (`ZipRandomAccessUnsupportedError`), which
-*does* fully buffer — ZIP64 manga archives are assumed rare/small enough that this is acceptable;
-this is a known, deliberate gap, not an oversight.
-If `.molv/manga-structure.json` exists and metadata is enabled/valid/no items yet, imports via
-`importStructuredArchive` (metadata order); otherwise imports by filename in
-`numericNameSort` order (physical/sorted order, not metadata order).
+The Worker waits for acknowledgement after the current image is staged. The main-thread fallback
+is used only before the first image callback starts. Cancellation stops the Worker and waits for
+an in-flight callback to settle before reporting completion. Usable chapter metadata orders the
+references after the scan. Missing/invalid metadata leaves the physical order including unnumbered
+images. Duplicate IDs cannot serve as metadata references.
 
-### Common import tail
-Both structured import paths converge on `importStructured(metadata, addPage)`, which walks pages
-in metadata order (flattening chapters if `mode === 'chapters'`), calls `addPage` per item, and
-stores the resulting `Map<asset, Page>` plus the metadata object on the component
-(`importedMetadata`/`importedPagesByAsset`) for `saveAll()` to persist later via
-`TabsRepository.saveImportedMangaStructure` (creates chapters in metadata order, pages with
-persisted `order`/`chapterOrder` fields, not filename/archive order — see `AGENTS.md`).
-Non-metadata imports go through the same `addBlobImage`/`items` signal path used by manual
-drag-and-drop reordering.
+### ZIP / CBZ
+
+The reader uses random-access ranges for classic ZIP and ZIP64. It verifies boundaries, entry
+sizes and CRC, and inflates in chunks when the native decompression stream is unavailable. Each
+image entry is materialized individually, with a 256 MiB limit. The image signature determines
+MIME before the filename fallback. If structured extraction fails after staging some pages,
+those staged items are rolled back before the plain image fallback.
+
+### Save
+
+Metadata is used only for new chapter-mode imports with valid Chapters metadata. Single mode,
+legacy Single manifests and multi-file drops use the image-only path. Existing persisted
+chapter membership and ordering remain authoritative. Both save methods write pages in bounded
+batches and delete the draft rows in the same transaction as the library writes. A failed
+transaction leaves the drafts available for retry. The parent window closes on saveFinished.
 
 ## Export flow (updated 2026-11-10)
 
@@ -220,7 +203,7 @@ Errors propagate to callers; a service guard prevents simultaneous exports.
 The legacy RFC822 headers and one shared QP state are preserved. Blob input is sliced BEFORE
 arrayBuffer(), in 256 KiB windows, then incrementally base64/QP encoded. iOS strings have only
 their data-URL header matched; the payload is sent to QP in small text slices, without fetch or
-decode/re-encode. Existing codec quirks are unchanged.
+decode/re-encode. The codec itself is unchanged. HTML titles use character references and JSON metadata uses ASCII escapes to preserve Unicode, equals signs, and script boundaries through the legacy codec.
 
 Unconditional index-based page-N metadata naming is deliberately preserved per AGENTS.md:
 unsupported sources can be skipped in the body while remaining referenced in the manifest.
@@ -233,10 +216,10 @@ sliced; iOS base64 is incrementally decoded without fetch(dataURL). Every synchr
 is fully drained to the async output before another push. Metadata uses chunked ZipDeflate.
 Classic ZIP output is rejected before 32-bit size or 16-bit entry-count fields overflow; ZIP64
 is not generated. Asset names are still recorded only for written images, and a skipped image
-suppresses archive metadata. Names/extensions retain their legacy rules.
+suppresses archive metadata. Asset numbers follow the same order; MIME and image extensions are corrected from a short signature when possible.
 
 ### Metadata
-Marker/version and Single-mode omission are unchanged. Chapter grouping is linear in page
+Marker/version are unchanged. Metadata is written only in Chapters mode. Chapter grouping is linear in page
 count rather than repeated filter/indexOf. See the tracked service export README for the current
 flow, limitations and validation details.
 
@@ -272,19 +255,15 @@ decision, not a deletion of the helper. Do not re-wire the client back to the he
 
 ## Memory model
 
-- **Import (MHTML, non-metadata path)**: O(chunk size + current image bytes), independent of file
-  size — verified at ~1GB scale with flat process heap usage.
-- **Import (MHTML, metadata path)**: O(total image bytes) — every image `Blob` is buffered (not
-  text) until the scan completes, because metadata can reorder pages. Still avoids ever holding a
-  giant string.
-- **Import (ZIP/CBZ)**: O(central directory size + current entry bytes); central directory and
-  local-file headers are tiny relative to archive size.
-- **Export (all formats, OPFS)**: O(page IDs + chapter metadata + current page + chunk)
-  in application memory. Completed output is disk-backed. iOS still deserializes one full
-  base64 page string from IndexedDB. Browser/OS internal memory is implementation-dependent.
-- **Export (Blob fallback)**: incremental input and immediate Blob conversion avoid retained
-  byte arrays, but total browser blob storage still scales with output size. No universal
-  large-file guarantee on unsupported/private-mode browsers or devices with insufficient space.
+- **Import (MHTML)**: chunk scanner plus one active image between Worker and uploader. Image
+  payloads are staged in IndexedDB; the uploader retains thumbnails and references.
+- **Import (ZIP/CBZ)**: central-directory windows and one materialized archive entry at a time.
+  ZIP64 follows the same path. A large individual image still requires memory for decoding.
+- **Save**: page batches are bounded by count and approximate bytes, with one oversized page
+  allowed per batch. The transaction temporarily needs space for both draft and committed data.
+- **Export (OPFS)**: page IDs, chapter metadata, current page and small chunks. Completed output
+  is disk-backed. Browser/OS internal memory is implementation-dependent.
+- **Export (Blob fallback)**: total browser Blob storage still scales with output size.
 
 2026-11-10 validation: Angular build plus real Chromium IndexedDB/OPFS/Worker tests, including
 the iOS string branch via user agent (not actual Safari). Six 256 MiB runs covered all formats

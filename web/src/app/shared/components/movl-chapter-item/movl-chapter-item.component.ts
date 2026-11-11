@@ -38,6 +38,11 @@ export class ChapterItemComponent implements OnChanges {
 
   editTitle: string = '';
   filesProcessing = false;
+  private preparingSave = false;
+
+  get isBusy(): boolean {
+    return this.preparingSave || this.filesProcessing;
+  }
 
   constructor(
     private pagesRepo: PagesRepository,
@@ -67,13 +72,7 @@ export class ChapterItemComponent implements OnChanges {
     this.isOpen = true;
     this.isEditMode = true;
     this.editTitle = this.chapter.title;
-    this.loadPages();
-  }
-
-  // Uploader 
-  onUploadFinished() {
-    // this.showUploader = false;
-    // this.loadPages();
+    this.pages = [];
   }
 
   async openChapter() {
@@ -122,31 +121,38 @@ export class ChapterItemComponent implements OnChanges {
   }
 
   async saveAndClose() {
-    try {
-      this.chapter.title = this.editTitle?.trim() || `Chapter ${this.chapter.id}`;
+    if (this.isBusy) return;
+    this.preparingSave = true;
 
-      const tab = await this.tabService.getTabById(this.chapter.tabId!);
+    try {
+      const chapter = { ...this.chapter, title: this.editTitle.trim() || `Chapter ${this.chapter.id}` };
+      const tab = await this.tabService.getTabById(chapter.tabId);
 
       if (!tab) {
         console.error('Tab not found');
         return;
       }
 
-      this.saveAll$.next([tab, this.chapter]);
-      this.clearAll$.next();
-
-      // wait for save to complete before closing edit mode
-      queueMicrotask(async () => {
-        await this.listService.reload();
-        this.isEditMode = false;
-        this.isOpen = false;
-        this.loadCount();
-      });
+      this.saveAll$.next([tab, chapter]);
     }
     catch (err) {
       console.error('Error saving tab', err);
     }
     finally {
+      this.preparingSave = false;
+    }
+  }
+
+  async onSaveFinished() {
+    this.isEditMode = false;
+    this.isOpen = false;
+    try {
+      await this.listService.reload();
+      const saved = this.listService.chapters().find(chapter => chapter.id === this.chapter.id);
+      if (saved) this.chapter.title = saved.title;
+      await this.loadCount();
+    } catch (error) {
+      console.error('Error refreshing saved chapter', error);
     }
   }
 

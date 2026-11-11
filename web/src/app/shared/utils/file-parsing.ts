@@ -116,11 +116,22 @@ export function encodeQuotedPrintable(str: string): string {
   }).replace(/\t/g, '=09').replace(/=$/gm, '=3D');
 }
 
-export function blobToDataURL(blob: Blob): Promise<string> {
-  return new Promise(resolve => {
+export async function blobToDataURL(blob: Blob, signal?: AbortSignal): Promise<string> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read image'));
+    reader.onabort = () => reject(signal?.reason ?? new DOMException('Image read cancelled', 'AbortError'));
+    const abort = () => reader.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    reader.onloadend = () => signal?.removeEventListener('abort', abort);
+    try {
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      signal?.removeEventListener('abort', abort);
+      reject(error);
+    }
   });
 }
 
@@ -140,35 +151,5 @@ export function downloadBlob(blob: Blob, filename: string, onReleased?: () => vo
       URL.revokeObjectURL(url);
       onReleased?.();
     }, 60_000);
-  }
-}
-
-export function getImageSize(blob: Blob): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    const url = URL.createObjectURL(blob);
-
-    img.onload = () => {
-      resolve({
-        width: img.naturalWidth,
-        height: img.naturalHeight
-      });
-
-      URL.revokeObjectURL(url);
-    };
-
-    img.onerror = reject;
-
-    img.src = url;
-  });
-}
-
-export function getImageExtension(mimeType: string): string {
-  switch (mimeType) {
-    case 'image/png': return 'png';
-    case 'image/jpeg': return 'jpg';
-    case 'image/gif': return 'gif';
-    default: return 'png';
   }
 }

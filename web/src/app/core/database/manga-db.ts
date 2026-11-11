@@ -10,6 +10,7 @@ import { Tag } from "../models/tag.model";
 import { Artist } from "../models/artist.model";
 
 export class MangaDB extends Dexie {
+  importDrafts!: Table<{ id?: number; createdAt: number; src: Blob | string }, number>;
   pages!: Table<Page, number>;
   tabs!: Table<Tab, number>;
   bookmarks!: Table<Bookmark, number>;
@@ -284,6 +285,9 @@ export class MangaDB extends Dexie {
           tab.isBlurred ??= false;
         });
     });
+
+    // v17: temporary import payloads. Existing library records keep their schema.
+    this.version(17).stores({ importDrafts: '++id, createdAt' });
 
     // future migrations can be added like version(n).upgrade(...)
     // example

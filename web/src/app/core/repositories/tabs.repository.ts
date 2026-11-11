@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import Dexie, { Transaction } from 'dexie';
 import { createPreviewFromFirstPage } from '../../shared/utils/preview';
 import { Tab } from '../models/tab.model';
 import { db } from '../database/manga-db';
@@ -7,7 +8,7 @@ import { PREVIEW_MAX_SIZE } from '../db.config';
 import { ViewMod } from '../../shared/enums/viewmod.enum';
 import { Chapter } from '../models/chapter.model';
 import { isIOS } from 'src/app/shared/utils/constants';
-import { MangaStructureMetadata } from '../../shared/models/manga-structure-metadata';
+import { ChaptersMangaStructureMetadata } from '../../shared/models/manga-structure-metadata';
 
 export const TABS_SEED: Tab[] = [
   {
@@ -35,6 +36,10 @@ export type SaveTabOptions = {
   previewMaxSize?: number | null;
   chapter?: Chapter | undefined;
 };
+
+export type PageToSave = Page & { draftId?: number; blob?: Blob };
+
+const PAGE_BATCH_BYTES = 8 * 1024 * 1024;
 
 @Injectable({ providedIn: 'root' })
 export class TabsRepository {
@@ -93,7 +98,7 @@ export class TabsRepository {
 
   async saveOrUpdateTabWithPages(
     tab: Tab,
-    pages: Array<any>,
+    pages: readonly PageToSave[],
     options: SaveTabOptions = {}
   ): Promise<number> {
 
@@ -105,10 +110,13 @@ export class TabsRepository {
     if (tab.mode === ViewMod.Single) {
 
       // create preview from first page for single view
-      preview = await createPreviewFromFirstPage(
-        pages,
-        previewMaxSize || PREVIEW_MAX_SIZE
-      );
+      const first = pages[0];
+      if (first) {
+        preview = await createPreviewFromFirstPage(
+          [{ ...first, src: await this.resolvePageSource(first) }],
+          previewMaxSize || PREVIEW_MAX_SIZE
+        );
+      }
     }
     else if (tab.mode === ViewMod.Chapters) {
 
@@ -118,8 +126,9 @@ export class TabsRepository {
 
     // prepare pages before transaction
     // Safari/iPhone does not like long transactions
-    const normalized: Page[] = pages.map((p: any, indx: number) => ({
+    const normalized: PageToSave[] = pages.map((p, indx) => ({
       id: p.id,
+      draftId: p.draftId,
 
       // temporary
       // real tabId/chapterId assigned later
@@ -128,7 +137,7 @@ export class TabsRepository {
       // avoid storing duplicated blob fields
       src: p.src ?? p.blob,
 
-      name: p.name ?? null,
+      name: p.name,
       width: p.width ?? null,
       height: p.height ?? null,
       
@@ -139,175 +148,172 @@ export class TabsRepository {
       chapterOrder: p.chapterOrder ?? chapter?.order ?? -1
     }));
 
-    // transaction to save tab and pages
-    const tabId = await db.transaction('rw', db.tabs, db.pages, db.bookmarks, db.chapters, async () => {
+    return db.transaction('rw', [db.tabs, db.pages, db.bookmarks, db.chapters, db.importDrafts], transaction => {
+      const tabTable = transaction.table<Tab, number>(db.tabs.name);
+      const chapterTable = transaction.table<Chapter, number>(db.chapters.name);
       const tabToSave = {
         ...tab,
+        name: tab.mode === ViewMod.Single ? chapter?.title ?? tab.name : tab.name,
         preview: preview ?? tab.preview,
         updatedAt: Date.now(),
         createdAt: tab.createdAt ?? Date.now()
       };
 
-      if (tabToSave.mode === ViewMod.Single) {
-        tabToSave.name = chapter?.title ?? tabToSave.name;
-      }
-
-      // save tab or update
-      const savedId = await db.tabs.put(tabToSave);
-
-      let chapterId: number | undefined = undefined;
-      let chapterOrder = chapter?.order;
-
-      // save chapter if needed and get chapterId for pages
-      if (tabToSave.mode === ViewMod.Chapters && chapter) {
-        chapterId = await db.chapters.put(chapter);
-      }
-      // create a new chapter and put all pages into it
-      else if (tabToSave.mode === ViewMod.Chapters && !chapter) 
-      {
-        const newChapter = {
-          tabId: savedId as number,
-          title: 'New Chapter',
-          order: 1,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
+      return tabTable.put(tabToSave).then(tabId => {
+        const saveChapter = () => {
+          if (tab.mode !== ViewMod.Chapters) return Dexie.Promise.resolve(undefined);
+          const chapterToSave = chapter ?? {
+            tabId,
+            title: 'New Chapter',
+            order: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          return chapterTable.put(chapterToSave).then(id => ({ id, order: chapterToSave.order }));
         };
-        
-        chapterId = await db.chapters.put(newChapter);
-        chapterOrder = newChapter.order;
-      }
 
-      // update normalized pages with real ids
-      normalized.forEach(p => {
-        p.tabId = savedId as number;
+        return saveChapter().then(savedChapter => {
+          for (const page of normalized) {
+            page.tabId = tabId;
+            page.chapterId ??= savedChapter?.id ?? null;
+            if (savedChapter && page.chapterId === savedChapter.id) {
+              page.chapterOrder = savedChapter.order;
+            }
+          }
 
-        if (!p.chapterId) {
-          p.chapterId = chapterId ?? null;
-        }
-        // A chapter created above did not exist when pages were normalized. Replace the
-        // temporary/stale order with the actual chapter order before saving its pages.
-        if (chapterId !== undefined && p.chapterId === chapterId && chapterOrder !== undefined) {
-          p.chapterOrder = chapterOrder;
-        }
+          return this.removeOldPages(transaction, tabId, savedChapter?.id, normalized, deleteOldPages)
+            .then(() => this.savePageBatches(transaction, normalized, 'bulkPut'))
+            .then(() => tabId);
+        });
       });
-
-      // delete old pages if requested
-      if (deleteOldPages) {
-        const oldPageIds = await db.pages
-          .where('tabId')
-          .equals(savedId as number)
-          .primaryKeys();
-
-        if (oldPageIds.length) {
-
-          await db.bookmarks
-            .where('pageId')
-            .anyOf(oldPageIds as number[])
-            .delete();
-
-          await db.pages.bulkDelete(oldPageIds as number[]);
-        }
-      }
-      else {
-        let existing: Page[] = [];
-
-        if (chapterId == null) {
-          existing = await db.pages
-            .where('tabId')
-            .equals(savedId as number)
-            .filter(p => p.chapterId == null)
-            .toArray();
-        }
-        else {
-          existing = await db.pages
-            .where('[tabId+chapterId]')
-            .equals([savedId, chapterId] as any)
-            .toArray();
-        }
-
-        const incomingIds = new Set(
-          normalized.map(p => p.id)
-            .filter(id => id !== undefined)
-        );
-
-        // delete only those that have id and are not in incoming
-        const toDelete = existing
-          .filter(p => !incomingIds.has(p.id!))
-          .map(p => p.id as number);
-
-        if (toDelete.length) {
-          await db.bookmarks.where('pageId').anyOf(toDelete).delete();
-          await db.pages.bulkDelete(toDelete);
-        }
-      }
-
-      // save by chunks
-      // Safari/iPhone can freeze on very large bulkPut with blobs
-      if (normalized.length) {
-        const isMobile = isIOS;
-        const chunkSize = isMobile ? 10 : 50;
-
-        for (let i = 0; i < normalized.length; i += chunkSize) {
-          const chunk = normalized.slice(i, i + chunkSize);
-          await db.pages.bulkPut(chunk);
-        }
-      }
-
-      return savedId as number;
-    }
-    );
-
-    return tabId;
+    });
   }
 
-     async saveImportedMangaStructure(
-     tab: Tab,
-     metadata: MangaStructureMetadata,
-     pagesByAsset: ReadonlyMap<string, Page>
-   ): Promise<number> {
+  private removeOldPages(
+    transaction: Transaction,
+    tabId: number,
+    chapterId: number | undefined,
+    incoming: readonly PageToSave[],
+    deleteOldPages: boolean | undefined
+  ): Promise<void> {
+    const pageTable: typeof db.pages = transaction.table(db.pages.name);
+    const bookmarkTable: typeof db.bookmarks = transaction.table(db.bookmarks.name);
+    const inTab = pageTable.where('tabId').equals(tabId);
+    let oldIds: Promise<number[]>;
+    if (deleteOldPages) {
+      oldIds = inTab.primaryKeys();
+    } else if (chapterId === undefined) {
+      oldIds = inTab.filter(page => page.chapterId == null).primaryKeys();
+    } else {
+      oldIds = pageTable.where('[tabId+chapterId]').equals([tabId, chapterId]).primaryKeys();
+    }
 
-    const pages_ = new Map(pagesByAsset);
-    // The metadata was validated against every asset before this transaction starts.
-     const previewPages = metadata.mode === ViewMod.Single
-      ? metadata.pages.map(item => pages_.get(item.asset)!)
-       : [];
-     const preview = metadata.mode === ViewMod.Single
-       ? await createPreviewFromFirstPage(previewPages, PREVIEW_MAX_SIZE) ?? undefined
-       : tab.preview;
- 
-     return db.transaction('rw', db.tabs, db.pages, db.chapters, async () => {
-       const tabId = await db.tabs.put({
-         ...tab,
-         mode: metadata.mode,
-         preview,
-         updatedAt: Date.now(),
-         createdAt: tab.createdAt ?? Date.now()
-       }) as number;
- 
-       const pages: Page[] = [];
-       if (metadata.mode === ViewMod.Single) {
-         for (const [index, item] of metadata.pages.entries()) {
-          const page = pages_.get(item.asset)!;
-           pages.push({ ...page, id: undefined, tabId, chapterId: null, chapterOrder: null, order: index + 1 });
-         }
-       } else {
-         for (const [chapterIndex, chapterMetadata] of metadata.chapters.entries()) {
-           const chapterId = await db.chapters.add({
-             tabId,
-             title: chapterMetadata.title,
-             order: chapterIndex + 1,
-             createdAt: Date.now(),
-             updatedAt: Date.now()
-           });
-           for (const [pageIndex, item] of chapterMetadata.pages.entries()) {
-            const page = pages_.get(item.asset)!;
-             pages.push({ ...page, id: undefined, tabId, chapterId, chapterOrder: chapterIndex + 1, order: pageIndex + 1 });
-           }
-         }
-       }
- 
-       if (pages.length) await db.pages.bulkAdd(pages);
-       return tabId;
-     });
-   }
+    const retainedIds = new Set(incoming.map(page => page.id));
+    return oldIds.then(ids => {
+      const toDelete = deleteOldPages ? ids : ids.filter(id => !retainedIds.has(id));
+      if (!toDelete.length) return;
+      return bookmarkTable.where('pageId').anyOf(toDelete).delete()
+        .then(() => pageTable.bulkDelete(toDelete));
+    });
+  }
+
+  async saveImportedMangaStructure(
+    tab: Tab,
+    metadata: ChaptersMangaStructureMetadata,
+    pagesByAsset: ReadonlyMap<string, PageToSave>
+  ): Promise<number> {
+    return db.transaction('rw', [db.tabs, db.pages, db.chapters, db.importDrafts], transaction => {
+      const tabTable = transaction.table<Tab, number>(db.tabs.name);
+      const chapterTable = transaction.table<Chapter, number>(db.chapters.name);
+      return tabTable.put({
+        ...tab,
+        mode: ViewMod.Chapters,
+        updatedAt: Date.now(),
+        createdAt: tab.createdAt ?? Date.now()
+      }).then(tabId => {
+        const pages: PageToSave[] = [];
+        let pending = Dexie.Promise.resolve();
+        for (const [chapterIndex, chapter] of metadata.chapters.entries()) {
+          const chapterOrder = chapterIndex + 1;
+          pending = pending.then(() => chapterTable.add({
+            tabId,
+            title: chapter.title,
+            order: chapterOrder,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          })).then(chapterId => {
+            for (const [pageIndex, item] of chapter.pages.entries()) {
+              const page = pagesByAsset.get(item.asset);
+              if (!page) throw new Error('Missing imported page: ' + item.asset);
+              pages.push({ ...page, id: undefined, tabId, chapterId, chapterOrder, order: pageIndex + 1 });
+            }
+          });
+        }
+        return pending.then(() => this.savePageBatches(transaction, pages, 'bulkAdd')).then(() => tabId);
+      });
+    });
+  }
+
+  private resolvePageSource(
+    page: PageToSave,
+    pageTable = db.pages,
+    draftTable = db.importDrafts
+  ): Promise<Page['src']> {
+    if (page.draftId !== undefined) {
+      return draftTable.get(page.draftId).then(draft => {
+        if (!draft) throw new Error('An imported page is no longer available. Select its file again.');
+        return draft.src;
+      });
+    }
+    if (page.src !== undefined || page.blob !== undefined || page.id === undefined) {
+      return Dexie.Promise.resolve(page.src ?? page.blob);
+    }
+    return pageTable.get(page.id).then(saved => {
+      if (!saved) throw new Error('A saved page was removed while editing.');
+      return saved.src;
+    });
+  }
+
+  private savePageBatches(
+    transaction: Transaction,
+    pages: readonly PageToSave[],
+    operation: 'bulkPut' | 'bulkAdd'
+  ): Promise<void> {
+    const pageTable: typeof db.pages = transaction.table(db.pages.name);
+    const draftTable: typeof db.importDrafts = transaction.table(db.importDrafts.name);
+    const maxPages = isIOS ? 10 : 50;
+    const draftIds: number[] = [];
+    let batch: Page[] = [];
+    let batchBytes = 0;
+
+    const flush = () => {
+      const ready = batch;
+      batch = [];
+      batchBytes = 0;
+      return pageTable[operation](ready);
+    };
+
+    // Keep page reads and writes on the transaction's Dexie promise chain. A native
+    // async helper between requests can let IndexedDB commit under Angular's Zone.
+    let pending = Dexie.Promise.resolve();
+    for (const input of pages) {
+      pending = pending.then(() => this.resolvePageSource(input, pageTable, draftTable)).then(src => {
+        const bytes = typeof src === 'string' ? src.length * 2 : src?.size ?? 0;
+        const append = () => {
+          const { draftId, blob, ...page } = input;
+          batch.push({ ...page, src });
+          batchBytes += bytes;
+          if (draftId !== undefined) draftIds.push(draftId);
+        };
+        if (batch.length && (batch.length >= maxPages || batchBytes + bytes > PAGE_BATCH_BYTES)) {
+          return flush().then(append);
+        }
+        append();
+      });
+    }
+
+    return pending.then(() => batch.length ? flush() : undefined).then(() => {
+      if (draftIds.length) return draftTable.bulkDelete(draftIds);
+    });
+  }
 }

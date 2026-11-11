@@ -4,7 +4,7 @@
 
 ### Persistence
 
-`core/database/manga-db.ts` defines the Dexie database `mangaDB` with tables `tabs`, `pages`, `bookmarks`, `chapters`, `userTabs`, `artists`, `tags`, and schema versions 1 through 15. `core/models` holds the entity interfaces. `core/repositories` holds all query and write code and is the only place that touches `db` directly. Source of truth is IndexedDB.
+`core/database/manga-db.ts` defines the Dexie database `mangaDB` with tables `tabs`, `pages`, `bookmarks`, `chapters`, `userTabs`, `artists`, `tags`, and schema versions through 17. The importDrafts table holds temporary original images until import commits. `core/models` holds the entity interfaces. `core/repositories` holds all query and write code and is the only place that touches `db` directly. Source of truth is IndexedDB.
 
 ### Library and selection
 
@@ -30,7 +30,7 @@
 
 ### Import
 
-`shared/components/molv-drop-uploader` is the single import surface for ZIP, CBZ, MHTML, and plain images. It converts input into `Page` objects held in a local `items` signal and persists them through `TabsRepository`. Parent windows drive it through `saveAll$` and `clearAll$` subjects.
+`shared/components/molv-drop-uploader` is the single import surface for ZIP, CBZ, MHTML, and plain images. It stages original page payloads in IndexedDB and keeps thumbnails and page references in a local `items` signal. Parent windows request save/clear through subjects and close after `saveFinished`. `TabsRepository` commits page batches and draft cleanup atomically.
 
 ### Export
 
@@ -70,7 +70,7 @@ Exceptions that already exist in the code. Treat them as the local convention, n
 | Manga mode | `Tab.mode` | `UiStateService.currentView()` | none |
 | Reading position | `ReaderService` signals, `bookmarks` table | observer derived anchors | scroll offsets |
 | UI state | local storage `ui-state` via `UiStateService` | component fields initialized from it | none |
-| Imported content | uploader `Page` objects, then IndexedDB after save | uploader thumbnails | captured metadata held until save |
+| Imported content | IndexedDB importDrafts, then library pages after save | uploader thumbnails | page references and chapter metadata until save |
 | Exported content | IndexedDB read at export time | the written ZIP or MHTML | OPFS export file or Blob parts, removed after download/abort |
 
 `Page.chapterOrder` is a denormalized copy of `Chapter.order` that exists so `[tabId+chapterOrder+order]` returns a whole manga in reading order in one query. `Chapter.order` wins on conflict.
@@ -81,7 +81,7 @@ Exceptions that already exist in the code. Treat them as the local convention, n
 
 **Compound index availability.** Ordering queries rely on `[tabId+chapterOrder+order]`, `[tabId+chapterId]`, and `[tabId+order]`. Removing or renaming an indexed field without a new Dexie version silently breaks those queries against existing user databases.
 
-**Schema versions are append-only.** Users hold live databases at version 16. Editing a released `version(n).stores(...)` block instead of adding a new one corrupts upgrades. Migrations must be additive and must not delete user content.
+**Schema versions are append-only.** The current schema is version 17. Editing a released `version(n).stores(...)` block instead of adding a new one corrupts upgrades. Migrations must be additive and must not delete user content.
 
 **Blur reveal is never persisted.** Only `Tab.isBlurred` and the two global toggles (`showBlurredContent`, `hideBlurredContent`) are persisted. `TabsComponent.revealedIds` (per-card reveal) is session-only state and must stay component-local.
 

@@ -1,54 +1,45 @@
 /// <reference lib="webworker" />
 
-/**
- * MHTML parsing worker.
- *
- * Runs the incremental MHTML scanner (see shared/utils/mhtml-stream-scanner.ts) off the main
- * thread. The File object is posted here directly (a cheap structured-clone, not a full-file
- * copy) and read incrementally via File.slice()/arrayBuffer() - this worker never holds the
- * whole file, the whole decoded document, or the whole set of images in memory at once. Each
- * decoded image is posted back to the main thread as soon as it's found, as its own small
- * message, instead of being accumulated and sent as one giant payload at the end.
- *
- * This worker previously also supported uploading the file to an optional local helper server
- * (server/server.js) for parsing. That path never actually solved the memory problem (the
- * server fully buffered and parsed the file too, returning one big JSON response) and doesn't
- * run on iOS Safari anyway, so it has been removed in favor of this local streaming scanner,
- * which is now used unconditionally.
- */
+import type { MhtmlWorkerRequest, MhtmlWorkerResponse } from './shared/models/mhtml-worker-message';
 import { scanMhtmlFile } from './shared/utils/mhtml-stream-scanner';
 
-interface ProcessLocalMessage {
-  type: 'processLocal';
-  id: string;
-  file: File;
+let started = false;
+let acknowledgeImage: (() => void) | undefined;
+
+function reportFailure(error: unknown): void {
+  postMessage({
+    type: 'error',
+    message: error instanceof Error ? error.message : 'Local MHTML parse failed'
+  } satisfies MhtmlWorkerResponse);
 }
 
-type IncomingMessage = ProcessLocalMessage;
-
-self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
-  const data = event.data;
-
-  if (data.type === 'processLocal') {
-    const { id, file } = data;
-
-    try {
-      await scanMhtmlFile(
-        file,
-        (img) => {
-          postMessage({ type: 'image', id, pageId: img.pageId, blob: img.blob });
-        },
-        (json) => {
-          postMessage({ type: 'metadata', id, json });
-        },
-        (progress) => {
-          postMessage({ type: 'progress', id, progress });
-        }
-      );
-
-      postMessage({ type: 'result', id });
-    } catch (err: any) {
-      postMessage({ type: 'error', id, error: err?.message ?? 'Local MHTML parse failed' });
-    }
+self.onmessage = ({ data }: MessageEvent<MhtmlWorkerRequest>) => {
+  if (data.type === 'ackImage') {
+    acknowledgeImage?.();
+    acknowledgeImage = undefined;
+    return;
   }
+
+  if (started) return;
+  started = true;
+
+  void scanMhtmlFile(
+    data.file,
+    image => new Promise<void>(resolve => {
+      // The scanner waits for the consumer before decoding the next image.
+      acknowledgeImage = resolve;
+      try {
+        postMessage({ type: 'image', image } satisfies MhtmlWorkerResponse);
+      } catch (error) {
+        // The scanner normally skips a callback error. A transport failure must stop the run.
+        reportFailure(error);
+        self.close();
+      }
+    }),
+    json => postMessage({ type: 'metadata', json } satisfies MhtmlWorkerResponse),
+    progress => postMessage({ type: 'progress', progress } satisfies MhtmlWorkerResponse)
+  ).then(
+    () => postMessage({ type: 'result' } satisfies MhtmlWorkerResponse),
+    reportFailure
+  );
 };

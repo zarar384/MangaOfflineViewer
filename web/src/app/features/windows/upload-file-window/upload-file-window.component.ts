@@ -98,6 +98,7 @@ export class UploadFileWindowComponent {
         });
 
         this.uiState.navigate(ViewMod.Chapters);
+        this.onWindowClose();
         return;
       }
       else {
@@ -109,9 +110,6 @@ export class UploadFileWindowComponent {
     }
     catch (err) {
       console.error('Error saving tab', err);
-    }
-    finally {
-      this.onWindowClose();
     }
   }
 }

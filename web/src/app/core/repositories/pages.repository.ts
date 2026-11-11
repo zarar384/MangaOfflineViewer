@@ -62,6 +62,19 @@ export class PagesRepository {
     return db.pages.get(id);
   }
 
+  async stageImportPage(src: Blob | string): Promise<number> {
+    return db.importDrafts.add({ src, createdAt: Date.now() });
+  }
+
+  async discardImportPages(ids: number[]): Promise<void> {
+    if (ids.length) await db.importDrafts.bulkDelete(ids);
+  }
+
+  async discardExpiredImportPages(): Promise<void> {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    await db.importDrafts.where('createdAt').below(cutoff).delete();
+  }
+
   async getOrderedIds(tabId: number, chapter?: Pick<Chapter, 'id' | 'order'>): Promise<number[]> {
     if (chapter && chapter.id == null) throw new Error('Cannot export a chapter without an id.');
     // Chapter membership is authoritative. Older plain imports can have chapterOrder = -1,

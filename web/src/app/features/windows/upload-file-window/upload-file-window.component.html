@@ -1,5 +1,5 @@
 <app-window [visible]="isVisible" title="{{'importMangas' | transloco}}" [width]="'500px'" [height]="'400px'"
-  position="center" [showClose]="true" [closeDisabled]="filesProcessing" [showHide]="false" [showTransparency]="false"
+  position="center" [showClose]="true" [closeDisabled]="uploader.isSaving()" [showHide]="false" [showTransparency]="false"
   (close)="onWindowClose()">
 
   <div class="molv-container">
@@ -22,13 +22,13 @@
       [disabled]="filesProcessing">
 
  <button class="molv-btn molv-btn-pink" (click)="saveAndClose()"
-      [disabled]="filesProcessing || (!fileName && !(isMultiMode() && uploader.items().length === 0))">
-        {{ (isMultiMode() && uploader.items().length === 0) ? ('create' | transloco) : ('save' | transloco) }}
+      [disabled]="filesProcessing || (!fileName && !(isMultiMode() && !isMultiUploadFinished))">
+        {{ (isMultiMode() && !isMultiUploadFinished) ? ('create' | transloco) : ('save' | transloco) }}
      </button>
 
     <molv-drop-uploader #uploader [visible]="isVisible" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
       [enableMangaStructureMetadata]="isMultiMode()" [disabled]="uploaderDisabled()"
-      (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event"
+      (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event" (saveFinished)="onWindowClose()"
       (fileSelected)="fileName = fileName ?? $event">
     </molv-drop-uploader>
 

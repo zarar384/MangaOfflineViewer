@@ -1,20 +1,15 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, input, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Page } from "../../../core/models/page.model";
 import { Tab } from "../../../core/models/tab.model";
-import { PagesRepository } from "../../../core/repositories/pages.repository";
 import { MolvDropUploaderComponents } from '../../../shared/components/molv-drop-uploader/molv-drop-uploader.components';
 import { WindowComponent } from "../../../shared/components/window/window.component";
-import { numericNameSort } from "../../../shared/utils/file-parsing";
 import { Subject } from 'rxjs';
 import { TabsService } from "../../../core/services/tabs.service";
 import { ViewMod } from "../../../shared/enums/viewmod.enum";
-import { LoadingService } from "../../../core/services/loading.service";
 import { Chapter } from "../../../core/models/chapter.model";
 import { TranslocoPipe } from "@jsverse/transloco";
 import { LanguageService } from "src/app/core/services/language.service";
-import { StorageInfoService } from "src/app/core/services/storage-info.service";
 
 @Component({
   selector: 'edit-tab-window',
@@ -30,44 +25,22 @@ export class EditTabWindowComponent implements OnChanges {
   @Input() viewMode: ViewMod | undefined = undefined;
   @Output() closeWindow = new EventEmitter<void>();
 
-  pages: Page[] = [];
-
   saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
   localFileName: string | undefined;
 
   constructor(
-    private pagesRepo: PagesRepository,
     private tabService: TabsService,
-    private loading: LoadingService,
     private langService: LanguageService,
   ) { }
 
-  async ngOnChanges(changes: SimpleChanges) {
+  ngOnChanges(changes: SimpleChanges) {
     if (changes['fileName']
       || (changes['isVisible'] && this.isVisible)
     ) {
       this.localFileName = this.fileName;
 
-      await this.loadPages();
-    }
-  }
-
-  private async loadPages() {
-    if (!this.tabId) return;
-
-    try {
-      this.loading.show();
-
-      var pages = await this.pagesRepo.getAll(this.tabId)
-      this.pages = pages.sort((a, b) => numericNameSort(`${a}`, `${b}`));
-    }
-    catch (err) {
-      console.error('Error loading pages', err)
-    }
-    finally {
-      this.loading.hide();
     }
   }
 
@@ -102,9 +75,6 @@ export class EditTabWindowComponent implements OnChanges {
     }
     catch (err) {
       console.error('Error saving tab', err);
-    }
-    finally {
-      this.onWindowClose();
     }
   }
 }

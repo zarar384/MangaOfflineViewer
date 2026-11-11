@@ -5,9 +5,9 @@
       {
       <!-- order -->
       <input type="number" class="molv-order-input molv-order-input-small" [value]="chapter.order"
-        (change)="onOrderChange($event)" [disabled]="filesProcessing">
+        (change)="onOrderChange($event)" [disabled]="isBusy">
       }
-      @if(filesProcessing) {
+      @if(isBusy) {
       <div class="molv-spinner small"></div>
       }
       @else {
@@ -33,18 +33,18 @@
       </span>
 
       @if(isEditMode) {
-      <button class="molv-btn molv-btn-green" (click)="saveAndClose()" [disabled]="filesProcessing"
-        [class.disabled]="filesProcessing">
+      <button class="molv-btn molv-btn-green" (click)="saveAndClose()" [disabled]="isBusy"
+        [class.disabled]="isBusy">
         {{ 'save' | transloco }}
       </button>
 
-      <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="filesProcessing"
-        [class.disabled]="filesProcessing">
+      <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="isBusy"
+        [class.disabled]="isBusy">
         {{ 'delete' | transloco }}
       </button>
 
-      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="filesProcessing"
-        [class.disabled]="filesProcessing">
+      <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="isBusy"
+        [class.disabled]="isBusy">
         {{ 'cancel' | transloco }}
       </button>
       }
@@ -64,7 +64,7 @@
     @if(isEditMode) {
     <!-- uploader -->
     <molv-drop-uploader [visible]="isOpen && isEditMode" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
-      [chapterId]="chapter.id" [tabId]="chapter.tabId" (onDropFinished)="onUploadFinished()"
+      [chapterId]="chapter.id" [tabId]="chapter.tabId" (saveFinished)="onSaveFinished()"
       (filesProcessing)="filesProcessing = $event">
     </molv-drop-uploader>
     }

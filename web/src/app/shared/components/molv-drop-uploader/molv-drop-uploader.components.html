@@ -1,20 +1,26 @@
-<div class="drop-area" *ngIf="visible" [class.disabled]="isProcessing() || disabled" (drop)="onDrop($event)"
+@if (visible && errorMessage()) {
+  <p role="alert">{{ errorMessage() }}</p>
+}
+<div class="drop-area" *ngIf="visible" [class.disabled]="isProcessing() || isSaving() || disabled" (drop)="onDrop($event)"
   (dragover)="onDragOver($event)">
   @if(disabled){<p>Upload complete</p>}
   @else if(!isProcessing()){<p>Drag & drop files here or click to select</p>}
   @else{<p>Processing... {{progress() | number:'1.0-0'}}%</p>}
 
-  <input type="file" multiple (change)="onFilesSelected($event)" style="display:none" #fileInput [disabled]="disabled">
-  <button class="molv-btn molv-btn-pink" (click)="fileInput.click()" [disabled]="isProcessing() || disabled">Select files</button>
+  <input type="file" multiple (change)="onFilesSelected($event)" style="display:none" #fileInput
+    [disabled]="isProcessing() || isSaving() || disabled">
+  <button class="molv-btn molv-btn-pink" (click)="fileInput.click()" [disabled]="isProcessing() || isSaving() || disabled">Select files</button>
 
   <div cdkDropList class="thumbs-list" [cdkDropListData]="items()" (cdkDropListDropped)="drop($event)"  cdkDropListOrientation="mixed">
-    @for (t of items(); track $index; let i = $index)
+    @for (t of items(); track t; let i = $index)
     {
     <div class="thumb" cdkDrag [cdkDragData]="t">
       <div class="header">
-        <button class="molv-btn-small-remove" (click)="remove(i)">x</button>
+        <button class="molv-btn-small-remove" (click)="remove(i)" [disabled]="isProcessing() || isSaving()">x</button>
       </div>
-      <img [src]="t.url" />
+      @if (t.url) {
+        <img [src]="t.url" loading="lazy" decoding="async" alt="" />
+      }
       <div class="meta">
         <div>{{ t.page.name }}</div>
       </div>
