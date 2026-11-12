@@ -216,9 +216,11 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
 
   async onFilesDropped(files: FileList | File[]) {
     if (!files.length || this.disabled || this.isProcessing() || this.isSaving()) return;
+    const batch = Array.from(files);
+    const totalBytes = batch.reduce((total, file) => total + Math.max(1, file.size), 0);
     const initialItems = this.items();
     const initialStructure = this.importedStructure;
-    const allowMetadata = this.enableMangaStructureMetadata && !initialItems.length && files.length === 1;
+    const allowMetadata = this.enableMangaStructureMetadata && !initialItems.length && batch.length === 1;
     this.importedStructure = undefined;
     this.errorMessage.set('');
     const work = this.startWork();
@@ -227,9 +229,19 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       await this.pageRepo.discardExpiredImportPages().catch(error => {
         console.warn('Could not clean expired import pages', error);
       });
-      for (const file of Array.from(files)) {
+      let completedBytes = 0;
+      for (const file of batch) {
         work.signal.throwIfAborted();
-        await this.processFile(file, allowMetadata, work.signal);
+        const fileBytes = Math.max(1, file.size);
+        const reportProgress = (filePercent: number) => {
+          const percent = Math.floor((completedBytes * 100 + fileBytes * filePercent) / totalBytes);
+          // Keep the batch percentage stable if a file has to retry without its metadata.
+          this.progress.update(current => Math.max(current, Math.min(99, percent)));
+        };
+        await this.processFile(file, allowMetadata, work.signal, reportProgress);
+        work.signal.throwIfAborted();
+        reportProgress(100);
+        completedBytes += fileBytes;
       }
       work.signal.throwIfAborted();
       if (this.items().length === initialItems.length && !this.importedStructure) {
@@ -237,7 +249,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
       }
       this.progress.set(100);
       this.onDropFinished.emit();
-      this.fileSelected.emit(files[0].name);
+      this.fileSelected.emit(batch[0].name);
     } catch (error) {
       if (!work.signal.aborted) {
         await this.rollbackItems(initialItems);
@@ -263,12 +275,17 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     console.error(action, error);
   }
 
-  private async processFile(file: File, allowMetadata: boolean, signal: AbortSignal) {
+  private async processFile(
+    file: File,
+    allowMetadata: boolean,
+    signal: AbortSignal,
+    reportProgress: (percent: number) => void
+  ) {
     const name = file.name.toLowerCase();
     if (name.endsWith('.zip') || name.endsWith('.cbz')) {
-      await this.extractArchive(file, allowMetadata, signal);
+      await this.extractArchive(file, allowMetadata, signal, reportProgress);
     } else if (name.endsWith('.mhtml') || name.endsWith('.mht')) {
-      await this.extractMhtml(file, allowMetadata, signal);
+      await this.extractMhtml(file, allowMetadata, signal, reportProgress);
     } else if (file.type.startsWith('image/') || imageFormatFromFilename(name)) {
       await this.addBlobImage(file, file.name, signal);
     }
@@ -278,7 +295,12 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     return name.slice(0, 5) + generateId() + '/' + addition;
   }
 
-  private async extractArchive(file: File, allowMetadata: boolean, signal: AbortSignal) {
+  private async extractArchive(
+    file: File,
+    allowMetadata: boolean,
+    signal: AbortSignal,
+    reportProgress: (percent: number) => void
+  ) {
     const archive = await openArchiveReader(file, signal);
     if (allowMetadata && archive.names.includes(ARCHIVE_METADATA_NAME)) {
       const initialItems = this.items();
@@ -288,7 +310,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
         if (metadata) {
           const entries = metadata.chapters.flatMap(chapter => chapter.pages.map(page => page.asset));
           const pagesByAsset = new Map<string, PageToSave>();
-          await this.importArchivePages(file, archive, entries, signal, pagesByAsset);
+          await this.importArchivePages(file, archive, entries, signal, reportProgress, pagesByAsset);
           this.importedStructure = { metadata, pagesByAsset };
           return;
         }
@@ -296,13 +318,12 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
         signal.throwIfAborted();
         await this.rollbackItems(initialItems);
         if (error instanceof DOMException && error.name === 'QuotaExceededError') throw error;
-        this.progress.set(0);
         console.warn('Could not use archive chapter metadata', error);
       }
     }
 
     const entries = archive.names.filter(name => imageFormatFromFilename(name)).sort(numericNameSort);
-    await this.importArchivePages(file, archive, entries, signal);
+    await this.importArchivePages(file, archive, entries, signal, reportProgress);
   }
 
   private async importArchivePages(
@@ -310,6 +331,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
     archive: ArchiveReader,
     entries: string[],
     signal: AbortSignal,
+    reportProgress: (percent: number) => void,
     pagesByAsset?: Map<string, PageToSave>
   ) {
     for (const [index, entry] of entries.entries()) {
@@ -322,11 +344,16 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
         signal
       );
       pagesByAsset?.set(entry, item.page);
-      this.progress.set((index + 1) * 100 / entries.length);
+      reportProgress((index + 1) * 100 / entries.length);
     }
   }
 
-  private async extractMhtml(file: File, allowMetadata: boolean, signal: AbortSignal) {
+  private async extractMhtml(
+    file: File,
+    allowMetadata: boolean,
+    signal: AbortSignal,
+    reportProgress: (percent: number) => void
+  ) {
     const assets = new Map<string, ImportItem>();
     const duplicateIds = new Set<string>();
     let index = 0;
@@ -341,7 +368,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
           assets.set(id, item);
         }
       }
-      this.progress.set(this.mhtmlService.progress());
+      reportProgress(this.mhtmlService.progress());
     }, signal);
 
     if (!allowMetadata || !metadataJson) return;
