@@ -279,7 +279,7 @@ export class MolvDropUploaderComponents implements OnDestroy, OnChanges {
   }
 
   private async extractArchive(file: File, allowMetadata: boolean, signal: AbortSignal) {
-    const archive = await openArchiveReader(file);
+    const archive = await openArchiveReader(file, signal);
     if (allowMetadata && archive.names.includes(ARCHIVE_METADATA_NAME)) {
       const initialItems = this.items();
       try {

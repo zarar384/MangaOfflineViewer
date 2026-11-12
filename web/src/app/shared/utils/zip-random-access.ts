@@ -51,18 +51,21 @@ function checkRange(offset: number, length: number, limit: number): void {
   }
 }
 
-async function readView(file: Blob, offset: number, length: number): Promise<DataView<ArrayBuffer>> {
+async function readView(file: Blob, offset: number, length: number, signal?: AbortSignal): Promise<DataView<ArrayBuffer>> {
+  checkAbort(signal);
   checkRange(offset, length, file.size);
-  return new DataView(await file.slice(offset, offset + length).arrayBuffer());
+  const buffer = await file.slice(offset, offset + length).arrayBuffer();
+  checkAbort(signal);
+  return new DataView(buffer);
 }
 
 function checkDisk(disk: number): void {
   if (disk !== 0) throw new ZipRandomAccessUnsupportedError('Split ZIP archives are not supported.');
 }
 
-async function findDirectory(file: File) {
+async function findDirectory(file: File, signal?: AbortSignal) {
   const tailOffset = Math.max(0, file.size - EOCD_SIZE - MAX_COMMENT_SIZE - ZIP64_LOCATOR_SIZE);
-  const tail = await readView(file, tailOffset, file.size - tailOffset);
+  const tail = await readView(file, tailOffset, file.size - tailOffset, signal);
   let end = tail.byteLength - EOCD_SIZE;
   for (; end >= 0; end--) {
     // Match the comment length too: the ZIP signature can occur inside the comment.
@@ -77,7 +80,7 @@ async function findDirectory(file: File) {
     const recordOffset = u64(tail, locator + 8);
     const locatorOffset = tailOffset + locator;
     checkRange(recordOffset, ZIP64_EOCD_SIZE, locatorOffset);
-    const record = await readView(file, recordOffset, ZIP64_EOCD_SIZE);
+    const record = await readView(file, recordOffset, ZIP64_EOCD_SIZE, signal);
     if (u32(record, 0) !== ZIP64_EOCD_SIGNATURE || u64(record, 4) !== locatorOffset - recordOffset - 12) {
       throw new Error('Malformed ZIP64 end of central directory.');
     }
@@ -123,8 +126,9 @@ function readZip64Fields(view: DataView, start: number, length: number, sizes: n
 }
 
 /** Reads the directory in small windows, including ZIP64 entries. */
-export async function readZipCentralDirectory(file: File): Promise<ZipEntryInfo[]> {
-  const directory = await findDirectory(file);
+export async function readZipCentralDirectory(file: File, signal?: AbortSignal): Promise<ZipEntryInfo[]> {
+  const directory = await findDirectory(file, signal);
+  checkAbort(signal);
   checkRange(directory.offset, directory.size, directory.limit);
   if (directory.count > Math.floor(directory.size / CENTRAL_HEADER_SIZE)) throw new Error('Invalid ZIP entry count.');
 
@@ -136,7 +140,7 @@ export async function readZipCentralDirectory(file: File): Promise<ZipEntryInfo[
   for (let i = 0; i < directory.count; i++) {
     checkRange(offset, CENTRAL_HEADER_SIZE, end);
     if (offset - windowOffset + CENTRAL_HEADER_SIZE > view.byteLength) {
-      view = await readView(file, offset, Math.min(DIRECTORY_CHUNK_BYTES, end - offset));
+      view = await readView(file, offset, Math.min(DIRECTORY_CHUNK_BYTES, end - offset), signal);
       windowOffset = offset;
     }
     let pos = offset - windowOffset;
@@ -147,7 +151,7 @@ export async function readZipCentralDirectory(file: File): Promise<ZipEntryInfo[
     const recordLength = CENTRAL_HEADER_SIZE + nameLength + extraLength + commentLength;
     checkRange(offset, recordLength, end);
     if (pos + recordLength > view.byteLength) {
-      view = await readView(file, offset, Math.min(Math.max(DIRECTORY_CHUNK_BYTES, recordLength), end - offset));
+      view = await readView(file, offset, Math.min(Math.max(DIRECTORY_CHUNK_BYTES, recordLength), end - offset), signal);
       windowOffset = offset;
       pos = 0;
     }
@@ -197,6 +201,7 @@ async function collectDeflate(data: Blob, append: (chunk: Uint8Array) => void, s
       while (true) {
         checkAbort(signal);
         const result = await reader.read();
+        checkAbort(signal);
         if (result.done) return;
         append(result.value);
       }
@@ -212,6 +217,7 @@ async function collectDeflate(data: Blob, append: (chunk: Uint8Array) => void, s
     // Read and expand one bounded block at a time, including on browsers without native raw DEFLATE.
     const end = Math.min(data.size, offset + INFLATE_CHUNK_BYTES);
     const bytes = new Uint8Array(await data.slice(offset, end).arrayBuffer());
+    checkAbort(signal);
     inflater.push(bytes, end === data.size);
   }
 }
@@ -224,7 +230,7 @@ export async function readZipEntry(file: File, entry: ZipEntryInfo, options: Arc
   if (entry.uncompressedSize > maxBytes || entry.compressedSize > MAX_ENTRY_BYTES) {
     throw new Error(`ZIP entry "${entry.name}" exceeds the supported size.`);
   }
-  const header = await readView(file, entry.localHeaderOffset, LOCAL_HEADER_SIZE);
+  const header = await readView(file, entry.localHeaderOffset, LOCAL_HEADER_SIZE, signal);
   if (u32(header, 0) !== LOCAL_FILE_SIGNATURE || u16(header, 8) !== entry.method) {
     throw new Error(`Malformed local file header for "${entry.name}".`);
   }
@@ -275,8 +281,9 @@ export interface ArchiveReader {
 }
 
 /** Opens ZIP and ZIP64 archives without loading all compressed or expanded data at once. */
-export async function openArchiveReader(file: File): Promise<ArchiveReader> {
-  const entries = await readZipCentralDirectory(file);
+export async function openArchiveReader(file: File, signal?: AbortSignal): Promise<ArchiveReader> {
+  const entries = await readZipCentralDirectory(file, signal);
+  checkAbort(signal);
   const byName = new Map(entries.map(entry => [entry.name, entry]));
   return {
     names: entries.map(entry => entry.name),

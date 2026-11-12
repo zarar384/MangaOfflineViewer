@@ -33,6 +33,7 @@ export class UploadFileWindowComponent {
   saveAll$ = new Subject<[Tab, Chapter | undefined]>();
   clearAll$ = new Subject<void>();
   filesProcessing = false;
+  preparingSave = false;
   isMultiUploadFinished = false;
 
   // multi-mode related signals
@@ -79,10 +80,14 @@ export class UploadFileWindowComponent {
   }
 
   async saveAndClose() {
+    if (this.filesProcessing || this.preparingSave) return;
+    this.preparingSave = true;
     try {
       // find the tab and upload chapter with pages
       if (this.viewMode === ViewMod.Chapters) {
-        const tab = await this.tabService.getTabById(this.tabId!);
+        const tabId = this.tabId;
+        const tab = await this.tabService.getTabById(tabId!);
+        if (!this.isVisible || this.tabId !== tabId || this.viewMode !== ViewMod.Chapters) return;
 
         if (!tab) {
           console.error('Tab not found');
@@ -110,6 +115,9 @@ export class UploadFileWindowComponent {
     }
     catch (err) {
       console.error('Error saving tab', err);
+    }
+    finally {
+      this.preparingSave = false;
     }
   }
 }

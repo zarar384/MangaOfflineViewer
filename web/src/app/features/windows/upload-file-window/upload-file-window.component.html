@@ -1,5 +1,5 @@
 <app-window [visible]="isVisible" title="{{'importMangas' | transloco}}" [width]="'500px'" [height]="'400px'"
-  position="center" [showClose]="true" [closeDisabled]="uploader.isSaving()" [showHide]="false" [showTransparency]="false"
+  position="center" [showClose]="true" [closeDisabled]="preparingSave || uploader.isSaving()" [showHide]="false" [showTransparency]="false"
   (close)="onWindowClose()">
 
   <div class="molv-container">
@@ -7,27 +7,27 @@
     <!-- selection mode -->
     <div class="molv-mode-switch">
       <button class="molv-btn molv-btn-orange molv-mode-btn" [class.active]="!isMultiMode()"
-        title="{{'uploadSingleChapter' | transloco}}" [disabled]="filesProcessing" (click)="selectSingleMode()">
+        title="{{'uploadSingleChapter' | transloco}}" [disabled]="filesProcessing || preparingSave" (click)="selectSingleMode()">
         {{'single' | transloco}}
       </button>
 
       <button class="molv-btn molv-btn-pink molv-mode-btn" [class.active]="isMultiMode()"
-        title="{{'uploadMultipleChapters' | transloco}}" [disabled]="filesProcessing" (click)="selectMultiMode()">
+        title="{{'uploadMultipleChapters' | transloco}}" [disabled]="filesProcessing || preparingSave" (click)="selectMultiMode()">
         {{'multi' | transloco}}
       </button>
     </div>
 
     <!-- form -->
     <input type="text" class="molv-txtbx" placeholder="{{'mangaName' | transloco}}" [(ngModel)]="fileName"
-      [disabled]="filesProcessing">
+      [disabled]="filesProcessing || preparingSave">
 
  <button class="molv-btn molv-btn-pink" (click)="saveAndClose()"
-      [disabled]="filesProcessing || (!fileName && !(isMultiMode() && !isMultiUploadFinished))">
+      [disabled]="filesProcessing || preparingSave || (!fileName && !(isMultiMode() && !isMultiUploadFinished))">
         {{ (isMultiMode() && !isMultiUploadFinished) ? ('create' | transloco) : ('save' | transloco) }}
      </button>
 
     <molv-drop-uploader #uploader [visible]="isVisible" [saveAll$]="saveAll$" [clearAll$]="clearAll$"
-      [enableMangaStructureMetadata]="isMultiMode()" [disabled]="uploaderDisabled()"
+      [enableMangaStructureMetadata]="isMultiMode()" [disabled]="uploaderDisabled() || preparingSave"
       (onDropFinished)="onUploadFinished()" (filesProcessing)="filesProcessing = $event" (saveFinished)="onWindowClose()"
       (fileSelected)="fileName = fileName ?? $event">
     </molv-drop-uploader>
