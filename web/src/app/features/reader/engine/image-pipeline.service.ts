@@ -46,7 +46,7 @@ export class ImagePipelineService implements OnDestroy {
     if (!(page.src instanceof Blob) || page.id == null) return '';
 
     if (!this.pageUrls.has(page.id)) {
-      const url = await this.urlService.createUrl(`${page.id}`, page.src);
+      const url = await this.urlService.createUrl(`page:${page.id}`, page.src);
       this.pageUrls.set(page.id, url);
     }
 
@@ -88,7 +88,7 @@ export class ImagePipelineService implements OnDestroy {
  * Otherwise a revoked blob URL may be returned later.
  */
   releaseUrl(pageId: number): void {
-    this.urlService.revokeUrl(String(pageId));
+    this.urlService.revokeUrl(`page:${pageId}`);
     this.pageUrls.delete(pageId);
     this.loadingSet.delete(pageId);
   }
@@ -126,7 +126,7 @@ export class ImagePipelineService implements OnDestroy {
   /** Revokes all cached urls. */
   revokeAll(): void {
     for (const id of this.pageUrls.keys()) {
-      this.urlService.revokeUrl(String(id));
+      this.urlService.revokeUrl(`page:${id}`);
     }
     this.pageUrls.clear();
     this.loadingSet.clear();
