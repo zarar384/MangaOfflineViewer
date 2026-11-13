@@ -16,6 +16,8 @@ import { ArtistsRepository } from '../repositories/artist.repository';
 import { TagsRepository } from '../repositories/tags.repository';
 import { ChaptersRepository } from '../repositories/chapters.repository';
 
+const PREVIEW_KEY_PREFIX = 'preview:';
+
 @Injectable({ providedIn: 'root' })
 export class TabsService {
 
@@ -387,7 +389,7 @@ export class TabsService {
   }
 
   async refresh() {
-    this.url.revokeAll();
+    this.url.revokeByPrefix(PREVIEW_KEY_PREFIX);
     await this.load(this.page(), this.perPage());
   }
 
@@ -399,7 +401,7 @@ export class TabsService {
 
     // create a new
     if (tab.preview instanceof Blob) {
-      return this.url.createUrl(String(tab.id ?? tab.name), tab.preview);
+      return this.url.createUrl(`${PREVIEW_KEY_PREFIX}${tab.id ?? tab.name}`, tab.preview);
     }
 
     return tab.preview ?? DEFAULT_PREVIEW;
@@ -497,6 +499,6 @@ export class TabsService {
 
   // Invalidate object URL for a tab's preview when it's updated or deleted
   invalidatePreview(id: number) {
-    this.url.revokeUrl(String(id));
+    this.url.revokeUrl(`${PREVIEW_KEY_PREFIX}${id}`);
   }
 }

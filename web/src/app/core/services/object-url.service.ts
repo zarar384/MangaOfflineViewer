@@ -30,6 +30,15 @@ export class ObjectUrlService {
     }
   }
 
+  revokeByPrefix(prefix: string) {
+    for (const [key, url] of this.cache) {
+      if (key.startsWith(prefix)) {
+        URL.revokeObjectURL(url);
+        this.cache.delete(key);
+      }
+    }
+  }
+
   revokeAll() {
     this.cache.forEach(url => URL.revokeObjectURL(url));
     this.cache.clear();
