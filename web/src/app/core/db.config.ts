@@ -10,5 +10,6 @@ export const STORE_ARTISTS = 'artist';
 export const STORE_TAGS = 'tag';
 
 export const PREVIEW_MAX_SIZE = 300;
+export const CHAPTER_COVER_MAX_SIZE = 900;
 
 export const USE_SEEDS = false;

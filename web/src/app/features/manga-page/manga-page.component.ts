@@ -7,7 +7,7 @@ import { ChapterListComponent } from '../../shared/components/movl-chapter-list/
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MangaDraftService } from '../../core/services/manga-draft.service';
 import { createPreview } from '../../shared/utils/preview';
-import { PREVIEW_MAX_SIZE } from '../../core/db.config';
+import { CHAPTER_COVER_MAX_SIZE } from '../../core/db.config';
 import { Tag } from 'src/app/core/models/tag.model';
 import { Artist } from 'src/app/core/models/artist.model';
 import { TagsRepository } from 'src/app/core/repositories/tags.repository';
@@ -227,11 +227,11 @@ export class MangaPageComponent implements OnChanges {
       tab.artistIds = artistIds;
       tab.tagIds = tagIds;
 
-      // create preview if new file is selected
-      if (tab.preview) {
+      // create preview only if the user picked a new file (File, not a stored Blob/string)
+      if (tab.preview instanceof File) {
         tab = {
           ...tab,
-          preview: await createPreview(tab.preview, PREVIEW_MAX_SIZE)
+          preview: await createPreview(tab.preview, CHAPTER_COVER_MAX_SIZE)
         }
       }
 
