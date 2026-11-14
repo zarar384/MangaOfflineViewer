@@ -95,6 +95,9 @@ export function parseQuery(query: string): SearchToken[] {
           rawPart.slice(
             `${SearchTagKey.Tags}:`.length
           );
+
+        // advance past this single token so the loop doesn't hang
+        index++;
       }
       // tags: horror; action
       else {
