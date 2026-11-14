@@ -78,7 +78,14 @@ export class MangaPageComponent implements OnChanges {
 
     const draft = this.draftService.getDraft();
 
-    if (draft) {
+    // only restore a draft that belongs to the manga being opened; a draft left
+    // over for a different manga (or no longer matching one) is stale and must
+    // not leak into this manga's editor
+    if (draft && !this.isDraftForManga(draft.tab, id)) {
+      this.draftService.clear();
+    }
+
+    if (draft && this.isDraftForManga(draft.tab, id)) {
 
       this.tab.set(draft.tab);
 
@@ -143,6 +150,11 @@ export class MangaPageComponent implements OnChanges {
     this.isEditMode.set(false);
   }
 
+  // A draft belongs to this editor only if it targets the same manga that's
+  // currently open (an unsaved tab and no active manga both count as "new").
+  private isDraftForManga(draftTab: Tab, id: number | null): boolean {
+    return (draftTab.id ?? null) === (id ?? null);
+  }
 
   // Warn user about unsaved changes
   @HostListener('window:beforeunload', ['$event'])
@@ -152,11 +164,14 @@ export class MangaPageComponent implements OnChanges {
     }
   }
 
-  // Clear draft on unload to prevent stale data
+  // Keep the draft alive while the tab/app is hidden; only flush it to storage
+  // immediately so backgrounding doesn't lose unsaved edits to a debounce race.
+  // The draft is only ever terminated by Save, Cancel, or explicitly leaving
+  // the editor (selecting another manga, going home, etc.).
   @HostListener('document:visibilitychange')
   onVisibilityChange() {
-    if (document.hidden) {
-      this.draftService.clear();
+    if (document.hidden && this.isEditMode()) {
+      this.draftService.flush();
     }
   }
 

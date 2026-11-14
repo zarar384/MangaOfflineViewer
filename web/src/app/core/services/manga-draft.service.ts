@@ -43,6 +43,22 @@ export class MangaDraftService {
     });
   }
 
+  // Immediately persist the current draft, bypassing the debounce.
+  // Used when the tab/app is about to be backgrounded (visibilitychange),
+  // where the debounced write might not run in time.
+  flush() {
+    clearTimeout(this.saveTimeout);
+
+    const value = this._draft();
+
+    if (!value) {
+      localStorage.removeItem(this.STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(value));
+  }
+
   // INIT
   private loadFromStorage() {
     try {
