@@ -3,7 +3,7 @@
   <div class="list-header">
     <h2>{{ 'chapters' | transloco }}</h2>
 
-    <button class="molv-btn molv-btn-pink" (click)="addChapter()">
+    <button class="molv-btn molv-btn-pink" (click)="addChapter()" [disabled]="disabled()">
       + {{ 'addChapter' | transloco }}
     </button>
   </div>

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, signal } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, Output, SimpleChanges, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Tab } from '../../core/models/tab.model';
 import { TabsService } from '../../core/services/tabs.service';
@@ -30,7 +30,7 @@ import { ExportService } from 'src/app/core/services/export.service';
   providers: [ChaptersListService, BookmarksService],
   standalone: true
 })
-export class MangaPageComponent implements OnChanges {
+export class MangaPageComponent implements OnChanges, OnDestroy {
 
   @Input() activeManga: number | null = null;
   @Input() downloadMod: FileFormat = FileFormat.MHTML;
@@ -47,6 +47,18 @@ export class MangaPageComponent implements OnChanges {
   // guards against double-submit and surfaces save progress/failures to the template
   isSaving = signal(false);
   saveError = signal<string | null>(null);
+
+  // guards against repeat/overlapping delete and surfaces delete progress/failures
+  isDeleting = signal(false);
+  deleteError = signal<string | null>(null);
+
+  // whichever mutating action most recently failed; cleared when a new attempt starts
+  displayError = computed(() => this.saveError() ?? this.deleteError());
+
+  // true once this component instance has been torn down; used to ignore results
+  // from in-flight operations (e.g. delete) that resolve after the user has
+  // already navigated away
+  private destroyed = false;
 
   // suggestions for meta inputs
   artistSuggestions = signal<Artist[]>([]);
@@ -76,6 +88,10 @@ export class MangaPageComponent implements OnChanges {
       const id = changes['activeManga'].currentValue;
       await this.loadManga(id);
     }
+  }
+
+  ngOnDestroy() {
+    this.destroyed = true;
   }
 
   private async loadManga(id: number | null) {
@@ -189,8 +205,8 @@ export class MangaPageComponent implements OnChanges {
   }
 
   async cancel() {
-    // don't tear down the draft/edit mode while a save is writing it out
-    if (this.isSaving()) return;
+    // don't tear down the draft/edit mode while a save or delete is in flight
+    if (this.isSaving() || this.isDeleting()) return;
 
     this.draftService.clear();
     this.chaptersListService.discardPendingOrder();
@@ -224,12 +240,14 @@ export class MangaPageComponent implements OnChanges {
 
     this.isEditMode.set(false);
     this.saveError.set(null);
+    this.deleteError.set(null);
   }
 
   // save draft changes to tab
   async save() {
-    // reentry guard: a second Save (e.g. a fast double-click) must no-op while one is in flight
-    if (this.isSaving()) return;
+    // reentry guard: a second Save (e.g. a fast double-click) must no-op while one is in flight;
+    // also don't start a write on a manga that's being deleted
+    if (this.isSaving() || this.isDeleting()) return;
 
     const draft = this.draftService.getDraft();
     if (!draft) return;
@@ -237,6 +255,7 @@ export class MangaPageComponent implements OnChanges {
     // set before the first await so a synchronous re-entrant call is blocked immediately
     this.isSaving.set(true);
     this.saveError.set(null);
+    this.deleteError.set(null);
     this.loading.show();
 
     let tab = draft.tab;
@@ -310,14 +329,50 @@ export class MangaPageComponent implements OnChanges {
   }
 
   async delete() {
-    // don't delete the tab while a save for it is still writing
-    if (this.isSaving()) return;
+    // don't delete the tab while a save is writing it out, and don't allow a repeat delete
+    if (this.isSaving() || this.isDeleting()) return;
 
     const current = this.tab();
     if (!current?.id) return;
 
-    await this.tabsService.deleteTab(current.id);
-    this.tab.set(null);
+    const deletedId = current.id;
+
+    // set before the first await so a synchronous re-entrant call is blocked immediately
+    this.isDeleting.set(true);
+    this.saveError.set(null);
+    this.deleteError.set(null);
+    this.loading.show();
+
+    try {
+      await this.tabsService.deleteTab(deletedId);
+
+      // a slow delete may resolve after the user has already left this manga's
+      // screen (navigated to another manga, or this instance was destroyed);
+      // only act on the result if it's still what's on screen
+      if (this.destroyed || this.activeManga !== deletedId) return;
+
+      this.draftService.clear();
+      this.tab.set(null);
+      this.isEditMode.set(false);
+
+      // existing navigation: send the user Home (also clears draft/reader state)
+      await this.tabsService.open({ mangaId: null });
+    }
+    catch (error) {
+      console.error('Delete failed:', error);
+
+      if (this.destroyed || this.activeManga !== deletedId) return;
+
+      // keep the editor open so the user can see what happened and retry
+      this.deleteError.set('errors.deleteFailed');
+    }
+    finally {
+      if (!this.destroyed && this.activeManga === deletedId) {
+        this.isDeleting.set(false);
+      }
+
+      this.loading.hide();
+    }
   }
 
   // Draft updates
@@ -331,8 +386,9 @@ export class MangaPageComponent implements OnChanges {
 
   // Handle file selection and update draft
   async onFileSelected(event: Event) {
-    // avoid racing with the preview refresh a save() does when it finishes
-    if (this.isSaving()) return;
+    // avoid racing with the preview refresh a save() does when it finishes,
+    // and don't bother picking a new cover for a manga that's being deleted
+    if (this.isSaving() || this.isDeleting()) return;
 
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;

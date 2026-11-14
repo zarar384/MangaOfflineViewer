@@ -15,6 +15,7 @@ export class ChapterListComponent {
 
   activeManga = input<number | null>(null);
   isEditMode = input(false);
+  disabled = input(false);
 
   constructor(public listService: ChaptersListService) {
     effect(() => {
@@ -25,6 +26,8 @@ export class ChapterListComponent {
   get chapters() { return this.listService.displayChapters; }
 
   addChapter() {
+    if (this.disabled()) return;
+
     this.listService.addChapter();
   }
 }

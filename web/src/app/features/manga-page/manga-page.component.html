@@ -11,7 +11,7 @@
 
     @if (isEditMode()) {
     <div class="header">
-      <button class="molv-btn molv-btn-orange" (click)="fileInput.click()" [disabled]="isSaving()">
+      <button class="molv-btn molv-btn-orange" (click)="fileInput.click()" [disabled]="isSaving() || isDeleting()">
         {{ 'change' | transloco }}
       </button>
 
@@ -20,7 +20,7 @@
         type="file"
         accept="image/*"
         hidden
-        [disabled]="isSaving()"
+        [disabled]="isSaving() || isDeleting()"
         (change)="onFileSelected($event)" />
     </div>
     }
@@ -102,17 +102,17 @@
         <button class="molv-btn molv-btn-orange" (click)="edit()">{{ 'edit' | transloco }}</button>
         }
         @else {
-        <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="isSaving()">{{ 'cancel' | transloco }}</button>
-        <button class="molv-btn molv-btn-green" (click)="save()" [disabled]="isSaving()">{{ (isSaving() ? 'saving' : 'save') | transloco }}</button>
-        <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="isSaving()">{{ 'delete' | transloco }}</button>
+        <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="isSaving() || isDeleting()">{{ 'cancel' | transloco }}</button>
+        <button class="molv-btn molv-btn-green" (click)="save()" [disabled]="isSaving() || isDeleting()">{{ (isSaving() ? 'saving' : 'save') | transloco }}</button>
+        <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="isSaving() || isDeleting()">{{ (isDeleting() ? 'deleting' : 'delete') | transloco }}</button>
         }
       </div>
 
-      @if (saveError()) {
-      <p class="save-error" role="alert">{{ saveError() | transloco }}</p>
+      @if (displayError()) {
+      <p class="save-error" role="alert">{{ displayError() | transloco }}</p>
       }
     </div>
   </div>
 
-  <movl-chapter-list [activeManga]="activeManga" [isEditMode]="isEditMode()"></movl-chapter-list>
+  <movl-chapter-list [activeManga]="activeManga" [isEditMode]="isEditMode()" [disabled]="isDeleting()"></movl-chapter-list>
 </div>

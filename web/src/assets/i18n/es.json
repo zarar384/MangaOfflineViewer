@@ -45,6 +45,7 @@
     "saving": "Guardando...",
     "go": "Ir",
     "delete": "Eliminar",
+    "deleting": "Eliminando...",
     "importMangas": "Importar mangas",
     "mangaName": "Nombre del manga",
     "language": "Idioma",
@@ -80,6 +81,7 @@
     "errors": {
         "network": "Error de red",
         "unknown": "Error desconocido",
-        "saveFailed": "No se pudo guardar el manga. Inténtalo de nuevo."
+        "saveFailed": "No se pudo guardar el manga. Inténtalo de nuevo.",
+        "deleteFailed": "No se pudo eliminar el manga. Inténtalo de nuevo."
     }
 }

@@ -45,6 +45,7 @@
     "saving": "Saving...",
     "go": "Go",
     "delete": "Delete",
+    "deleting": "Deleting...",
     "importMangas": "Import Mangas",
     "mangaName": "Manga Name",
     "language": "Language",
@@ -80,6 +81,7 @@
     "errors": {
         "network": "Network error",
         "unknown": "Unknown error",
-        "saveFailed": "Failed to save manga. Please try again."
+        "saveFailed": "Failed to save manga. Please try again.",
+        "deleteFailed": "Failed to delete manga. Please try again."
     }
 }
