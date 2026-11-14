@@ -42,8 +42,10 @@
     "pageProgress": "Stránka {{current}} z {{total}}",
     "update": "Aktualizovat",
     "save": "Uložit",
+    "saving": "Ukládání...",
     "go": "Přejít",
     "delete": "Smazat",
+    "deleting": "Mazání...",
     "importMangas": "Import mang",
     "mangaName": "Název mangy",
     "language": "Jazyk",
@@ -78,6 +80,8 @@
     },
     "errors": {
         "network": "Chyba sítě",
-        "unknown": "Neznámá chyba"
+        "unknown": "Neznámá chyba",
+        "saveFailed": "Uložení mangy se nezdařilo. Zkuste to prosím znovu.",
+        "deleteFailed": "Smazání mangy se nezdařilo. Zkuste to prosím znovu."
     }
 }
