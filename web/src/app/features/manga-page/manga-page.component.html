@@ -11,7 +11,7 @@
 
     @if (isEditMode()) {
     <div class="header">
-      <button class="molv-btn molv-btn-orange" (click)="fileInput.click()">
+      <button class="molv-btn molv-btn-orange" (click)="fileInput.click()" [disabled]="isSaving()">
         {{ 'change' | transloco }}
       </button>
 
@@ -20,6 +20,7 @@
         type="file"
         accept="image/*"
         hidden
+        [disabled]="isSaving()"
         (change)="onFileSelected($event)" />
     </div>
     }
@@ -101,11 +102,15 @@
         <button class="molv-btn molv-btn-orange" (click)="edit()">{{ 'edit' | transloco }}</button>
         }
         @else {
-        <button class="molv-btn molv-btn-pink" (click)="cancel()">{{ 'cancel' | transloco }}</button>
-        <button class="molv-btn molv-btn-green" (click)="save()">{{ 'save' | transloco }}</button>
-        <button class="molv-btn molv-btn-red" (click)="delete()">{{ 'delete' | transloco }}</button>
+        <button class="molv-btn molv-btn-pink" (click)="cancel()" [disabled]="isSaving()">{{ 'cancel' | transloco }}</button>
+        <button class="molv-btn molv-btn-green" (click)="save()" [disabled]="isSaving()">{{ (isSaving() ? 'saving' : 'save') | transloco }}</button>
+        <button class="molv-btn molv-btn-red" (click)="delete()" [disabled]="isSaving()">{{ 'delete' | transloco }}</button>
         }
       </div>
+
+      @if (saveError()) {
+      <p class="save-error" role="alert">{{ saveError() | transloco }}</p>
+      }
     </div>
   </div>
 

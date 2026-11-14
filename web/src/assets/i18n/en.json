@@ -42,6 +42,7 @@
     "pageProgress": "Page {{current}} of {{total}}",
     "update": "Update",
     "save": "Save",
+    "saving": "Saving...",
     "go": "Go",
     "delete": "Delete",
     "importMangas": "Import Mangas",
@@ -78,6 +79,7 @@
     },
     "errors": {
         "network": "Network error",
-        "unknown": "Unknown error"
+        "unknown": "Unknown error",
+        "saveFailed": "Failed to save manga. Please try again."
     }
 }

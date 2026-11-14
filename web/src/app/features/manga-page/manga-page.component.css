@@ -18,6 +18,8 @@
 
 .actions { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 
+.save-error { color: #ff5b70; margin: 4px 0 0; font-size: 13px; }
+
 /* ADAPT */
 @media (max-width: 1024px) { .info { width: 50%; } }
 @media (max-width: 600px) { .manga-header { flex-direction: column; align-items: center; } .card-column { width: min(100%, 300px); } .cover img { width: 100%; } .info { width: 100%; } }

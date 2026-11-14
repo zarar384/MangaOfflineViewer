@@ -42,6 +42,7 @@
     "pageProgress": "Página {{current}} de {{total}}",
     "update": "Actualizar",
     "save": "Guardar",
+    "saving": "Guardando...",
     "go": "Ir",
     "delete": "Eliminar",
     "importMangas": "Importar mangas",
@@ -78,6 +79,7 @@
     },
     "errors": {
         "network": "Error de red",
-        "unknown": "Error desconocido"
+        "unknown": "Error desconocido",
+        "saveFailed": "No se pudo guardar el manga. Inténtalo de nuevo."
     }
 }

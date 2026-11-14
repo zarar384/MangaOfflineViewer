@@ -44,6 +44,10 @@ export class MangaPageComponent implements OnChanges {
   isEditMode = signal(false);
   previewUrl = signal<string | null>(null);
 
+  // guards against double-submit and surfaces save progress/failures to the template
+  isSaving = signal(false);
+  saveError = signal<string | null>(null);
+
   // suggestions for meta inputs
   artistSuggestions = signal<Artist[]>([]);
   tagSuggestions = signal<Tag[]>([]);
@@ -185,6 +189,8 @@ export class MangaPageComponent implements OnChanges {
   }
 
   async cancel() {
+    // don't tear down the draft/edit mode while a save is writing it out
+    if (this.isSaving()) return;
 
     this.draftService.clear();
     this.chaptersListService.discardPendingOrder();
@@ -217,12 +223,21 @@ export class MangaPageComponent implements OnChanges {
     }
 
     this.isEditMode.set(false);
+    this.saveError.set(null);
   }
 
   // save draft changes to tab
   async save() {
+    // reentry guard: a second Save (e.g. a fast double-click) must no-op while one is in flight
+    if (this.isSaving()) return;
+
     const draft = this.draftService.getDraft();
     if (!draft) return;
+
+    // set before the first await so a synchronous re-entrant call is blocked immediately
+    this.isSaving.set(true);
+    this.saveError.set(null);
+    this.loading.show();
 
     let tab = draft.tab;
 
@@ -277,6 +292,9 @@ export class MangaPageComponent implements OnChanges {
     }
     catch (error) {
       console.error('Save failed:', error);
+
+      // keep the draft intact so the user can retry without losing their edits
+      this.saveError.set('errors.saveFailed');
     }
     finally {
       if (tab.id) {
@@ -285,10 +303,16 @@ export class MangaPageComponent implements OnChanges {
       }
 
       await this.updatePreview();
+
+      this.isSaving.set(false);
+      this.loading.hide();
     }
   }
 
   async delete() {
+    // don't delete the tab while a save for it is still writing
+    if (this.isSaving()) return;
+
     const current = this.tab();
     if (!current?.id) return;
 
@@ -307,6 +331,9 @@ export class MangaPageComponent implements OnChanges {
 
   // Handle file selection and update draft
   async onFileSelected(event: Event) {
+    // avoid racing with the preview refresh a save() does when it finishes
+    if (this.isSaving()) return;
+
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
 
